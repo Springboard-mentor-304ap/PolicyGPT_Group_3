@@ -2,7 +2,7 @@ from enum import Enum
 from datetime import datetime
 
 import sqlalchemy as sa
-from sqlalchemy import Boolean, DateTime, Enum as SQLEnum, String, func, text
+from sqlalchemy import Boolean, DateTime, Enum as SQLEnum, String, Index, func, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -73,4 +73,8 @@ class User(Base):
         nullable=False,
         server_default=func.now(),
         onupdate=func.now(),
+    )
+
+    __table_args__ = (
+        Index("ix_users_email", "email", unique=True),
     )

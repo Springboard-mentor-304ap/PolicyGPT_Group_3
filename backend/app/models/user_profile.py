@@ -3,7 +3,7 @@ from enum import Enum
 from decimal import Decimal
 
 import sqlalchemy as sa
-from sqlalchemy import Boolean, Date, DateTime, Enum as SQLEnum, Numeric, String, ForeignKey, func
+from sqlalchemy import Boolean, Date, DateTime, Enum as SQLEnum, Numeric, String, ForeignKey, Index, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -89,4 +89,10 @@ class UserProfile(Base):
         nullable=False,
         server_default=func.now(),
         onupdate=func.now(),
+    )
+
+    __table_args__ = (
+        Index("ix_user_profiles_state", "state"),
+        Index("ix_user_profiles_social_category", "social_category"),
+        Index("ix_user_profiles_annual_income", "annual_income"),
     )
