@@ -10,7 +10,18 @@ from sqlalchemy import pool
 from alembic import context
 
 from backend.app.db.database import Base
-from backend.app.models import User, UserProfile
+from backend.app.models import (
+    User,
+    UserProfile,
+    Policy,
+    Scheme,
+    EligibilityRule,
+    SearchHistory,
+    Notification,
+    Feedback,
+    Report,
+    AuditLog,
+)
 
 load_dotenv()
 
