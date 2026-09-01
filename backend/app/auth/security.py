@@ -47,10 +47,48 @@ def create_access_token(data: dict) -> str:
 
     to_encode.update({
         "exp": expire,
+        "type": "access",
     })
 
     return jwt.encode(
         to_encode,
         SECRET_KEY,
         algorithm=ALGORITHM,
+    )
+
+def create_refresh_token(data: dict) -> str:
+    to_encode = data.copy()
+
+    expire = datetime.now(timezone.utc) + timedelta(
+        days=7
+    )
+
+    to_encode.update({
+        "exp": expire,
+        "type": "refresh",
+    })
+
+    return jwt.encode(
+        to_encode,
+        SECRET_KEY,
+        algorithm=ALGORITHM
+    )
+
+
+def create_password_reset_token(data: dict) -> str:
+    to_encode = data.copy()
+
+    expire = datetime.now(timezone.utc) + timedelta(
+        minutes=15
+    )
+
+    to_encode.update({
+        "exp": expire,
+        "type": "password_reset",
+    })
+
+    return jwt.encode(
+        to_encode,
+        SECRET_KEY,
+        algorithm=ALGORITHM
     )
