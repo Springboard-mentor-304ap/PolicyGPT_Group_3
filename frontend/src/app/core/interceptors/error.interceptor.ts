@@ -1,0 +1,93 @@
+import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
+import { inject } from '@angular/core';
+import { Router } from '@angular/router';
+import { BehaviorSubject, catchError, filter, switchMap, take, throwError } from 'rxjs';
+import { AuthService } from '../services/auth.service';
+
+/**
+ * Endpoints that should never trigger a token refresh upon receiving a 401
+ */
+const BYPASS_REFRESH_ENDPOINTS = [
+  '/auth/login',
+  '/auth/register',
+  '/auth/refresh',
+  '/auth/forget-password',
+  '/auth/reset-password'
+];
+
+let isRefreshing = false;
+const refreshTokenSubject = new BehaviorSubject<string | null>(null);
+
+/**
+ * Safe Token Refresh & Error Interceptor
+ * Intercepts 401 errors, triggers silent token rotation with mutex concurrency safety, and replays failed requests.
+ */
+export const errorInterceptor: HttpInterceptorFn = (req, next) => {
+  const authService = inject(AuthService);
+  const router = inject(Router);
+
+  return next(req).pipe(
+    catchError((error: HttpErrorResponse) => {
+      // Check if error is 401 Unauthorized
+      if (error.status === 401) {
+        const isBypass = BYPASS_REFRESH_ENDPOINTS.some((url) => req.url.includes(url));
+
+        // If it's an auth endpoint, propagate error directly without attempting refresh
+        if (isBypass) {
+          return throwError(() => error);
+        }
+
+        const refreshToken = authService.getRefreshToken();
+        if (!refreshToken) {
+          authService.logout();
+          router.navigate(['/login'], { queryParams: { returnUrl: router.url } });
+          return throwError(() => error);
+        }
+
+        // Concurrency-safe refresh handling
+        if (!isRefreshing) {
+          isRefreshing = true;
+          refreshTokenSubject.next(null);
+
+          return authService.refreshToken().pipe(
+            switchMap((tokens) => {
+              isRefreshing = false;
+              refreshTokenSubject.next(tokens.access_token);
+
+              // Retry original request with the new access token
+              const retryReq = req.clone({
+                setHeaders: {
+                  Authorization: `Bearer ${tokens.access_token}`
+                }
+              });
+              return next(retryReq);
+            }),
+            catchError((refreshError) => {
+              isRefreshing = false;
+              refreshTokenSubject.next(null);
+              authService.logout();
+              router.navigate(['/login'], { queryParams: { returnUrl: router.url } });
+              return throwError(() => refreshError);
+            })
+          );
+        } else {
+          // If already refreshing, wait for new token from subject and replay request
+          return refreshTokenSubject.pipe(
+            filter((token): token is string => token !== null),
+            take(1),
+            switchMap((newToken) => {
+              const retryReq = req.clone({
+                setHeaders: {
+                  Authorization: `Bearer ${newToken}`
+                }
+              });
+              return next(retryReq);
+            })
+          );
+        }
+      }
+
+      return throwError(() => error);
+    })
+  );
+};

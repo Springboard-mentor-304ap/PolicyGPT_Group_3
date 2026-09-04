@@ -1,0 +1,132 @@
+/* Register Page Styles */
+
+.auth-page {
+  width: 100%;
+  max-width: 420px;
+}
+
+.auth-header {
+  text-align: center;
+  margin-bottom: var(--space-6);
+}
+
+.auth-title {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-2);
+}
+
+.auth-subtitle {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  cursor: pointer;
+}
+
+.checkbox-input {
+  width: 16px;
+  height: 16px;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--color-border-default);
+  cursor: pointer;
+  accent-color: var(--color-primary-blue);
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.checkbox-text {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-body);
+  line-height: var(--line-height-normal);
+}
+
+.text-link {
+  color: var(--color-primary-blue);
+  font-weight: var(--font-weight-medium);
+  transition: color var(--transition-fast);
+}
+
+.text-link:hover {
+  color: var(--color-primary-hover);
+  text-decoration: underline;
+}
+
+.text-sm {
+  font-size: var(--font-size-sm);
+}
+
+.text-muted {
+  color: var(--color-text-secondary);
+}
+
+.auth-footer {
+  margin-top: var(--space-6);
+  text-align: center;
+}
+
+.error-text {
+  font-size: var(--font-size-xs);
+  color: var(--color-danger-text);
+  margin-top: calc(-1 * var(--space-3));
+}
+
+/* Alert / Error */
+.alert {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-4);
+  font-size: var(--font-size-sm);
+}
+
+.alert svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.alert-error {
+  background-color: var(--color-danger-subtle);
+  color: var(--color-danger-text);
+  border: 1px solid var(--color-danger-border);
+}
+
+.alert-error svg {
+  color: var(--color-danger);
+}
+
+/* Tablet and up */
+@media (min-width: 768px) {
+  .auth-page {
+    max-width: 460px;
+  }
+
+  .auth-title {
+    font-size: var(--font-size-3xl);
+  }
+
+  .auth-subtitle {
+    font-size: var(--font-size-base);
+  }
+}
+
+/* Desktop */
+@media (min-width: 1024px) {
+  .auth-page {
+    max-width: 480px;
+  }
+}

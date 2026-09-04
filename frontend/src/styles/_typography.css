@@ -1,0 +1,277 @@
+/**
+ * PolicyGPT Typography System
+ * Derived from Figma visual hierarchy (Headers, Body, Subtext, Badges, Code)
+ * Font: Inter (loaded via Google Fonts in index.html)
+ */
+
+/* ==========================================================================
+   1. HEADING HIERARCHY (h1–h6)
+   ========================================================================== */
+
+h1,
+.text-h1 {
+  font-size: var(--font-size-3xl);   /* 36px */
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-tight);
+  color: var(--color-text-primary);
+  letter-spacing: var(--letter-spacing-tight);
+}
+
+h2,
+.text-h2 {
+  font-size: var(--font-size-2xl);   /* 30px */
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-snug);
+  color: var(--color-text-primary);
+  letter-spacing: var(--letter-spacing-tight);
+}
+
+h3,
+.text-h3 {
+  font-size: var(--font-size-xl);    /* 24px */
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-snug);
+  color: var(--color-text-primary);
+}
+
+h4,
+.text-h4 {
+  font-size: var(--font-size-lg);    /* 20px */
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-normal);
+  color: var(--color-text-primary);
+}
+
+h5,
+.text-h5 {
+  font-size: var(--font-size-base);  /* 16px */
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-normal);
+  color: var(--color-text-primary);
+}
+
+h6,
+.text-h6 {
+  font-size: var(--font-size-sm);    /* 14px */
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-normal);
+  color: var(--color-text-primary);
+}
+
+/* ==========================================================================
+   2. BODY & PARAGRAPH
+   ========================================================================== */
+
+p,
+.text-body {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-regular);
+  line-height: var(--line-height-normal);
+  color: var(--color-text-body);
+}
+
+p + p {
+  margin-top: var(--space-4);
+}
+
+/* ==========================================================================
+   3. TEXT SIZE UTILITIES
+   ========================================================================== */
+
+.text-xs {
+  font-size: var(--font-size-xs);    /* 12px */
+  line-height: var(--line-height-normal);
+}
+
+.text-sm {
+  font-size: var(--font-size-sm);    /* 14px */
+  line-height: var(--line-height-normal);
+}
+
+.text-md {
+  font-size: var(--font-size-md);    /* 18px */
+  line-height: var(--line-height-normal);
+}
+
+.text-lg {
+  font-size: var(--font-size-lg);    /* 20px */
+  line-height: var(--line-height-normal);
+}
+
+/* ==========================================================================
+   4. TEXT COLOR UTILITIES
+   ========================================================================== */
+
+.text-muted {
+  color: var(--color-text-secondary);
+}
+
+.text-faint {
+  color: var(--color-text-muted);
+}
+
+.text-brand {
+  color: var(--color-primary-blue);
+}
+
+.text-navy {
+  color: var(--color-primary-navy);
+}
+
+.text-inverse {
+  color: var(--color-text-inverse);
+}
+
+.text-success {
+  color: var(--color-success-text);
+}
+
+.text-warning {
+  color: var(--color-warning-text);
+}
+
+.text-danger {
+  color: var(--color-danger-text);
+}
+
+.text-info {
+  color: var(--color-info-text);
+}
+
+/* ==========================================================================
+   5. FONT WEIGHT UTILITIES
+   ========================================================================== */
+
+.font-light {
+  font-weight: var(--font-weight-light);
+}
+
+.font-regular {
+  font-weight: var(--font-weight-regular);
+}
+
+.font-medium {
+  font-weight: var(--font-weight-medium);
+}
+
+.font-semibold {
+  font-weight: var(--font-weight-semibold);
+}
+
+.font-bold {
+  font-weight: var(--font-weight-bold);
+}
+
+.font-extrabold {
+  font-weight: var(--font-weight-extrabold);
+}
+
+/* ==========================================================================
+   6. LINK STYLES
+   ========================================================================== */
+
+a.text-link,
+.text-link {
+  color: var(--color-primary-blue);
+  font-weight: var(--font-weight-medium);
+  transition: color var(--transition-fast);
+}
+
+a.text-link:hover,
+.text-link:hover {
+  color: var(--color-primary-hover);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+a.text-link:active,
+.text-link:active {
+  color: var(--color-primary-active);
+}
+
+a.text-link:focus-visible,
+.text-link:focus-visible {
+  outline: 2px solid var(--color-primary-blue);
+  outline-offset: 2px;
+  border-radius: var(--radius-xs);
+}
+
+/* ==========================================================================
+   7. TAG / BADGE TYPOGRAPHY (uppercase labels from Figma)
+   ========================================================================== */
+
+.text-tag {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-wider);
+  line-height: var(--line-height-normal);
+}
+
+/* ==========================================================================
+   8. CODE & MONOSPACE
+   ========================================================================== */
+
+code,
+kbd,
+pre,
+samp {
+  font-family: var(--font-family-mono);
+}
+
+code {
+  font-size: 0.875em;
+  padding: 0.15em 0.4em;
+  background-color: var(--color-bg-muted);
+  border-radius: var(--radius-sm);
+  color: var(--color-danger-text);
+}
+
+pre {
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-relaxed);
+  padding: var(--space-4);
+  background-color: var(--color-primary-navy);
+  color: var(--color-text-inverse);
+  border-radius: var(--radius-lg);
+  overflow-x: auto;
+}
+
+pre code {
+  font-size: inherit;
+  padding: 0;
+  background: none;
+  border-radius: 0;
+  color: inherit;
+}
+
+/* ==========================================================================
+   9. BLOCKQUOTE
+   ========================================================================== */
+
+blockquote {
+  padding-left: var(--space-4);
+  border-left: 3px solid var(--color-primary-blue);
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
+/* ==========================================================================
+   10. HORIZONTAL RULE
+   ========================================================================== */
+
+hr {
+  border: none;
+  border-top: 1px solid var(--color-border-subtle);
+  margin: var(--space-6) 0;
+}
+
+/* ==========================================================================
+   11. TIME / ABBREVIATION
+   ========================================================================== */
+
+time,
+abbr[title] {
+  text-decoration: none;
+  cursor: help;
+}
