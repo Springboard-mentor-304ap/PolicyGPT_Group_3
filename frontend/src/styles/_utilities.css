@@ -1,0 +1,200 @@
+/**
+ * PolicyGPT Global Utility Classes
+ * Atomic CSS helpers for common patterns used across all pages.
+ * These are NOT component-specific — they are global design-system primitives.
+ */
+
+/* ==========================================================================
+   1. TEXT ALIGNMENT
+   ========================================================================== */
+
+.text-left { text-align: left; }
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+
+/* ==========================================================================
+   2. TEXT TRANSFORM & DECORATION
+   ========================================================================== */
+
+.uppercase { text-transform: uppercase; }
+.lowercase { text-transform: lowercase; }
+.capitalize { text-transform: capitalize; }
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.whitespace-nowrap { white-space: nowrap; }
+.break-words { overflow-wrap: break-word; word-break: break-word; }
+
+/* ==========================================================================
+   3. CURSOR UTILITIES
+   ========================================================================== */
+
+.cursor-pointer { cursor: pointer; }
+.cursor-default { cursor: default; }
+.cursor-not-allowed { cursor: not-allowed; }
+.cursor-grab { cursor: grab; }
+.cursor-text { cursor: text; }
+
+/* ==========================================================================
+   4. OPACITY
+   ========================================================================== */
+
+.opacity-0 { opacity: 0; }
+.opacity-25 { opacity: 0.25; }
+.opacity-50 { opacity: 0.5; }
+.opacity-75 { opacity: 0.75; }
+.opacity-100 { opacity: 1; }
+
+/* ==========================================================================
+   5. TRANSITION UTILITIES
+   ========================================================================== */
+
+.transition-none { transition: none; }
+.transition-fast { transition: all var(--transition-fast); }
+.transition-normal { transition: all var(--transition-normal); }
+.transition-slow { transition: all var(--transition-slow); }
+
+/* ==========================================================================
+   6. POINTER EVENTS
+   ========================================================================== */
+
+.pointer-events-none { pointer-events: none; }
+.pointer-events-auto { pointer-events: auto; }
+
+/* ==========================================================================
+   7. USER SELECT
+   ========================================================================== */
+
+.select-none { user-select: none; }
+.select-text { user-select: text; }
+.select-all { user-select: all; }
+
+/* ==========================================================================
+   8. SCREEN READER ONLY (Accessibility)
+   ========================================================================== */
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* ==========================================================================
+   9. DIVIDER
+   ========================================================================== */
+
+.divider {
+  height: 1px;
+  width: 100%;
+  background-color: var(--color-border-subtle);
+  border: none;
+  margin: var(--space-4) 0;
+}
+
+.divider-vertical {
+  width: 1px;
+  height: 100%;
+  background-color: var(--color-border-subtle);
+  border: none;
+  margin-left: var(--space-4);
+  margin-right: var(--space-4);
+}
+
+/* ==========================================================================
+   10. BADGE / STATUS DOT
+   ========================================================================== */
+
+.status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+}
+
+.status-dot-success { background-color: var(--color-success); }
+.status-dot-warning { background-color: var(--color-warning); }
+.status-dot-danger { background-color: var(--color-danger); }
+.status-dot-info { background-color: var(--color-info); }
+
+/* ==========================================================================
+   11. FORM HELPER TEXT
+   ========================================================================== */
+
+.helper-text {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-normal);
+}
+
+.helper-text-error {
+  font-size: var(--font-size-sm);
+  color: var(--color-danger-text);
+  line-height: var(--line-height-normal);
+}
+
+.helper-text-success {
+  font-size: var(--font-size-sm);
+  color: var(--color-success-text);
+  line-height: var(--line-height-normal);
+}
+
+/* ==========================================================================
+   12. ANIMATION KEYFRAMES (Global)
+   ========================================================================== */
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(8px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes slideDown {
+  from { transform: translateY(-8px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.animate-fade-in { animation: fadeIn var(--transition-normal) ease-out; }
+.animate-slide-up { animation: slideUp var(--transition-normal) ease-out; }
+.animate-slide-down { animation: slideDown var(--transition-normal) ease-out; }
+.animate-spin { animation: spin 1s linear infinite; }
+.animate-pulse { animation: pulse 2s ease-in-out infinite; }
