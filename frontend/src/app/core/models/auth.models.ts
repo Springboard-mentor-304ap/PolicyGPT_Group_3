@@ -1,14 +1,29 @@
 /**
  * Authentication and User Models
- * Strictly mapped to FastAPI backend schemas in backend/app/auth/schemas.py and backend/app/models/user.py
+ * Strictly mapped to FastAPI backend schemas
  */
 
 export enum UserRole {
-  ADMIN = 'admin',
-  GOVERNMENT_OFFICIAL = 'government_official',
   CITIZEN = 'citizen',
   RESEARCHER = 'researcher',
-  ORGANIZATION = 'organization'
+  ORGANIZATION = 'organization',
+  GOVERNMENT_OFFICIAL = 'government_official',
+  ADMINISTRATOR = 'administrator',
+  SUPER_ADMIN = 'super_admin'
+}
+
+export enum RequestedRole {
+  RESEARCHER = 'researcher',
+  ORGANIZATION = 'organization',
+  GOVERNMENT_OFFICIAL = 'government_official',
+  ADMINISTRATOR = 'administrator'
+}
+
+export enum RequestStatus {
+  PENDING = 'pending',
+  APPROVED = 'approved',
+  REJECTED = 'rejected',
+  CANCELLED = 'cancelled'
 }
 
 export interface User {
@@ -18,6 +33,7 @@ export interface User {
   phone?: string | null;
   role: UserRole | string;
   is_active: boolean;
+  email_verified: boolean;
 }
 
 export interface UserResponse {
@@ -27,6 +43,7 @@ export interface UserResponse {
   phone?: string | null;
   role: string;
   is_active: boolean;
+  email_verified: boolean;
 }
 
 export interface RegisterRequest {
@@ -65,10 +82,68 @@ export interface ChangePasswordRequest {
   new_password: string;
 }
 
-export interface UpdateRoleRequest {
-  role: string;
-}
-
 export interface MessageResponse {
   message: string;
+}
+
+// ─── Email Verification ─────────────────────────────────────────────────────
+
+export interface VerifyEmailRequest {
+  token: string;
+}
+
+export interface ResendVerificationRequest {
+  email: string;
+}
+
+// ─── Citizen Profile ────────────────────────────────────────────────────────
+
+export interface CitizenProfileRequest {
+  phone?: string | null;
+  date_of_birth?: string | null;
+  gender?: string | null;
+  occupation?: string | null;
+  annual_income?: number | null;
+  social_category?: string | null;
+  disability_status?: boolean;
+  education?: string | null;
+  state?: string | null;
+  district?: string | null;
+}
+
+export interface CitizenProfileResponse {
+  user_id: string;
+  phone?: string | null;
+  date_of_birth?: string | null;
+  gender?: string | null;
+  occupation?: string | null;
+  annual_income?: number | null;
+  social_category?: string | null;
+  disability_status?: boolean;
+  education?: string | null;
+  state?: string | null;
+  district?: string | null;
+}
+
+// ─── Role Requests ──────────────────────────────────────────────────────────
+
+export interface RoleRequestSubmit {
+  requested_role: string;
+  details: Record<string, any>;
+}
+
+export interface RoleRequestResponse {
+  id: string;
+  user_id: string;
+  requested_role: string;
+  status: string;
+  details?: Record<string, any> | null;
+  review_reason?: string | null;
+  reviewer_id?: string | null;
+  created_at: string;
+  reviewed_at?: string | null;
+}
+
+export interface RoleRequestReview {
+  review_reason?: string | null;
 }

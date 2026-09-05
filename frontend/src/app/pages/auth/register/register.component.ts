@@ -38,8 +38,8 @@ export class RegisterComponent {
     this.registerForm = this.fb.group(
       {
         full_name: ['', [Validators.required, Validators.minLength(1)]],
-        email: ['', [Validators.required, Validators.email]],
-        password: ['', [Validators.required, Validators.minLength(8)]],
+        email: ['', [Validators.required, Validators.email, Validators.maxLength(254)]],
+        password: ['', [Validators.required, Validators.minLength(8), Validators.maxLength(128)]],
         confirmPassword: ['', [Validators.required]],
         agreeTerms: [false, [Validators.requiredTrue]],
       },
@@ -74,13 +74,15 @@ export class RegisterComponent {
     this.loading.set(true);
     this.errorMessage.set(null);
 
-    const { full_name, email, password } = this.registerForm.value;
+    const full_name = (this.registerForm.value.full_name as string).trim();
+    const email = (this.registerForm.value.email as string).trim();
+    const password = this.registerForm.value.password as string;
 
     this.authService.register({ full_name, email, password }).subscribe({
       next: () => {
-        // After successful registration, redirect to role selection
+        // After successful registration, redirect to email verification
         this.loading.set(false);
-        this.router.navigate(['/role-selection']);
+        this.router.navigate(['/verify-email'], { queryParams: { email } });
       },
       error: (error) => {
         this.loading.set(false);

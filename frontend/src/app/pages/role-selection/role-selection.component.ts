@@ -65,34 +65,11 @@ export class RoleSelectionComponent {
       return;
     }
 
-    this.loading.set(true);
-    this.errorMessage.set(null);
-
-    this.authService.updateRole({ role }).subscribe({
-      next: () => {
-        this.loading.set(false);
-        this.routeByRole(role);
-      },
-      error: (error) => {
-        this.loading.set(false);
-        const detail = error?.error?.detail;
-        this.errorMessage.set(typeof detail === 'string' ? detail : 'Failed to update role. Please try again.');
-      },
-    });
+    this.loading.set(false);
+    this.router.navigate(['/login']);
   }
 
   private routeByRole(role: string): void {
-    switch (role) {
-      case 'admin':
-      case 'government_official':
-        this.router.navigate(['/admin']);
-        break;
-      case 'citizen':
-      case 'researcher':
-      case 'organization':
-      default:
-        this.router.navigate(['/dashboard']);
-        break;
-    }
+    this.router.navigate(['/login']);
   }
 }

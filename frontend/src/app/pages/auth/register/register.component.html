@@ -38,7 +38,7 @@
         name="email"
         icon="mail"
         [required]="true"
-        [error]="email?.invalid && email?.touched ? (email?.errors?.['required'] ? 'Email is required' : 'Please enter a valid email') : null"
+        [error]="email?.invalid && email?.touched ? (email?.errors?.['required'] ? 'Email is required' : email?.errors?.['maxlength'] ? 'Email is too long' : 'Please enter a valid email') : null"
       />
 
       <app-input
@@ -50,7 +50,7 @@
         name="password"
         icon="lock"
         [required]="true"
-        [error]="password?.invalid && password?.touched ? 'Password must be at least 8 characters' : null"
+        [error]="password?.invalid && password?.touched ? (password?.errors?.['minlength'] ? 'Password must be at least 8 characters' : 'Password is too long') : null"
       />
 
       <app-password-meter [password]="registerForm.get('password')?.value || ''" />

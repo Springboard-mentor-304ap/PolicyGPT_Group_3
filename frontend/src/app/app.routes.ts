@@ -1,7 +1,6 @@
 import { Routes } from '@angular/router';
 import { AuthLayoutComponent } from './layouts/auth-layout/auth-layout.component';
 import { DashboardComponent } from './pages/dashboard/dashboard.component';
-import { RoleSelectionComponent } from './pages/role-selection/role-selection.component';
 
 export const routes: Routes = [
   {
@@ -13,12 +12,29 @@ export const routes: Routes = [
     component: DashboardComponent,
   },
   {
-    path: 'role-selection',
-    component: RoleSelectionComponent,
+    path: 'verify-email',
+    loadComponent: () =>
+      import('./pages/auth/verify-email/verify-email.component').then(
+        (m) => m.VerifyEmailComponent
+      ),
+  },
+  {
+    path: 'citizen-profile',
+    loadComponent: () =>
+      import('./pages/citizen-profile/citizen-profile.component').then(
+        (m) => m.CitizenProfileComponent
+      ),
+  },
+  {
+    path: 'role-request',
+    loadComponent: () =>
+      import('./pages/role-request/role-request.component').then(
+        (m) => m.RoleRequestComponent
+      ),
   },
   {
     path: '',
-    redirectTo: 'login',
+    redirectTo: 'dashboard',
     pathMatch: 'full',
   },
   {
@@ -28,12 +44,16 @@ export const routes: Routes = [
       {
         path: 'login',
         loadComponent: () =>
-          import('./pages/auth/login/login.component').then((m) => m.LoginComponent),
+          import('./pages/auth/login/login.component').then(
+            (m) => m.LoginComponent
+          ),
       },
       {
         path: 'register',
         loadComponent: () =>
-          import('./pages/auth/register/register.component').then((m) => m.RegisterComponent),
+          import('./pages/auth/register/register.component').then(
+            (m) => m.RegisterComponent
+          ),
       },
       {
         path: 'forgot-password',
@@ -53,6 +73,6 @@ export const routes: Routes = [
   },
   {
     path: '**',
-    redirectTo: 'login',
+    redirectTo: 'dashboard',
   },
 ];

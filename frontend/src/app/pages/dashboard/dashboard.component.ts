@@ -1,7 +1,8 @@
-import { Component, inject, signal, computed, OnInit } from '@angular/core';
+import { Component, inject, signal, computed, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
+import { RoleRequestResponse, UserRole } from '../../core/models/auth.models';
 
 interface DashboardData {
   stats: { label: string; value: string; icon: string; color: string }[];
@@ -12,13 +13,97 @@ interface DashboardData {
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, RouterLink],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.css',
 })
-export class DashboardComponent implements OnInit {
+export class DashboardComponent implements OnInit, OnDestroy {
   readonly authService = inject(AuthService);
   private readonly router = inject(Router);
+  private pollInterval: ReturnType<typeof setInterval> | null = null;
+  private visibilityHandler: (() => void) | null = null;
+
+  readonly pendingRequests = signal<RoleRequestResponse[]>([]);
+  readonly isAdmin = computed(() => {
+    const role = this.authService.userRole();
+    return role === UserRole.ADMINISTRATOR || role === UserRole.SUPER_ADMIN;
+  });
+
+  ngOnInit(): void {
+    if (this.authService.getAccessToken()) {
+      // Fetch user profile, then check if admin and load pending requests
+      this.authService.getMe().subscribe({
+        next: () => {
+          if (this.isAdmin()) {
+            this.loadPendingRequests();
+            this.startPolling();
+          }
+        },
+        error: () => {},
+      });
+    }
+
+    // Re-fetch when user switches back to this tab
+    this.visibilityHandler = () => {
+      if (document.visibilityState === 'visible' && this.isAdmin()) {
+        this.loadPendingRequests();
+      }
+    };
+    document.addEventListener('visibilitychange', this.visibilityHandler);
+  }
+
+  ngOnDestroy(): void {
+    if (this.pollInterval) {
+      clearInterval(this.pollInterval);
+    }
+    if (this.visibilityHandler) {
+      document.removeEventListener('visibilitychange', this.visibilityHandler);
+    }
+  }
+
+  private startPolling(): void {
+    if (this.pollInterval) return;
+    this.pollInterval = setInterval(() => {
+      if (this.isAdmin()) {
+        this.loadPendingRequests();
+      }
+    }, 30000);
+  }
+
+  loadPendingRequests(): void {
+    this.authService.getPendingRoleRequests().subscribe({
+      next: (requests) => this.pendingRequests.set(requests),
+      error: () => this.pendingRequests.set([]),
+    });
+  }
+
+  approveRequest(requestId: string): void {
+    this.authService.approveRoleRequest(requestId).subscribe({
+      next: () => this.loadPendingRequests(),
+      error: () => {},
+    });
+  }
+
+  rejectRequest(requestId: string): void {
+    this.authService.rejectRoleRequest(requestId).subscribe({
+      next: () => this.loadPendingRequests(),
+      error: () => {},
+    });
+  }
+
+  formatRole(role: string): string {
+    return role.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
+  }
+
+  formatDate(dateStr: string): string {
+    return new Date(dateStr).toLocaleDateString('en-US', {
+      month: 'short', day: 'numeric', year: 'numeric',
+    });
+  }
+
+  getDetailEntries(details: Record<string, any>): [string, any][] {
+    return Object.entries(details).slice(0, 4);
+  }
 
   sidebarOpen = signal(true);
   activeMenu = signal('overview');
@@ -34,7 +119,6 @@ export class DashboardComponent implements OnInit {
       recentItems: [
         { title: 'Digital India Initiative', category: 'Technology', date: '2026-09-01', status: 'Active' },
         { title: 'National Education Policy', category: 'Education', date: '2026-08-28', status: 'Active' },
-        { title: 'Clean Energy Subsidy', category: 'Environment', date: '2026-08-25', status: 'Under Review' },
         { title: 'Healthcare Access Program', category: 'Health', date: '2026-08-20', status: 'Active' },
       ],
       quickActions: [
@@ -86,6 +170,8 @@ export class DashboardComponent implements OnInit {
     },
   };
 
+  readonly isGuest = computed(() => !this.authService.isAuthenticated());
+
   dashboardData = computed<DashboardData>(() => {
     const role = this.authService.userRole() ?? 'citizen';
     return this.roleData[role] ?? this.roleData['citizen'];
@@ -96,6 +182,14 @@ export class DashboardComponent implements OnInit {
   quickActions = computed(() => this.dashboardData().quickActions);
 
   menuItems = computed(() => {
+    if (this.isGuest()) {
+      return [
+        { id: 'overview', label: 'Overview', icon: 'home' },
+        { id: 'policies', label: 'Policies', icon: 'document' },
+        { id: 'schemes', label: 'Schemes', icon: 'gift' },
+      ];
+    }
+
     const role = this.authService.userRole() ?? 'citizen';
     const base = [
       { id: 'overview', label: 'Overview', icon: 'home' },
@@ -128,12 +222,6 @@ export class DashboardComponent implements OnInit {
       { id: 'notifications', label: 'Notifications', icon: 'bell' },
     ];
   });
-
-  ngOnInit(): void {
-    if (!this.authService.isAuthenticated()) {
-      this.router.navigate(['/login']);
-    }
-  }
 
   toggleSidebar(): void {
     this.sidebarOpen.set(!this.sidebarOpen());

@@ -13,12 +13,15 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from backend.app.models.user_profile import UserProfile
 
+
 class UserRole(str, Enum):
-    ADMIN = "admin"
-    GOVERNMENT_OFFICIAL = "government_official"
     CITIZEN = "citizen"
     RESEARCHER = "researcher"
     ORGANIZATION = "organization"
+    GOVERNMENT_OFFICIAL = "government_official"
+    ADMINISTRATOR = "administrator"
+    SUPER_ADMIN = "super_admin"
+
 
 class User(Base):
     __tablename__ = "users"
@@ -47,6 +50,16 @@ class User(Base):
     role: Mapped[UserRole] = mapped_column(
         SQLEnum(UserRole, name="user_role"),
         nullable=False,
+    )
+
+    email_verified: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        server_default=sa.false(),
+    )
+
+    email_verification_token: Mapped[str | None] = mapped_column(
+        String(500),
     )
 
     profile: Mapped["UserProfile"] = relationship(

@@ -1,5 +1,6 @@
 from backend.app.models.user import User
 from backend.app.models.user_profile import UserProfile
+from backend.app.models.role_request import RoleRequest
 from backend.app.models.policy import Policy
 from backend.app.models.scheme import Scheme
 from backend.app.models.eligibility_rule import EligibilityRule
