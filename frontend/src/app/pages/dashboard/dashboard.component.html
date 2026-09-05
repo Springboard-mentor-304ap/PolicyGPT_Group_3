@@ -199,6 +199,89 @@
       </div>
     </section>
 
+    <!-- Role Request Options (for citizens only) -->
+    @if (!isGuest() && authService.userRole() === 'citizen') {
+      <section class="content-section role-request-section">
+        <div class="section-header">
+          <h2 class="section-title">Request Elevated Role</h2>
+          <a routerLink="/role-request" class="view-all-btn">View All Options</a>
+        </div>
+        <p class="section-description">Upgrade your account to access additional features</p>
+        <div class="role-request-cards">
+          <a routerLink="/role-request" class="role-request-card">
+            <div class="role-icon researcher">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <path d="m21 21-4.35-4.35"></path>
+              </svg>
+            </div>
+            <div class="role-info">
+              <h3>Researcher</h3>
+              <p>Access research tools and analytics</p>
+            </div>
+          </a>
+          <a routerLink="/role-request" class="role-request-card">
+            <div class="role-icon organization">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+              </svg>
+            </div>
+            <div class="role-info">
+              <h3>Organization</h3>
+              <p>Manage team accounts and proposals</p>
+            </div>
+          </a>
+          <a routerLink="/role-request" class="role-request-card">
+            <div class="role-icon government">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 21h18"></path>
+                <path d="M5 21V7l7-4 7 4v14"></path>
+                <path d="M9 21v-4h6v4"></path>
+              </svg>
+            </div>
+            <div class="role-info">
+              <h3>Government Official</h3>
+              <p>Publish and manage policies</p>
+            </div>
+          </a>
+        </div>
+      </section>
+    }
+
+    <!-- Pending Role Approvals (Admin/Super Admin only) -->
+    @if (isAdmin() && pendingRequests().length > 0) {
+      <section class="content-section">
+        <div class="section-header">
+          <h2 class="section-title">Pending Role Approvals</h2>
+          <span class="pending-badge">{{ pendingRequests().length }}</span>
+        </div>
+        <div class="approval-list">
+          @for (req of pendingRequests(); track req.id) {
+            <div class="approval-item">
+              <div class="approval-info">
+                <span class="approval-role">{{ formatRole(req.requested_role) }}</span>
+                <span class="approval-date">Submitted {{ formatDate(req.created_at) }}</span>
+                @if (req.details) {
+                  <div class="approval-details">
+                    @for (entry of getDetailEntries(req.details); track entry[0]) {
+                      <span class="detail-chip">{{ entry[0] }}: {{ entry[1] }}</span>
+                    }
+                  </div>
+                }
+              </div>
+              <div class="approval-actions">
+                <button class="approve-btn" (click)="approveRequest(req.id)">Approve</button>
+                <button class="reject-btn" (click)="rejectRequest(req.id)">Reject</button>
+              </div>
+            </div>
+          }
+        </div>
+      </section>
+    }
+
     <!-- Quick Actions -->
     <section class="content-section">
       <div class="section-header">

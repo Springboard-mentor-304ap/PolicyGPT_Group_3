@@ -1,6 +1,9 @@
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 from uuid import UUID
+from datetime import datetime
 
+
+# ─── Auth Schemas ────────────────────────────────────────────────────────────
 
 class RegisterRequest(BaseModel):
     full_name: str = Field(..., min_length=1)
@@ -11,20 +14,14 @@ class RegisterRequest(BaseModel):
     @classmethod
     def validate_full_name(cls, value):
         value = value.strip()
-
         if not value:
             raise ValueError("Full name cannot be empty")
-
         return value
 
 
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
-
-
-class UpdateRoleRequest(BaseModel):
-    role: str
 
 
 class ChangePasswordRequest(BaseModel):
@@ -45,7 +42,17 @@ class TokenResponse(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str
-    
+
+
+class VerifyEmailRequest(BaseModel):
+    token: str
+
+
+class ResendVerificationRequest(BaseModel):
+    email: EmailStr
+
+
+# ─── User Response ───────────────────────────────────────────────────────────
 
 class UserResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -56,3 +63,64 @@ class UserResponse(BaseModel):
     phone: str | None = None
     role: str
     is_active: bool
+    email_verified: bool
+
+
+# ─── Citizen Profile ─────────────────────────────────────────────────────────
+
+class CitizenProfileRequest(BaseModel):
+    phone: str | None = None
+    date_of_birth: str | None = None  # ISO date string
+    gender: str | None = None
+    occupation: str | None = None
+    annual_income: float | None = None
+    social_category: str | None = None
+    disability_status: bool = False
+    education: str | None = None
+    state: str | None = None
+    district: str | None = None
+
+
+class CitizenProfileResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    user_id: UUID
+    phone: str | None = None
+    date_of_birth: str | None = None
+    gender: str | None = None
+    occupation: str | None = None
+    annual_income: float | None = None
+    social_category: str | None = None
+    disability_status: bool = False
+    education: str | None = None
+    state: str | None = None
+    district: str | None = None
+
+
+# ─── Role Request ────────────────────────────────────────────────────────────
+
+class RoleRequestSubmit(BaseModel):
+    requested_role: str  # researcher, organization, government_official, administrator
+    details: dict  # Role-specific form data
+
+
+class RoleRequestResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    user_id: UUID
+    requested_role: str
+    status: str
+    details: dict | None = None
+    review_reason: str | None = None
+    reviewer_id: UUID | None = None
+    created_at: datetime
+    reviewed_at: datetime | None = None
+
+
+class RoleRequestReview(BaseModel):
+    review_reason: str | None = None
+
+
+class MessageResponse(BaseModel):
+    message: str

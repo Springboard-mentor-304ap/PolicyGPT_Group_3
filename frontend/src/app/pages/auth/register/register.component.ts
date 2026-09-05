@@ -80,9 +80,9 @@ export class RegisterComponent {
 
     this.authService.register({ full_name, email, password }).subscribe({
       next: () => {
-        // After successful registration, redirect to role selection
+        // After successful registration, redirect to email verification
         this.loading.set(false);
-        this.router.navigate(['/role-selection']);
+        this.router.navigate(['/verify-email'], { queryParams: { email } });
       },
       error: (error) => {
         this.loading.set(false);

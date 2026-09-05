@@ -18,7 +18,7 @@ export const roleGuard: CanActivateFn = (route, state) => {
   const checkRole = (role: string | null): boolean => {
     if (!role || !allowedRoles.includes(role)) {
       // Redirect to appropriate area based on user's actual role
-      if (role === UserRole.ADMIN || role === UserRole.GOVERNMENT_OFFICIAL) {
+      if (role === UserRole.ADMINISTRATOR || role === UserRole.GOVERNMENT_OFFICIAL) {
         router.navigate(['/admin']);
       } else {
         router.navigate(['/dashboard']);

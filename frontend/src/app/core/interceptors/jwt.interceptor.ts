@@ -1,6 +1,6 @@
 import { HttpInterceptorFn } from '@angular/common/http';
-import { inject } from '@angular/core';
-import { AuthService } from '../services/auth.service';
+
+const ACCESS_TOKEN_KEY = 'policygpt_access_token';
 
 /**
  * Public authentication endpoints that do not require an Authorization header
@@ -10,23 +10,24 @@ const PUBLIC_ENDPOINTS = [
   '/auth/register',
   '/auth/forget-password',
   '/auth/reset-password',
-  '/auth/refresh'
+  '/auth/refresh',
+  '/auth/verify-email',
+  '/auth/resend-verification',
 ];
 
 /**
  * JWT Interceptor
- * Injects 'Authorization: Bearer <access_token>' to outgoing HTTP requests when available.
+ * Injects 'Authorization: Bearer <access_token>' to outgoing HTTP requests.
+ * Reads the token directly from localStorage to avoid circular dependency with AuthService.
  */
 export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
-  const authService = inject(AuthService);
-
-  // Check if request is directed to a public endpoint
+  // Skip token injection for public endpoints
   const isPublic = PUBLIC_ENDPOINTS.some((url) => req.url.includes(url));
   if (isPublic) {
     return next(req);
   }
 
-  const token = authService.getAccessToken();
+  const token = localStorage.getItem(ACCESS_TOKEN_KEY);
 
   // Attach token if present and not already provided
   if (token && !req.headers.has('Authorization')) {

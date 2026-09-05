@@ -10,9 +10,14 @@ import {
   RegisterRequest,
   ResetPasswordRequest,
   TokenResponse,
-  UpdateRoleRequest,
   User,
-  UserResponse
+  UserResponse,
+  VerifyEmailRequest,
+  ResendVerificationRequest,
+  CitizenProfileRequest,
+  CitizenProfileResponse,
+  RoleRequestSubmit,
+  RoleRequestResponse,
 } from '../models/auth.models';
 
 @Injectable({ providedIn: 'root' })
@@ -27,6 +32,7 @@ export class AuthService {
   readonly currentUser = signal<User | null>(null);
   readonly isAuthenticated = computed(() => !!this.currentUser());
   readonly userRole = computed(() => this.currentUser()?.role ?? null);
+  readonly emailVerified = computed(() => this.currentUser()?.email_verified ?? false);
 
   constructor() {
     this.initSession();
@@ -40,16 +46,14 @@ export class AuthService {
       return;
     }
 
-    // The error interceptor already handles 401 → refresh → retry for ALL
-    // requests, so we just call getMe() and let it do its job.
-    this.getMe().subscribe();
+    // The error interceptor handles 401 → refresh → retry.
+    // We swallow errors here so a transient failure doesn't log the user out.
+    this.getMe().subscribe({
+      error: () => {},
+    });
   }
 
   // ─── REGISTER ────────────────────────────────────────────────────────────
-  /**
-   * Registers a new citizen user.
-   * Backend endpoint: POST /auth/register
-   */
   register(data: RegisterRequest): Observable<TokenResponse> {
     return this.http.post<TokenResponse>('/auth/register', data).pipe(
       tap((response) => this.saveTokens(response))
@@ -57,51 +61,32 @@ export class AuthService {
   }
 
   // ─── LOGIN ───────────────────────────────────────────────────────────────
-  /**
-   * Authenticates user with email and password.
-   * Backend endpoint: POST /auth/login
-   */
   login(data: LoginRequest): Observable<TokenResponse> {
     return this.http.post<TokenResponse>('/auth/login', data).pipe(
       tap((response) => this.saveTokens(response))
     );
   }
 
-  // ─── UPDATE ROLE ─────────────────────────────────────────────────────────
-  /**
-   * Updates the current user's role.
-   * Backend endpoint: PUT /auth/update-role
-   */
-  updateRole(data: UpdateRoleRequest): Observable<MessageResponse & { role: string }> {
-    return this.http.put<MessageResponse & { role: string }>(
-      '/auth/update-role', data,
-      { headers: this.getAuthHeaders() }
-    );
+  // ─── EMAIL VERIFICATION ──────────────────────────────────────────────────
+  verifyEmail(data: VerifyEmailRequest): Observable<MessageResponse> {
+    return this.http.post<MessageResponse>('/auth/verify-email', data);
+  }
+
+  resendVerification(data: ResendVerificationRequest): Observable<any> {
+    return this.http.post<any>('/auth/resend-verification', data);
   }
 
   // ─── FORGOT PASSWORD ────────────────────────────────────────────────────
-  /**
-   * Requests password reset token for given email.
-   * Backend endpoint: POST /auth/forget-password
-   */
   forgotPassword(data: ForgotPasswordRequest): Observable<ForgotPasswordResponse> {
     return this.http.post<ForgotPasswordResponse>('/auth/forget-password', data);
   }
 
   // ─── RESET PASSWORD ─────────────────────────────────────────────────────
-  /**
-   * Resets password using reset token.
-   * Backend endpoint: POST /auth/reset-password
-   */
   resetPassword(data: ResetPasswordRequest): Observable<MessageResponse> {
     return this.http.post<MessageResponse>('/auth/reset-password', data);
   }
 
   // ─── CHANGE PASSWORD ────────────────────────────────────────────────────
-  /**
-   * Changes password for authenticated user.
-   * Backend endpoint: POST /auth/change-password
-   */
   changePassword(data: ChangePasswordRequest): Observable<MessageResponse> {
     return this.http.post<MessageResponse>(
       '/auth/change-password', data,
@@ -110,10 +95,6 @@ export class AuthService {
   }
 
   // ─── GET ME ──────────────────────────────────────────────────────────────
-  /**
-   * Retrieves profile of current authenticated user.
-   * Backend endpoint: GET /auth/me
-   */
   getMe(): Observable<UserResponse> {
     return this.http.get<UserResponse>('/auth/me', {
       headers: this.getAuthHeaders()
@@ -122,11 +103,61 @@ export class AuthService {
     );
   }
 
+  // ─── CITIZEN PROFILE ────────────────────────────────────────────────────
+  getCitizenProfile(): Observable<CitizenProfileResponse> {
+    return this.http.get<CitizenProfileResponse>('/profile/citizen', {
+      headers: this.getAuthHeaders()
+    });
+  }
+
+  updateCitizenProfile(data: CitizenProfileRequest): Observable<CitizenProfileResponse> {
+    return this.http.put<CitizenProfileResponse>('/profile/citizen', data, {
+      headers: this.getAuthHeaders()
+    });
+  }
+
+  // ─── ROLE REQUESTS ──────────────────────────────────────────────────────
+  submitRoleRequest(data: RoleRequestSubmit): Observable<RoleRequestResponse> {
+    return this.http.post<RoleRequestResponse>('/role-requests', data, {
+      headers: this.getAuthHeaders()
+    });
+  }
+
+  getMyRoleRequests(): Observable<RoleRequestResponse[]> {
+    return this.http.get<RoleRequestResponse[]>('/role-requests', {
+      headers: this.getAuthHeaders()
+    });
+  }
+
+  cancelRoleRequest(requestId: string): Observable<MessageResponse> {
+    return this.http.put<MessageResponse>(
+      `/role-requests/${requestId}/cancel`, {},
+      { headers: this.getAuthHeaders() }
+    );
+  }
+
+  getPendingRoleRequests(): Observable<RoleRequestResponse[]> {
+    return this.http.get<RoleRequestResponse[]>('/role-requests/pending', {
+      headers: this.getAuthHeaders()
+    });
+  }
+
+  approveRoleRequest(requestId: string): Observable<MessageResponse> {
+    return this.http.put<MessageResponse>(
+      `/role-requests/${requestId}/approve`, {},
+      { headers: this.getAuthHeaders() }
+    );
+  }
+
+  rejectRoleRequest(requestId: string, reason?: string): Observable<MessageResponse> {
+    return this.http.put<MessageResponse>(
+      `/role-requests/${requestId}/reject`,
+      { review_reason: reason || null },
+      { headers: this.getAuthHeaders() }
+    );
+  }
+
   // ─── REFRESH TOKEN ──────────────────────────────────────────────────────
-  /**
-   * Refreshes access token using refresh token.
-   * Backend endpoint: POST /auth/refresh?refresh_token=...
-   */
   refreshToken(): Observable<TokenResponse> {
     const refreshToken = this.getRefreshToken();
     if (!refreshToken) {
@@ -172,7 +203,7 @@ export class AuthService {
     localStorage.removeItem(this.REFRESH_TOKEN_KEY);
   }
 
-  private getAuthHeaders(): HttpHeaders {
+  getAuthHeaders(): HttpHeaders {
     const token = this.getAccessToken();
     return token
       ? new HttpHeaders({ Authorization: `Bearer ${token}` })

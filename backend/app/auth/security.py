@@ -56,6 +56,7 @@ def create_access_token(data: dict) -> str:
         algorithm=ALGORITHM,
     )
 
+
 def create_refresh_token(data: dict) -> str:
     to_encode = data.copy()
 
@@ -91,4 +92,22 @@ def create_password_reset_token(data: dict) -> str:
         to_encode,
         SECRET_KEY,
         algorithm=ALGORITHM
+    )
+
+
+def create_email_verification_token(email: str) -> str:
+    """Create a JWT token for email verification. Expires in 24 hours."""
+    expire = datetime.now(timezone.utc) + timedelta(hours=24)
+
+    payload = {
+        "sub": email,
+        "email": email,
+        "exp": expire,
+        "type": "email_verification",
+    }
+
+    return jwt.encode(
+        payload,
+        SECRET_KEY,
+        algorithm=ALGORITHM,
     )

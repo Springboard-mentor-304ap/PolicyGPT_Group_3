@@ -65,20 +65,8 @@ export class RoleSelectionComponent {
       return;
     }
 
-    this.loading.set(true);
-    this.errorMessage.set(null);
-
-    this.authService.updateRole({ role }).subscribe({
-      next: () => {
-        this.loading.set(false);
-        this.routeByRole(role);
-      },
-      error: (error) => {
-        this.loading.set(false);
-        const detail = error?.error?.detail;
-        this.errorMessage.set(typeof detail === 'string' ? detail : 'Failed to update role. Please try again.');
-      },
-    });
+    this.loading.set(false);
+    this.router.navigate(['/login']);
   }
 
   private routeByRole(role: string): void {

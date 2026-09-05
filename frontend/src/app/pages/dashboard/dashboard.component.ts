@@ -1,7 +1,8 @@
-import { Component, inject, signal, computed } from '@angular/core';
+import { Component, inject, signal, computed, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
+import { RoleRequestResponse, UserRole } from '../../core/models/auth.models';
 
 interface DashboardData {
   stats: { label: string; value: string; icon: string; color: string }[];
@@ -16,9 +17,93 @@ interface DashboardData {
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.css',
 })
-export class DashboardComponent {
+export class DashboardComponent implements OnInit, OnDestroy {
   readonly authService = inject(AuthService);
   private readonly router = inject(Router);
+  private pollInterval: ReturnType<typeof setInterval> | null = null;
+  private visibilityHandler: (() => void) | null = null;
+
+  readonly pendingRequests = signal<RoleRequestResponse[]>([]);
+  readonly isAdmin = computed(() => {
+    const role = this.authService.userRole();
+    return role === UserRole.ADMINISTRATOR || role === UserRole.SUPER_ADMIN;
+  });
+
+  ngOnInit(): void {
+    if (this.authService.getAccessToken()) {
+      // Fetch user profile, then check if admin and load pending requests
+      this.authService.getMe().subscribe({
+        next: () => {
+          if (this.isAdmin()) {
+            this.loadPendingRequests();
+            this.startPolling();
+          }
+        },
+        error: () => {},
+      });
+    }
+
+    // Re-fetch when user switches back to this tab
+    this.visibilityHandler = () => {
+      if (document.visibilityState === 'visible' && this.isAdmin()) {
+        this.loadPendingRequests();
+      }
+    };
+    document.addEventListener('visibilitychange', this.visibilityHandler);
+  }
+
+  ngOnDestroy(): void {
+    if (this.pollInterval) {
+      clearInterval(this.pollInterval);
+    }
+    if (this.visibilityHandler) {
+      document.removeEventListener('visibilitychange', this.visibilityHandler);
+    }
+  }
+
+  private startPolling(): void {
+    if (this.pollInterval) return;
+    this.pollInterval = setInterval(() => {
+      if (this.isAdmin()) {
+        this.loadPendingRequests();
+      }
+    }, 30000);
+  }
+
+  loadPendingRequests(): void {
+    this.authService.getPendingRoleRequests().subscribe({
+      next: (requests) => this.pendingRequests.set(requests),
+      error: () => this.pendingRequests.set([]),
+    });
+  }
+
+  approveRequest(requestId: string): void {
+    this.authService.approveRoleRequest(requestId).subscribe({
+      next: () => this.loadPendingRequests(),
+      error: () => {},
+    });
+  }
+
+  rejectRequest(requestId: string): void {
+    this.authService.rejectRoleRequest(requestId).subscribe({
+      next: () => this.loadPendingRequests(),
+      error: () => {},
+    });
+  }
+
+  formatRole(role: string): string {
+    return role.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
+  }
+
+  formatDate(dateStr: string): string {
+    return new Date(dateStr).toLocaleDateString('en-US', {
+      month: 'short', day: 'numeric', year: 'numeric',
+    });
+  }
+
+  getDetailEntries(details: Record<string, any>): [string, any][] {
+    return Object.entries(details).slice(0, 4);
+  }
 
   sidebarOpen = signal(true);
   activeMenu = signal('overview');

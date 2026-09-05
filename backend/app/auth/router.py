@@ -1,3 +1,4 @@
+import secrets
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -11,7 +12,8 @@ from backend.app.auth.schemas import (
     LoginRequest,
     RegisterRequest,
     TokenResponse,
-    UpdateRoleRequest,
+    VerifyEmailRequest,
+    ResendVerificationRequest,
     UserResponse,
 )
 from backend.app.auth.security import (
@@ -20,6 +22,7 @@ from backend.app.auth.security import (
     create_password_reset_token,
     create_access_token,
     create_refresh_token,
+    create_email_verification_token,
     hash_password,
     verify_password,
 )
@@ -33,6 +36,8 @@ router = APIRouter(
 )
 
 
+# ─── REGISTER ────────────────────────────────────────────────────────────────
+
 @router.post(
     "/register",
     response_model=TokenResponse,
@@ -42,7 +47,6 @@ def register(
     data: RegisterRequest,
     db: Session = Depends(get_db),
 ):
-
     existing_user = (
         db.query(User)
         .filter(User.email == data.email)
@@ -55,17 +59,27 @@ def register(
             detail="Email already registered",
         )
 
+    verification_token = create_email_verification_token(data.email)
+
     user = User(
         full_name=data.full_name,
         email=data.email,
         password_hash=hash_password(data.password),
         role=UserRole.CITIZEN,
         is_active=True,
+        email_verified=False,
+        email_verification_token=verification_token,
     )
 
     db.add(user)
     db.commit()
     db.refresh(user)
+
+    # Dev mode: print verification token to console
+    print(f"\n\n{'='*60}")
+    print(f"  EMAIL VERIFICATION TOKEN for {data.email}:")
+    print(f"  {verification_token}")
+    print(f"{'='*60}\n\n")
 
     access_token = create_access_token({
         "sub": str(user.id),
@@ -84,6 +98,75 @@ def register(
     }
 
 
+# ─── EMAIL VERIFICATION ─────────────────────────────────────────────────────
+
+@router.post("/verify-email")
+def verify_email(
+    data: VerifyEmailRequest,
+    db: Session = Depends(get_db),
+):
+    try:
+        payload = jwt.decode(
+            data.token,
+            SECRET_KEY,
+            algorithms=[ALGORITHM],
+        )
+        token_type = payload.get("type")
+        email = payload.get("email")
+
+        if token_type != "email_verification" or not email:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid verification token",
+            )
+    except JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired verification token",
+        )
+
+    user = db.query(User).filter(User.email == email).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    if user.email_verified:
+        return {"message": "Email already verified"}
+
+    user.email_verified = True
+    user.email_verification_token = None
+    db.commit()
+
+    return {"message": "Email verified successfully"}
+
+
+@router.post("/resend-verification")
+def resend_verification(
+    data: ResendVerificationRequest,
+    db: Session = Depends(get_db),
+):
+    user = db.query(User).filter(User.email == data.email).first()
+    if not user:
+        # Don't reveal whether email exists
+        return {"message": "If the email is registered, a verification link has been sent"}
+
+    if user.email_verified:
+        return {"message": "Email already verified"}
+
+    verification_token = create_email_verification_token(user.email)
+    user.email_verification_token = verification_token
+    db.commit()
+
+    return {
+        "message": "Verification email sent",
+        "verification_token": verification_token,  # In production, send via email
+    }
+
+
+# ─── LOGIN ───────────────────────────────────────────────────────────────────
+
 @router.post(
     "/login",
     response_model=TokenResponse,
@@ -92,7 +175,6 @@ def login(
     data: LoginRequest,
     db: Session = Depends(get_db),
 ):
-
     user = (
         db.query(User)
         .filter(User.email == data.email)
@@ -136,6 +218,8 @@ def login(
         "token_type": "bearer",
     }
 
+
+# ─── REFRESH TOKEN ──────────────────────────────────────────────────────────
 
 @router.post(
     "/refresh",
@@ -192,39 +276,8 @@ def refresh_token(
         "token_type": "bearer",
     }
 
-# Roles a user may self-assign after registration. "admin" is deliberately
-# excluded from self-service role updates.
-SELF_SERVICE_ROLES = {
-    "citizen",
-    "researcher",
-    "government_official",
-    "organization",
-}
 
-
-@router.put("/update-role")
-def update_role(
-    data: UpdateRoleRequest,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    if data.role not in SELF_SERVICE_ROLES:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=(
-                "Invalid role. Role must be one of: citizen, researcher, "
-                "government_official, organization"
-            ),
-        )
-
-    current_user.role = UserRole(data.role)
-    db.commit()
-
-    return {
-        "message": "Role updated successfully",
-        "role": current_user.role.value,
-    }
-
+# ─── CHANGE PASSWORD ────────────────────────────────────────────────────────
 
 @router.post("/change-password")
 def change_password(
@@ -248,6 +301,9 @@ def change_password(
     return {
         "message": "Password changed successfully",
     }
+
+
+# ─── FORGOT PASSWORD ────────────────────────────────────────────────────────
 
 @router.post("/forget-password")
 def forget_password(
@@ -275,6 +331,9 @@ def forget_password(
         "reset_token": reset_token,
     }
 
+
+# ─── RESET PASSWORD ─────────────────────────────────────────────────────────
+
 @router.post("/reset-password")
 def reset_password(
     data: ResetPasswordRequest,
@@ -289,19 +348,19 @@ def reset_password(
 
         user_id = payload.get("sub")
         token_type = payload.get("type")
-        
+
         if not user_id or token_type != "password_reset":
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid password reset token",
             )
-        
+
     except JWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired password reset token"
         )
-    
+
     user = db.get(User, user_id)
     if not user:
         raise HTTPException(
@@ -316,6 +375,9 @@ def reset_password(
     return {
         "message": "Password Reset Successfully"
     }
+
+
+# ─── GET ME ──────────────────────────────────────────────────────────────────
 
 @router.get(
     "/me",
