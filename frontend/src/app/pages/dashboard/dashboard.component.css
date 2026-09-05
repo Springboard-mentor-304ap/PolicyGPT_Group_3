@@ -129,6 +129,17 @@
   color: #fca5a5;
 }
 
+.sidebar-footer .nav-item {
+  color: #ffffff;
+  background-color: var(--color-primary-blue);
+  font-weight: var(--font-weight-semibold);
+}
+
+.sidebar-footer .nav-item:hover {
+  background-color: var(--color-primary-hover);
+  color: #ffffff;
+}
+
 /* Main Content */
 .main-content {
   flex: 1;
@@ -221,6 +232,34 @@
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-bold);
   cursor: pointer;
+}
+
+.header-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-primary-blue);
+  background-color: transparent;
+  border: 1px solid var(--color-primary-blue);
+  text-decoration: none;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.header-btn:hover {
+  background-color: var(--color-primary-subtle);
+}
+
+.header-btn-primary {
+  background-color: var(--color-primary-blue);
+  color: var(--color-text-inverse);
+}
+
+.header-btn-primary:hover {
+  background-color: var(--color-primary-hover);
 }
 
 /* Stats Grid */

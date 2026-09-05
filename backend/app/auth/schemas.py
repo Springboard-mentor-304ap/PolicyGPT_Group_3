@@ -23,6 +23,10 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class UpdateRoleRequest(BaseModel):
+    role: str
+
+
 class ChangePasswordRequest(BaseModel):
     current_password: str
     new_password: str

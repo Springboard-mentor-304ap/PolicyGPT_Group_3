@@ -11,6 +11,7 @@ from backend.app.auth.schemas import (
     LoginRequest,
     RegisterRequest,
     TokenResponse,
+    UpdateRoleRequest,
     UserResponse,
 )
 from backend.app.auth.security import (
@@ -190,6 +191,40 @@ def refresh_token(
         "refresh_token": refresh_token,
         "token_type": "bearer",
     }
+
+# Roles a user may self-assign after registration. "admin" is deliberately
+# excluded from self-service role updates.
+SELF_SERVICE_ROLES = {
+    "citizen",
+    "researcher",
+    "government_official",
+    "organization",
+}
+
+
+@router.put("/update-role")
+def update_role(
+    data: UpdateRoleRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if data.role not in SELF_SERVICE_ROLES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "Invalid role. Role must be one of: citizen, researcher, "
+                "government_official, organization"
+            ),
+        )
+
+    current_user.role = UserRole(data.role)
+    db.commit()
+
+    return {
+        "message": "Role updated successfully",
+        "role": current_user.role.value,
+    }
+
 
 @router.post("/change-password")
 def change_password(

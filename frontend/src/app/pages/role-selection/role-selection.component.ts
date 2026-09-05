@@ -82,17 +82,6 @@ export class RoleSelectionComponent {
   }
 
   private routeByRole(role: string): void {
-    switch (role) {
-      case 'admin':
-      case 'government_official':
-        this.router.navigate(['/admin']);
-        break;
-      case 'citizen':
-      case 'researcher':
-      case 'organization':
-      default:
-        this.router.navigate(['/dashboard']);
-        break;
-    }
+    this.router.navigate(['/login']);
   }
 }

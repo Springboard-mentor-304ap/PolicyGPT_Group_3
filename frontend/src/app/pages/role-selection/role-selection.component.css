@@ -1,8 +1,15 @@
 /* Role Selection Page Styles */
 
 .auth-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: var(--space-4);
+  background-color: var(--color-bg-app);
   width: 100%;
   max-width: 560px;
+  margin: 0 auto;
 }
 
 .auth-header {
@@ -224,6 +231,7 @@
 @media (min-width: 768px) {
   .auth-page {
     max-width: 600px;
+    padding: var(--space-8);
   }
 
   .auth-title {

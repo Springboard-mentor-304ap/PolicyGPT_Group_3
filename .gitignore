@@ -1,6 +1,7 @@
 # Python virtual environment
 .venv/
 
+.freebuff/
 # Python cache
 __pycache__/
 *.py[cod]

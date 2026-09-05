@@ -33,9 +33,8 @@ export class LoginComponent {
 
   constructor() {
     this.loginForm = this.fb.group({
-      email: ['', [Validators.required, Validators.email]],
-      password: ['', [Validators.required, Validators.minLength(1)]],
-      rememberMe: [false],
+      email: ['', [Validators.required, Validators.email, Validators.maxLength(254)]],
+      password: ['', [Validators.required, Validators.minLength(1), Validators.maxLength(128)]],
     });
   }
 
@@ -48,7 +47,8 @@ export class LoginComponent {
     this.loading.set(true);
     this.errorMessage.set(null);
 
-    const { email, password } = this.loginForm.value;
+    const email = (this.loginForm.value.email as string).trim();
+    const password = this.loginForm.value.password as string;
 
     this.authService.login({ email, password }).subscribe({
       next: () => {

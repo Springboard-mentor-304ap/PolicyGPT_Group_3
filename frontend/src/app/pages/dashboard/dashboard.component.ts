@@ -1,6 +1,6 @@
-import { Component, inject, signal, computed, OnInit } from '@angular/core';
+import { Component, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 
 interface DashboardData {
@@ -12,11 +12,11 @@ interface DashboardData {
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, RouterLink],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.css',
 })
-export class DashboardComponent implements OnInit {
+export class DashboardComponent {
   readonly authService = inject(AuthService);
   private readonly router = inject(Router);
 
@@ -34,7 +34,6 @@ export class DashboardComponent implements OnInit {
       recentItems: [
         { title: 'Digital India Initiative', category: 'Technology', date: '2026-09-01', status: 'Active' },
         { title: 'National Education Policy', category: 'Education', date: '2026-08-28', status: 'Active' },
-        { title: 'Clean Energy Subsidy', category: 'Environment', date: '2026-08-25', status: 'Under Review' },
         { title: 'Healthcare Access Program', category: 'Health', date: '2026-08-20', status: 'Active' },
       ],
       quickActions: [
@@ -86,6 +85,8 @@ export class DashboardComponent implements OnInit {
     },
   };
 
+  readonly isGuest = computed(() => !this.authService.isAuthenticated());
+
   dashboardData = computed<DashboardData>(() => {
     const role = this.authService.userRole() ?? 'citizen';
     return this.roleData[role] ?? this.roleData['citizen'];
@@ -96,6 +97,14 @@ export class DashboardComponent implements OnInit {
   quickActions = computed(() => this.dashboardData().quickActions);
 
   menuItems = computed(() => {
+    if (this.isGuest()) {
+      return [
+        { id: 'overview', label: 'Overview', icon: 'home' },
+        { id: 'policies', label: 'Policies', icon: 'document' },
+        { id: 'schemes', label: 'Schemes', icon: 'gift' },
+      ];
+    }
+
     const role = this.authService.userRole() ?? 'citizen';
     const base = [
       { id: 'overview', label: 'Overview', icon: 'home' },
@@ -128,12 +137,6 @@ export class DashboardComponent implements OnInit {
       { id: 'notifications', label: 'Notifications', icon: 'bell' },
     ];
   });
-
-  ngOnInit(): void {
-    if (!this.authService.isAuthenticated()) {
-      this.router.navigate(['/login']);
-    }
-  }
 
   toggleSidebar(): void {
     this.sidebarOpen.set(!this.sidebarOpen());
