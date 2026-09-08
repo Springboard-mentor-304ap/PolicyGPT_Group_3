@@ -14,7 +14,8 @@ class EligibilityParameter(str, Enum):
     INCOME = "income"
     OCCUPATION = "occupation"
     EDUCATION = "education"
-    LOCATION = "location"
+    STATE = "state"
+    DISTRICT = "district"
     SOCIAL_CATEGORY = "social_category"
     DISABILITY_STATUS = "disability_status"
 
