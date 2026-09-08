@@ -5,6 +5,7 @@ from backend.app.role_requests.router import router as role_requests_router
 from backend.app.profile.router import router as profile_router
 from backend.app.eligibility.router import router as eligibility_router
 from backend.app.search.router import router as search_router
+from backend.app.comparison.router import router as comparison_router
 
 
 
@@ -16,6 +17,7 @@ app.include_router(role_requests_router)
 app.include_router(profile_router)
 app.include_router(eligibility_router)
 app.include_router(search_router)
+app.include_router(comparison_router)
 
 
 @app.get("/")
