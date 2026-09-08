@@ -1,0 +1,214 @@
+<div class="eligibility-page-layout">
+  <!-- Header -->
+  <header class="eligibility-header">
+    <div class="header-container">
+      <div class="breadcrumb">
+        <a routerLink="/dashboard" class="back-link">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+          </svg>
+          <span>Dashboard</span>
+        </a>
+        <span class="breadcrumb-separator">/</span>
+        <span class="breadcrumb-current">Scheme Eligibility Assessment</span>
+      </div>
+
+      <div class="header-title-row">
+        <div>
+          <h1 class="page-title">Welfare Scheme Eligibility Checker</h1>
+          <p class="page-subtitle">
+            Provide your basic socio-economic profile to automatically discover which state and central welfare schemes you qualify for.
+          </p>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="eligibility-container">
+    @if (!hasEvaluated()) {
+      <div class="form-card">
+        <div class="form-header">
+          <div class="form-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+              <circle cx="8.5" cy="7.5" r="4"></circle>
+              <polyline points="17 11 19 13 23 9"></polyline>
+            </svg>
+          </div>
+          <div>
+            <h2 class="form-card-title">Citizen Profile Questionnaire</h2>
+            <p class="form-card-subtitle">All information is evaluated against official government criteria.</p>
+          </div>
+        </div>
+
+        <form [formGroup]="profileForm" (ngSubmit)="onEvaluate()" class="eligibility-form">
+          <!-- Section 1: Demographics -->
+          <div class="form-section">
+            <h3 class="section-title">1. Basic Demographics</h3>
+            <div class="grid-2col">
+              <app-input
+                label="Age (in years)"
+                type="number"
+                id="profile-age"
+                formControlName="age"
+                [required]="true"
+                placeholder="e.g. 26"
+              ></app-input>
+
+              <app-select
+                label="Gender"
+                id="profile-gender"
+                [options]="genderOptions"
+                formControlName="gender"
+                [required]="true"
+              ></app-select>
+            </div>
+          </div>
+
+          <!-- Section 2: Socio-Economic Profile -->
+          <div class="form-section">
+            <h3 class="section-title">2. Socio-Economic Profile</h3>
+            <div class="grid-2col">
+              <app-input
+                label="Annual Household Income (₹ INR)"
+                type="number"
+                id="profile-income"
+                formControlName="annual_income"
+                [required]="true"
+                placeholder="e.g. 250000"
+                hint="Total annual income from all family members"
+              ></app-input>
+
+              <app-select
+                label="Social Category"
+                id="profile-category"
+                [options]="socialCategoryOptions"
+                formControlName="social_category"
+                [required]="true"
+              ></app-select>
+
+              <app-select
+                label="Primary Occupation"
+                id="profile-occupation"
+                [options]="occupationOptions"
+                formControlName="occupation"
+                [required]="true"
+              ></app-select>
+
+              <app-select
+                label="Highest Educational Qualification"
+                id="profile-education"
+                [options]="educationOptions"
+                formControlName="education"
+                [required]="true"
+              ></app-select>
+            </div>
+          </div>
+
+          <!-- Section 3: Location & Disability Status -->
+          <div class="form-section">
+            <h3 class="section-title">3. Location & Special Status</h3>
+            <div class="grid-2col">
+              <app-select
+                label="State / Union Territory"
+                id="profile-state"
+                [options]="stateOptions"
+                formControlName="state"
+                [required]="true"
+              ></app-select>
+
+              <app-input
+                label="District / City"
+                type="text"
+                id="profile-district"
+                formControlName="district"
+                placeholder="e.g. Pune"
+              ></app-input>
+            </div>
+
+            <div class="disability-checkbox-container">
+              <label class="checkbox-label">
+                <input
+                  type="checkbox"
+                  formControlName="disability_status"
+                  class="custom-chk"
+                />
+                <span class="chk-text">Person with Benchmark Disability (PwD / 40%+ disability status)</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Form Submit Button -->
+          <div class="form-actions">
+            <app-button
+              variant="primary"
+              size="lg"
+              type="submit"
+              [loading]="evaluating()"
+              [fullWidth]="true"
+            >
+              Evaluate Schemes I Qualify For
+            </app-button>
+          </div>
+        </form>
+      </div>
+    }
+
+    <!-- Evaluation Results View -->
+    @else {
+      <div class="results-view">
+        <!-- Results Summary Bar -->
+        <div class="results-summary-banner">
+          <div class="summary-left">
+            <h2>Eligibility Results Summary</h2>
+            <p>
+              Based on your profile, you are eligible for <strong>{{ eligibleSchemes.length }}</strong> out of <strong>{{ allSchemes.length }}</strong> government schemes evaluated.
+            </p>
+          </div>
+          <div class="summary-right">
+            <app-button variant="outline" size="sm" (btnClick)="resetForm()">
+              Edit Profile
+            </app-button>
+          </div>
+        </div>
+
+        <!-- Filter Tabs -->
+        <div class="tabs-bar">
+          <button
+            class="tab-btn"
+            [class.active]="activeTab() === 'eligible'"
+            (click)="activeTab.set('eligible')"
+          >
+            Fully Eligible ({{ eligibleSchemes.length }})
+          </button>
+          <button
+            class="tab-btn"
+            [class.active]="activeTab() === 'all'"
+            (click)="activeTab.set('all')"
+          >
+            All Evaluated Schemes ({{ allSchemes.length }})
+          </button>
+        </div>
+
+        <!-- Results List -->
+        <div class="results-grid">
+          @if (activeTab() === 'eligible' && eligibleSchemes.length === 0) {
+            <div class="no-eligible-card">
+              <h3>No 100% Matching Schemes Found</h3>
+              <p>Try viewing 'All Evaluated Schemes' to see criteria where adjustments or partial match apply.</p>
+            </div>
+          } @else {
+            @for (res of (activeTab() === 'eligible' ? eligibleSchemes : allSchemes); track res.scheme_id) {
+              <app-eligibility-result
+                [result]="res"
+                (recheck)="resetForm()"
+              ></app-eligibility-result>
+            }
+          }
+        </div>
+      </div>
+    }
+  </main>
+</div>

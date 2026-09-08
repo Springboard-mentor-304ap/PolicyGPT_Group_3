@@ -1,0 +1,112 @@
+.search-bar-container {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+}
+
+.search-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1;
+}
+
+.search-icon {
+  position: absolute;
+  left: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  color: var(--color-text-secondary);
+}
+
+.search-icon svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.search-input {
+  width: 100%;
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+  color: var(--color-text-primary);
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-base);
+  padding: 0.875rem 2.75rem 0.875rem 3rem;
+  box-shadow: var(--shadow-sm);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--color-primary-blue);
+  box-shadow: var(--shadow-focus-ring);
+}
+
+.clear-btn {
+  position: absolute;
+  right: 0.875rem;
+  background: none;
+  border: none;
+  padding: var(--space-1);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  transition: color var(--transition-fast), background-color var(--transition-fast);
+}
+
+.clear-btn:hover {
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-muted);
+}
+
+.clear-btn svg {
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
+.search-submit-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  background-color: var(--color-primary-navy);
+  color: var(--color-text-inverse);
+  border: 1px solid transparent;
+  border-radius: var(--radius-lg);
+  padding: 0.875rem 1.5rem;
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: background-color var(--transition-fast), transform var(--transition-fast);
+  white-space: nowrap;
+}
+
+.search-submit-btn:hover {
+  background-color: var(--color-primary-blue);
+}
+
+.search-submit-btn:active {
+  transform: translateY(1px);
+}
+
+.search-submit-btn svg {
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
+@media (max-width: 640px) {
+  .search-submit-btn span {
+    display: none;
+  }
+  .search-submit-btn {
+    padding: 0.875rem;
+  }
+}

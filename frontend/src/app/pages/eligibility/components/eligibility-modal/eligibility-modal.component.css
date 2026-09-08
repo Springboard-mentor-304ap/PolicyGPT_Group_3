@@ -1,0 +1,54 @@
+.modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.form-intro {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-body);
+  line-height: var(--line-height-relaxed);
+  margin: 0;
+  background-color: var(--color-bg-subtle);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  border-left: 3px solid var(--color-primary-navy);
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-4);
+}
+
+.checkbox-row {
+  padding: var(--space-2) 0;
+}
+
+.custom-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+  user-select: none;
+}
+
+.checkbox-input {
+  accent-color: var(--color-primary-navy);
+  width: 1.125rem;
+  height: 1.125rem;
+  cursor: pointer;
+}
+
+.checkbox-text {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-body);
+}
+
+.form-submit-row {
+  margin-top: var(--space-3);
+}
+
+.result-wrapper {
+  padding-top: var(--space-2);
+}
