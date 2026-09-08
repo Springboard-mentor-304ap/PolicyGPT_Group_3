@@ -1,0 +1,180 @@
+.policy-card {
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-xl);
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast);
+}
+
+.policy-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--color-primary-border);
+}
+
+.policy-card.is-comparing {
+  border-color: var(--color-primary-blue);
+  background-color: var(--color-primary-subtle);
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.badge-group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.compare-toggle-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius-md);
+  background-color: var(--color-bg-muted);
+  transition: all var(--transition-fast);
+  user-select: none;
+}
+
+.compare-toggle-label:hover {
+  background-color: var(--color-primary-subtle);
+  color: var(--color-primary-navy);
+}
+
+.compare-checkbox {
+  accent-color: var(--color-primary-navy);
+  cursor: pointer;
+}
+
+.card-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.card-title {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  margin: 0;
+  line-height: var(--line-height-snug);
+}
+
+.card-desc {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-body);
+  margin: 0;
+  line-height: var(--line-height-relaxed);
+}
+
+.benefits-callout {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  background-color: var(--color-bg-subtle);
+  border-left: 3px solid var(--color-primary-blue);
+  padding: var(--space-2) var(--space-3);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  margin-top: var(--space-1);
+}
+
+.benefits-icon {
+  color: var(--color-primary-blue);
+  display: flex;
+  align-items: center;
+  margin-top: 2px;
+}
+
+.benefits-icon svg {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+.benefits-text {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-body);
+  margin: 0;
+}
+
+.card-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.meta-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.meta-item svg {
+  width: 0.875rem;
+  height: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+.deadline-meta {
+  color: var(--color-warning-text);
+  font-weight: var(--font-weight-medium);
+}
+
+.deadline-meta svg {
+  color: var(--color-warning);
+}
+
+.card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-top: var(--space-2);
+}
+
+.official-link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-primary-blue);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.official-link:hover {
+  color: var(--color-primary-hover);
+  text-decoration: underline;
+}
+
+.official-link svg {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+.footer-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+}

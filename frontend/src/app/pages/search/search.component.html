@@ -1,0 +1,169 @@
+<div class="search-page-layout">
+  <!-- Top Navigation / Search Header -->
+  <header class="search-header">
+    <div class="header-container">
+      <div class="breadcrumb">
+        <a routerLink="/dashboard" class="back-link">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+          </svg>
+          <span>Dashboard</span>
+        </a>
+        <span class="breadcrumb-separator">/</span>
+        <span class="breadcrumb-current">Search & Discovery</span>
+      </div>
+
+      <div class="header-title-row">
+        <div>
+          <h1 class="page-title">Policy & Scheme Search</h1>
+          <p class="page-subtitle">
+            Discover, evaluate eligibility, and compare government welfare schemes and national policies.
+          </p>
+        </div>
+      </div>
+
+      <!-- Main Search Bar -->
+      <div class="search-bar-wrapper">
+        <app-search-bar
+          [query]="query()"
+          (search)="onSearchChange($event)"
+          (clear)="onSearchChange('')"
+        ></app-search-bar>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Area -->
+  <div class="search-content-container">
+    <!-- Desktop Left Filter Sidebar -->
+    <aside class="desktop-filter-sidebar">
+      <app-filter-sidebar
+        [filters]="filters()"
+        (filtersChange)="onFiltersChange($event)"
+        (reset)="onResetAll()"
+      ></app-filter-sidebar>
+    </aside>
+
+    <!-- Mobile Filter Drawer Backdrop & Content -->
+    @if (mobileFiltersOpen()) {
+      <div class="mobile-filter-backdrop" (click)="toggleMobileFilters()" aria-hidden="true"></div>
+      <div class="mobile-filter-drawer">
+        <div class="mobile-drawer-header">
+          <h3>Filter Results</h3>
+          <button class="close-drawer-btn" (click)="toggleMobileFilters()" aria-label="Close filters">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        <app-filter-sidebar
+          [filters]="filters()"
+          (filtersChange)="onFiltersChange($event)"
+          (reset)="onResetAll()"
+        ></app-filter-sidebar>
+      </div>
+    }
+
+    <!-- Search Results Section -->
+    <main class="results-main">
+      <!-- Controls Toolbar (Result Count, Mobile Filter Trigger, Sort Dropdown) -->
+      <div class="results-toolbar">
+        <div class="toolbar-left">
+          <button class="mobile-filter-toggle-btn" (click)="toggleMobileFilters()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+            </svg>
+            <span>Filters</span>
+          </button>
+
+          <span class="results-count">
+            @if (isLoading()) {
+              Searching...
+            } @else {
+              Found <strong>{{ totalCount() }}</strong> {{ totalCount() === 1 ? 'item' : 'items' }}
+            }
+          </span>
+        </div>
+
+        <div class="toolbar-right">
+          <div class="sort-control">
+            <label class="sort-label">Sort By:</label>
+            <app-select
+              id="sort-select"
+              size="sm"
+              [options]="sortOptions"
+              [value]="sortBy()"
+              (selectionChange)="onSortChange($event)"
+            ></app-select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Loading State -->
+      @if (isLoading()) {
+        <app-skeleton type="card" [count]="3"></app-skeleton>
+      }
+
+      <!-- Error State -->
+      @else if (errorMessage()) {
+        <div class="error-state-card">
+          <div class="error-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="8" x2="12" y2="12"></line>
+              <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+          </div>
+          <h3>Unable to load results</h3>
+          <p>{{ errorMessage() }}</p>
+          <app-button variant="secondary" size="sm" (btnClick)="executeSearch()">
+            Retry Search
+          </app-button>
+        </div>
+      }
+
+      <!-- Empty State -->
+      @else if (results().length === 0) {
+        <div class="empty-state-card">
+          <div class="empty-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"></circle>
+              <path d="m21 21-4.35-4.35"></path>
+              <line x1="8" y1="11" x2="14" y2="11"></line>
+            </svg>
+          </div>
+          <h3>No matching policies or schemes found</h3>
+          <p>Try refining your search terms, changing categories, or clearing all filters.</p>
+          <app-button variant="outline" size="sm" (btnClick)="onResetAll()">
+            Clear All Filters
+          </app-button>
+        </div>
+      }
+
+      <!-- Results Grid -->
+      @else {
+        <div class="cards-grid">
+          @for (item of results(); track item.id) {
+            <app-policy-card
+              [item]="item"
+              (checkEligibility)="openEligibilityModal($event)"
+            ></app-policy-card>
+          }
+        </div>
+      }
+    </main>
+  </div>
+
+  <!-- Persistent Floating Comparison Dock -->
+  <app-floating-compare-dock></app-floating-compare-dock>
+
+  <!-- Quick Check Eligibility Modal Drawer -->
+  @if (selectedSchemeForEligibility(); as scheme) {
+    <app-eligibility-modal
+      [scheme]="scheme"
+      (close)="closeEligibilityModal()"
+    ></app-eligibility-modal>
+  }
+</div>
