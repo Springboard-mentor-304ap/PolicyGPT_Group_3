@@ -3,7 +3,7 @@ from datetime import date
 from decimal import Decimal
 
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
 from backend.app.models.user_profile import UserProfile
 from backend.app.models.scheme import Scheme
@@ -359,14 +359,14 @@ def evaluate_rule(
     return satisfied, message, actual_value
 
 
-async def check_eligibility(
-        db: AsyncSession,
+def check_eligibility(
+        db: Session,
         user_id: UUID,
         scheme_id: UUID,
 ) -> EligibilityCheckResponse:
 
     # Fetch User Profile
-    profile_result = await db.execute(
+    profile_result = db.execute(
         select(UserProfile).where(UserProfile.user_id == user_id)
     )
 
@@ -376,7 +376,7 @@ async def check_eligibility(
         raise ValueError("User profile not found")
 
     # Fetch scheme
-    scheme_result = await db.execute(
+    scheme_result = db.execute(
         select(Scheme).where(Scheme.id == scheme_id)
     )
     scheme = scheme_result.scalar_one_or_none()
@@ -386,7 +386,7 @@ async def check_eligibility(
 
     # Fetch eligibility rules for the scheme
 
-    rules_result = await db.execute(
+    rules_result = db.execute(
         select(EligibilityRule)
         .where(EligibilityRule.scheme_id == scheme_id)
     )
