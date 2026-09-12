@@ -1,7 +1,13 @@
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 from uuid import UUID
-from datetime import datetime
+from datetime import date, datetime
+from decimal import Decimal
 
+from backend.app.models.user_profile import (
+    Gender,
+    MaritalStatus,
+    SocialCategory,
+)
 
 # ─── Auth Schemas ────────────────────────────────────────────────────────────
 
@@ -65,6 +71,38 @@ class UserResponse(BaseModel):
     is_active: bool
     email_verified: bool
 
+class UserProfileResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    user_id: UUID
+    date_of_birth: date | None = None
+    gender: Gender | None = None
+    marital_status: MaritalStatus | None = None
+    religion: str | None = None
+    occupation: str | None = None
+    annual_income: Decimal | None = None
+    social_category: SocialCategory | None = None
+    disability_status: bool
+    education: str | None = None
+    state: str | None = None
+    district: str | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class UserDetailsResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    full_name: str
+    email: str
+    phone: str | None = None
+    role: str
+    is_active: bool
+    email_verified: bool
+    created_at: datetime
+    updated_at: datetime
+    profile: UserProfileResponse | None = None
 
 # ─── Citizen Profile ─────────────────────────────────────────────────────────
 

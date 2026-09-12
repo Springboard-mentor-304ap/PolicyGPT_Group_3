@@ -13,7 +13,7 @@ from sqlalchemy import (
     func,
     text,
 )
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.app.db.database import Base
@@ -34,8 +34,11 @@ class SchemeCategory(str, Enum):
 
 class SchemeStatus(str, Enum):
     DRAFT = "draft"
+    PENDING_APPROVAL = "pending_approval"
     ACTIVE = "active"
+    REJECTED = "rejected"
     ARCHIVED = "archived"
+    
 
 
 class Scheme(Base):
@@ -68,8 +71,12 @@ class Scheme(Base):
         nullable=False,
     )
 
-    benefits: Mapped[str | None] = mapped_column(
-        Text,
+    benefits: Mapped[list[str] | None] = mapped_column(
+        JSONB,
+    )
+
+    required_documents: Mapped[list[str] | None] = mapped_column(
+        JSONB,
     )
 
     application_process: Mapped[str | None] = mapped_column(

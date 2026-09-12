@@ -3,7 +3,7 @@ from enum import Enum
 
 import sqlalchemy as sa
 from sqlalchemy import Date, DateTime, Boolean, Enum as SQLEnum, func, ForeignKey, Integer, String, Text, Index, text
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.app.db.database import Base
@@ -46,6 +46,10 @@ class Policy(Base):
     description: Mapped[str] = mapped_column(
         Text,
         nullable=False,
+    )
+
+    required_documents: Mapped[list[str] | None] = mapped_column(
+        JSONB,
     )
 
     category: Mapped[PolicyCategory] = mapped_column(

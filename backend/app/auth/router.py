@@ -15,6 +15,7 @@ from backend.app.auth.schemas import (
     VerifyEmailRequest,
     ResendVerificationRequest,
     UserResponse,
+    UserDetailsResponse,
 )
 from backend.app.auth.security import (
     ALGORITHM,
@@ -381,7 +382,7 @@ def reset_password(
 
 @router.get(
     "/me",
-    response_model=UserResponse,
+    response_model=UserDetailsResponse,
 )
 def get_me(
     current_user: User = Depends(get_current_user),
