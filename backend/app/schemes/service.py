@@ -53,7 +53,7 @@ def create_scheme(
         application_process=scheme_data.application_process,
         department=scheme_data.department,
         state=scheme_data.state,
-        status=SchemeStatus.ACTIVE,
+        status=SchemeStatus.PENDING_APPROVAL,
         launch_date=scheme_data.launch_date or date.today(),
         deadline_date=scheme_data.deadline_date,
         document_url=scheme_data.document_url,
@@ -120,10 +120,29 @@ def update_scheme(
             detail="Archived schemes cannot be updated",
         )
 
+    if scheme.status == SchemeStatus.ACTIVE:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Active schemes cannot be updated. Archive the scheme first.",
+        )
+
+    if scheme.status == SchemeStatus.PENDING_APPROVAL:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Scheme is pending approval and cannot be updated",
+        )
+
     update_data = scheme_data.model_dump(exclude_unset=True)
 
-    for field, value in update_data.items():
-        setattr(scheme, field, value)
+    if scheme.status == SchemeStatus.REJECTED:
+        for field, value in update_data.items():
+            setattr(scheme, field, value)
+        scheme.status = SchemeStatus.PENDING_APPROVAL
+        scheme.rejection_reason = None
+        scheme.approved_by = None
+    else:
+        for field, value in update_data.items():
+            setattr(scheme, field, value)
 
     db.commit()
     db.refresh(scheme)
@@ -154,6 +173,103 @@ def archive_scheme(
 
     scheme.status = SchemeStatus.ARCHIVED
     scheme.archived_at = datetime.utcnow()
+
+    db.commit()
+    db.refresh(scheme)
+
+    return scheme
+
+
+def unarchive_scheme(
+    db: Session,
+    scheme_id: UUID,
+    current_user: User,
+) -> Scheme:
+    scheme = get_scheme(db, scheme_id)
+
+    _require_government_official(current_user)
+
+    if scheme.created_by != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only unarchive schemes you created",
+        )
+
+    if scheme.status != SchemeStatus.ARCHIVED:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only archived schemes can be unarchived",
+        )
+
+    scheme.status = SchemeStatus.PENDING_APPROVAL
+    scheme.archived_at = None
+    scheme.approved_by = None
+    scheme.rejection_reason = None
+
+    db.commit()
+    db.refresh(scheme)
+
+    return scheme
+
+
+def approve_scheme(
+    db: Session,
+    scheme_id: UUID,
+    current_user: User,
+) -> Scheme:
+    scheme = get_scheme(db, scheme_id)
+
+    if current_user.role != UserRole.ADMINISTRATOR:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only administrators can approve schemes",
+        )
+
+    if scheme.status != SchemeStatus.PENDING_APPROVAL:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only pending schemes can be approved",
+        )
+
+    scheme.status = SchemeStatus.ACTIVE
+    scheme.approved_by = current_user.id
+    scheme.rejection_reason = None
+
+    db.commit()
+    db.refresh(scheme)
+
+    return scheme
+
+
+def reject_scheme(
+    db: Session,
+    scheme_id: UUID,
+    rejection_reason: str,
+    current_user: User,
+) -> Scheme:
+    scheme = get_scheme(db, scheme_id)
+
+    if current_user.role != UserRole.ADMINISTRATOR:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only administrators can reject schemes",
+        )
+
+    if scheme.status != SchemeStatus.PENDING_APPROVAL:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only pending schemes can be rejected",
+        )
+
+    if not rejection_reason.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Rejection reason is required",
+        )
+
+    scheme.status = SchemeStatus.REJECTED
+    scheme.rejection_reason = rejection_reason
+    scheme.approved_by = None
 
     db.commit()
     db.refresh(scheme)

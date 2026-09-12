@@ -38,6 +38,10 @@ class SchemeUpdate(BaseModel):
     document_url: str | None = Field(default=None, max_length=500)
 
 
+class SchemeReject(BaseModel):
+    rejection_reason: str = Field(min_length=1, max_length=1000)
+
+
 class SchemeResponse(BaseModel):
     id: UUID
     policy_id: UUID
@@ -54,6 +58,8 @@ class SchemeResponse(BaseModel):
     deadline_date: date | None
     document_url: str | None
     created_by: UUID
+    approved_by: UUID | None = None
+    rejection_reason: str | None = None
     view_count: int
     created_at: datetime
     updated_at: datetime

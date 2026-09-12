@@ -8,6 +8,7 @@ from backend.app.db.database import get_db
 from backend.app.models.user import User
 from backend.app.policies.schemas import (
     PolicyCreate,
+    PolicyReject,
     PolicyResponse,
     PolicyUpdate,
 )
@@ -147,13 +148,13 @@ def approve_policy_route(
 )
 def reject_policy_route(
     policy_id: UUID,
-    rejection_reason: str,
+    rejection_data: PolicyReject,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     return reject_policy(
         db=db,
         policy_id=policy_id,
-        rejection_reason=rejection_reason,
+        rejection_reason=rejection_data.rejection_reason,
         current_user=current_user,
     )

@@ -15,10 +15,12 @@ from backend.app.schemes.schemas import (
     EligibilityRuleResponse,
     EligibilityRuleUpdate,
     SchemeCreate,
+    SchemeReject,
     SchemeResponse,
     SchemeUpdate,
 )
 from backend.app.schemes.service import (
+    approve_scheme,
     archive_scheme,
     create_eligibility_rule,
     create_scheme,
@@ -26,6 +28,8 @@ from backend.app.schemes.service import (
     get_eligibility_rules,
     get_scheme,
     list_schemes,
+    reject_scheme,
+    unarchive_scheme,
     update_eligibility_rule,
     update_scheme,
 )
@@ -94,6 +98,47 @@ def archive_scheme_route(
     return archive_scheme(
         db=db,
         scheme_id=scheme_id,
+        current_user=current_user,
+    )
+
+
+@router.post("/{scheme_id}/unarchive", response_model=SchemeResponse)
+def unarchive_scheme_route(
+    scheme_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return unarchive_scheme(
+        db=db,
+        scheme_id=scheme_id,
+        current_user=current_user,
+    )
+
+
+@router.post("/{scheme_id}/approve", response_model=SchemeResponse)
+def approve_scheme_route(
+    scheme_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return approve_scheme(
+        db=db,
+        scheme_id=scheme_id,
+        current_user=current_user,
+    )
+
+
+@router.post("/{scheme_id}/reject", response_model=SchemeResponse)
+def reject_scheme_route(
+    scheme_id: UUID,
+    rejection_data: SchemeReject,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return reject_scheme(
+        db=db,
+        scheme_id=scheme_id,
+        rejection_reason=rejection_data.rejection_reason,
         current_user=current_user,
     )
 

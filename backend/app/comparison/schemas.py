@@ -23,7 +23,7 @@ class ComparisonItem(BaseModel):
     status: str
 
     # Scheme specific fields
-    benefits: str | None = None
+    benefits: list[str] | None = None
     eligibility: list[str] = Field(default_factory=list)
     application_process: str | None = None
 

@@ -114,6 +114,15 @@ class Scheme(Base):
         nullable=False,
     )
 
+    approved_by: Mapped[UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id")
+    )
+
+    rejection_reason: Mapped[str | None] = mapped_column(
+        Text,
+    )
+
     view_count: Mapped[int] = mapped_column(
         Integer,
         nullable=False,

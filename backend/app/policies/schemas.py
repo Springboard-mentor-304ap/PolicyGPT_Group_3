@@ -30,6 +30,10 @@ class PolicyUpdate(BaseModel):
     published_date: date | None = None
 
 
+class PolicyReject(BaseModel):
+    rejection_reason: str = Field(min_length=1, max_length=1000)
+
+
 class PolicyResponse(BaseModel):
     id: UUID
     title: str
