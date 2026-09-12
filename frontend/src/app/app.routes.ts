@@ -32,6 +32,28 @@ export const routes: Routes = [
         (m) => m.RoleRequestComponent
       ),
   },
+    {
+    path: 'schemes',
+    loadComponent: () =>
+      import('./pages/schemes/scheme-form/scheme-form').then(
+        (m) => m.SchemeForm
+      ),
+  },
+  {
+  path: 'scheme-list',
+  loadComponent: () =>
+    import('./pages/schemes/scheme-list/scheme-list').then(
+      (m) => m.SchemeList
+    ),
+},
+
+{
+  path: 'scheme-details',
+  loadComponent: () =>
+    import('./pages/schemes/scheme-details/scheme-details').then(
+      (m) => m.SchemeDetails
+    ),
+},
   {
     path: '',
     redirectTo: 'dashboard',
