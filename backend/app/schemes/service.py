@@ -114,12 +114,6 @@ def update_scheme(
             detail="You can only update schemes you created",
         )
 
-    if scheme.status == SchemeStatus.ARCHIVED:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Archived schemes cannot be updated",
-        )
-
     if scheme.status == SchemeStatus.ACTIVE:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -134,7 +128,11 @@ def update_scheme(
 
     update_data = scheme_data.model_dump(exclude_unset=True)
 
-    if scheme.status == SchemeStatus.REJECTED:
+    if scheme.status == SchemeStatus.ARCHIVED:
+        for field, value in update_data.items():
+            setattr(scheme, field, value)
+        # Remains ARCHIVED after update
+    elif scheme.status == SchemeStatus.REJECTED:
         for field, value in update_data.items():
             setattr(scheme, field, value)
         scheme.status = SchemeStatus.PENDING_APPROVAL
