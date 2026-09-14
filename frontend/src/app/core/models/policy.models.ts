@@ -106,3 +106,38 @@ export const POLICY_STATUS_BADGE: Record<PolicyStatus, BadgeVariant> = {
   [PolicyStatus.REJECTED]: 'danger',
   [PolicyStatus.ARCHIVED]: 'info',
 };
+
+// ─── Scheme models (used by search/eligibility UI) ──────────────────────────
+
+export type SchemeCategory =
+  | 'scholarships'
+  | 'farmer_welfare'
+  | 'healthcare'
+  | 'housing'
+  | 'business_support'
+  | 'women_empowerment'
+  | 'senior_citizen_welfare'
+  | 'student_schemes'
+  | 'employment_programs'
+  | 'social_security';
+
+export type SchemeStatus = 'draft' | 'active' | 'archived';
+
+export interface Scheme {
+  id: string;
+  policy_id: string;
+  title: string;
+  description: string;
+  category: SchemeCategory;
+  benefits?: string | null;
+  application_process?: string | null;
+  department?: string | null;
+  state?: string | null;
+  status: SchemeStatus;
+  launch_date?: string | null;
+  deadline_date?: string | null;
+  document_url?: string | null;
+  view_count: number;
+  created_at: string;
+  updated_at: string;
+}

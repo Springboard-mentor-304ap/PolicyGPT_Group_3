@@ -1,0 +1,104 @@
+<app-modal
+  [isOpen]="true"
+  [title]="'Eligibility Assessment'"
+  [subtitle]="scheme.title"
+  size="drawer"
+  (close)="onClose()"
+>
+  @if (!result()) {
+    <form [formGroup]="checkForm" (ngSubmit)="onEvaluate()" class="modal-form">
+      <p class="form-intro">
+        Enter your demographic and socio-economic details to check if you fulfill the official eligibility rules for <strong>{{ scheme.title }}</strong>.
+      </p>
+
+      <div class="form-grid">
+        <!-- Age -->
+        <app-input
+          label="Your Age (Years)"
+          type="number"
+          id="modal-age"
+          formControlName="age"
+          [required]="true"
+          placeholder="e.g. 28"
+        ></app-input>
+
+        <!-- Gender -->
+        <app-select
+          label="Gender"
+          id="modal-gender"
+          [options]="genderOptions"
+          formControlName="gender"
+          [required]="true"
+        ></app-select>
+
+        <!-- Annual Income -->
+        <app-input
+          label="Annual Household Income (₹ INR)"
+          type="number"
+          id="modal-income"
+          formControlName="annual_income"
+          [required]="true"
+          placeholder="e.g. 250000"
+          hint="Total annual income from all sources"
+        ></app-input>
+
+        <!-- Social Category -->
+        <app-select
+          label="Social Category"
+          id="modal-category"
+          [options]="socialCategoryOptions"
+          formControlName="social_category"
+          [required]="true"
+        ></app-select>
+
+        <!-- Occupation -->
+        <app-select
+          label="Current Occupation"
+          id="modal-occupation"
+          [options]="occupationOptions"
+          formControlName="occupation"
+          [required]="true"
+        ></app-select>
+
+        <!-- State -->
+        <app-select
+          label="State of Residence"
+          id="modal-state"
+          [options]="stateOptions"
+          formControlName="state"
+          [required]="true"
+        ></app-select>
+      </div>
+
+      <!-- Disability Checkbox -->
+      <div class="checkbox-row">
+        <label class="custom-checkbox-label">
+          <input
+            type="checkbox"
+            formControlName="disability_status"
+            class="checkbox-input"
+          />
+          <span class="checkbox-text">Applicant has a recognized disability (PwD)</span>
+        </label>
+      </div>
+
+      <div class="form-submit-row">
+        <app-button
+          variant="primary"
+          type="submit"
+          [loading]="evaluating()"
+          [fullWidth]="true"
+        >
+          Evaluate Eligibility Now
+        </app-button>
+      </div>
+    </form>
+  } @else {
+    <div class="result-wrapper">
+      <app-eligibility-result
+        [result]="result()!"
+        (recheck)="onReset()"
+      ></app-eligibility-result>
+    </div>
+  }
+</app-modal>
