@@ -195,6 +195,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
     const base = [
       { id: 'overview', label: 'Overview', icon: 'home' },
       { id: 'policies', label: 'Policies', icon: 'document' },
+      { id: 'schemes', label: 'Schemes', icon: 'gift' },
+      { id: 'search', label: 'Search & Explore', icon: 'search' },
+      { id: 'eligibility', label: 'Eligibility Checker', icon: 'check-circle' },
+      { id: 'compare', label: 'Compare Schemes', icon: 'bookmark' },
     ];
 
     if (role === 'government_official') {
