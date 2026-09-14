@@ -58,6 +58,7 @@ def list_schemes_route(
 ):
     return list_schemes(
         db=db,
+        current_user=current_user,
         include_archived=include_archived,
     )
 

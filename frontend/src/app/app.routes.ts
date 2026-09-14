@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { AuthLayoutComponent } from './layouts/auth-layout/auth-layout.component';
 import { DashboardComponent } from './pages/dashboard/dashboard.component';
+import { authGuard } from './core/guards/auth.guard';
 
 export const routes: Routes = [
   {
@@ -30,6 +31,39 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./pages/role-request/role-request.component').then(
         (m) => m.RoleRequestComponent
+      ),
+  },
+  // Policy Management Routes
+  {
+    path: 'policies',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./pages/policies/policy-list/policy-list.component').then(
+        (m) => m.PolicyListComponent
+      ),
+  },
+  {
+    path: 'policies/create',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./pages/policies/policy-form/policy-form.component').then(
+        (m) => m.PolicyFormComponent
+      ),
+  },
+  {
+    path: 'policies/:id',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./pages/policies/policy-detail/policy-detail.component').then(
+        (m) => m.PolicyDetailComponent
+      ),
+  },
+  {
+    path: 'policies/:id/edit',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./pages/policies/policy-form/policy-form.component').then(
+        (m) => m.PolicyFormComponent
       ),
   },
   {

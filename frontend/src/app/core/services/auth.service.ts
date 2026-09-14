@@ -55,48 +55,48 @@ export class AuthService {
 
   // ─── REGISTER ────────────────────────────────────────────────────────────
   register(data: RegisterRequest): Observable<TokenResponse> {
-    return this.http.post<TokenResponse>('/auth/register', data).pipe(
+    return this.http.post<TokenResponse>('/api/auth/register', data).pipe(
       tap((response) => this.saveTokens(response))
     );
   }
 
   // ─── LOGIN ───────────────────────────────────────────────────────────────
   login(data: LoginRequest): Observable<TokenResponse> {
-    return this.http.post<TokenResponse>('/auth/login', data).pipe(
+    return this.http.post<TokenResponse>('/api/auth/login', data).pipe(
       tap((response) => this.saveTokens(response))
     );
   }
 
   // ─── EMAIL VERIFICATION ──────────────────────────────────────────────────
   verifyEmail(data: VerifyEmailRequest): Observable<MessageResponse> {
-    return this.http.post<MessageResponse>('/auth/verify-email', data);
+    return this.http.post<MessageResponse>('/api/auth/verify-email', data);
   }
 
   resendVerification(data: ResendVerificationRequest): Observable<any> {
-    return this.http.post<any>('/auth/resend-verification', data);
+    return this.http.post<any>('/api/auth/resend-verification', data);
   }
 
   // ─── FORGOT PASSWORD ────────────────────────────────────────────────────
   forgotPassword(data: ForgotPasswordRequest): Observable<ForgotPasswordResponse> {
-    return this.http.post<ForgotPasswordResponse>('/auth/forget-password', data);
+    return this.http.post<ForgotPasswordResponse>('/api/auth/forget-password', data);
   }
 
   // ─── RESET PASSWORD ─────────────────────────────────────────────────────
   resetPassword(data: ResetPasswordRequest): Observable<MessageResponse> {
-    return this.http.post<MessageResponse>('/auth/reset-password', data);
+    return this.http.post<MessageResponse>('/api/auth/reset-password', data);
   }
 
   // ─── CHANGE PASSWORD ────────────────────────────────────────────────────
   changePassword(data: ChangePasswordRequest): Observable<MessageResponse> {
     return this.http.post<MessageResponse>(
-      '/auth/change-password', data,
+      '/api/auth/change-password', data,
       { headers: this.getAuthHeaders() }
     );
   }
 
   // ─── GET ME ──────────────────────────────────────────────────────────────
   getMe(): Observable<UserResponse> {
-    return this.http.get<UserResponse>('/auth/me', {
+    return this.http.get<UserResponse>('/api/auth/me', {
       headers: this.getAuthHeaders()
     }).pipe(
       tap((user) => this.currentUser.set(user))
@@ -105,53 +105,53 @@ export class AuthService {
 
   // ─── CITIZEN PROFILE ────────────────────────────────────────────────────
   getCitizenProfile(): Observable<CitizenProfileResponse> {
-    return this.http.get<CitizenProfileResponse>('/profile/citizen', {
+    return this.http.get<CitizenProfileResponse>('/api/profile/citizen', {
       headers: this.getAuthHeaders()
     });
   }
 
   updateCitizenProfile(data: CitizenProfileRequest): Observable<CitizenProfileResponse> {
-    return this.http.put<CitizenProfileResponse>('/profile/citizen', data, {
+    return this.http.put<CitizenProfileResponse>('/api/profile/citizen', data, {
       headers: this.getAuthHeaders()
     });
   }
 
   // ─── ROLE REQUESTS ──────────────────────────────────────────────────────
   submitRoleRequest(data: RoleRequestSubmit): Observable<RoleRequestResponse> {
-    return this.http.post<RoleRequestResponse>('/role-requests', data, {
+    return this.http.post<RoleRequestResponse>('/api/role-requests', data, {
       headers: this.getAuthHeaders()
     });
   }
 
   getMyRoleRequests(): Observable<RoleRequestResponse[]> {
-    return this.http.get<RoleRequestResponse[]>('/role-requests', {
+    return this.http.get<RoleRequestResponse[]>('/api/role-requests', {
       headers: this.getAuthHeaders()
     });
   }
 
   cancelRoleRequest(requestId: string): Observable<MessageResponse> {
     return this.http.put<MessageResponse>(
-      `/role-requests/${requestId}/cancel`, {},
+      `/api/role-requests/${requestId}/cancel`, {},
       { headers: this.getAuthHeaders() }
     );
   }
 
   getPendingRoleRequests(): Observable<RoleRequestResponse[]> {
-    return this.http.get<RoleRequestResponse[]>('/role-requests/pending', {
+    return this.http.get<RoleRequestResponse[]>('/api/role-requests/pending', {
       headers: this.getAuthHeaders()
     });
   }
 
   approveRoleRequest(requestId: string): Observable<MessageResponse> {
     return this.http.put<MessageResponse>(
-      `/role-requests/${requestId}/approve`, {},
+      `/api/role-requests/${requestId}/approve`, {},
       { headers: this.getAuthHeaders() }
     );
   }
 
   rejectRoleRequest(requestId: string, reason?: string): Observable<MessageResponse> {
     return this.http.put<MessageResponse>(
-      `/role-requests/${requestId}/reject`,
+      `/api/role-requests/${requestId}/reject`,
       { review_reason: reason || null },
       { headers: this.getAuthHeaders() }
     );
@@ -165,7 +165,7 @@ export class AuthService {
       return throwError(() => new Error('No refresh token available'));
     }
     const params = new HttpParams().set('refresh_token', refreshToken);
-    return this.http.post<TokenResponse>('/auth/refresh', null, { params }).pipe(
+    return this.http.post<TokenResponse>('/api/auth/refresh', null, { params }).pipe(
       tap((response) => this.saveTokens(response)),
       catchError((error) => {
         this.clearTokens();

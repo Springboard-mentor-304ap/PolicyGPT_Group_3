@@ -58,14 +58,26 @@ def get_policy(
 
 def list_policies(
     db: Session,
+    current_user: User,
     include_archived: bool = False,
 ) -> list[Policy]:
     query = db.query(Policy)
 
-    if not include_archived:
+    if current_user.role in (UserRole.ADMINISTRATOR, UserRole.SUPER_ADMIN):
+        # Admins see all statuses from all users
+        if not include_archived:
+            query = query.filter(Policy.status != PolicyStatus.ARCHIVED)
+    elif current_user.role == UserRole.GOVERNMENT_OFFICIAL:
+        # Officials see their own records (all statuses) + APPROVED from others
         query = query.filter(
-            Policy.status != PolicyStatus.ARCHIVED
+            (Policy.uploaded_by == current_user.id)
+            | (Policy.status == PolicyStatus.APPROVED)
         )
+        if not include_archived:
+            query = query.filter(Policy.status != PolicyStatus.ARCHIVED)
+    else:
+        # Citizens, researchers, organizations: APPROVED only
+        query = query.filter(Policy.status == PolicyStatus.APPROVED)
 
     return query.order_by(
         Policy.created_at.desc()

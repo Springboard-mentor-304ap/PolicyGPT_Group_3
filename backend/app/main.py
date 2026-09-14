@@ -12,14 +12,14 @@ from backend.app.schemes.router import router as scheme_router
 app = FastAPI()
 
 
-app.include_router(auth_router)
-app.include_router(role_requests_router)
-app.include_router(profile_router)
-app.include_router(eligibility_router)
-app.include_router(search_router)
-app.include_router(comparison_router)
-app.include_router(policy_router)
-app.include_router(scheme_router)
+app.include_router(auth_router, prefix="/api")
+app.include_router(role_requests_router, prefix="/api")
+app.include_router(profile_router, prefix="/api")
+app.include_router(eligibility_router, prefix="/api")
+app.include_router(search_router, prefix="/api")
+app.include_router(comparison_router, prefix="/api")
+app.include_router(policy_router, prefix="/api")
+app.include_router(scheme_router, prefix="/api")
 
 @app.get("/")
 def root():

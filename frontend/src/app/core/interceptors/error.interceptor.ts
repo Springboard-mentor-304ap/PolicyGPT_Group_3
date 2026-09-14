@@ -10,11 +10,11 @@ const REFRESH_TOKEN_KEY = 'policygpt_refresh_token';
  * Endpoints that should never trigger a token refresh upon receiving a 401
  */
 const BYPASS_REFRESH_ENDPOINTS = [
-  '/auth/login',
-  '/auth/register',
-  '/auth/refresh',
-  '/auth/forget-password',
-  '/auth/reset-password',
+  '/api/auth/login',
+  '/api/auth/register',
+  '/api/auth/refresh',
+  '/api/auth/forget-password',
+  '/api/auth/reset-password',
 ];
 
 let isRefreshing = false;
@@ -67,7 +67,7 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
 
           // Call refresh endpoint directly via HttpClient
           return http.post<{ access_token: string; refresh_token: string; token_type: string }>(
-            '/auth/refresh',
+            '/api/auth/refresh',
             null,
             { params: { refresh_token: refreshToken } }
           ).pipe(

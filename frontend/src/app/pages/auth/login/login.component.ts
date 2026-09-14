@@ -82,9 +82,10 @@ export class LoginComponent {
 
     switch (role) {
       case 'admin':
-      case 'government_official':
+      case 'super_admin':
         this.router.navigate(['/admin']);
         break;
+      case 'government_official':
       case 'citizen':
       case 'researcher':
       case 'organization':

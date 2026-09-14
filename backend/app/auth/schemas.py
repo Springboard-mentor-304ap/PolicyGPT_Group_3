@@ -24,6 +24,8 @@ class RegisterRequest(BaseModel):
             raise ValueError("Full name cannot be empty")
         return value
 
+class RegistrationResponse(BaseModel):
+    message: str
 
 class LoginRequest(BaseModel):
     email: EmailStr

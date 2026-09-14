@@ -16,6 +16,7 @@ from backend.app.auth.schemas import (
     ResendVerificationRequest,
     UserResponse,
     UserDetailsResponse,
+    RegistrationResponse
 )
 from backend.app.auth.security import (
     ALGORITHM,
@@ -41,7 +42,7 @@ router = APIRouter(
 
 @router.post(
     "/register",
-    response_model=TokenResponse,
+    response_model=RegistrationResponse,
     status_code=status.HTTP_201_CREATED,
 )
 def register(
@@ -82,21 +83,9 @@ def register(
     print(f"  {verification_token}")
     print(f"{'='*60}\n\n")
 
-    access_token = create_access_token({
-        "sub": str(user.id),
-        "role": user.role.value,
-    })
-
-    refresh_token = create_refresh_token({
-        "sub": str(user.id),
-        "role": user.role.value,
-    })
-
     return {
-        "access_token": access_token,
-        "refresh_token": refresh_token,
-        "token_type": "bearer",
-    }
+        "message": "Registration successful. Please verify your email."
+    }                                                       
 
 
 # ─── EMAIL VERIFICATION ─────────────────────────────────────────────────────

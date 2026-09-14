@@ -1,0 +1,238 @@
+<div class="policy-detail-page">
+  <!-- Back Button -->
+  <button class="back-btn" (click)="goBack()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+      <path d="m15 18-6-6 6-6"></path>
+    </svg>
+    Back to Policies
+  </button>
+
+  <!-- Loading State -->
+  @if (loading()) {
+    <div class="state-container">
+      <div class="loading-spinner"></div>
+      <p class="state-text">Loading policy...</p>
+    </div>
+  }
+
+  <!-- Error State -->
+  @if (error() && !policy()) {
+    <div class="state-container error-state">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="48" height="48">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="8" x2="12" y2="12"></line>
+        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+      </svg>
+      <p class="state-text">{{ error() }}</p>
+      <app-button variant="outline" size="sm" (btnClick)="goBack()">Go Back</app-button>
+    </div>
+  }
+
+  <!-- Policy Content -->
+  @if (policy()) {
+    <div class="policy-content">
+      <!-- Header Card -->
+      <div class="policy-header-card">
+        <div class="header-top">
+          <div class="header-info">
+            <h1 class="policy-title">{{ policy()!.title }}</h1>
+            <div class="policy-meta">
+              <app-badge [variant]="getStatusBadgeVariant(policy()!.status)">
+                {{ formatStatus(policy()!.status) }}
+              </app-badge>
+              <span class="meta-separator">•</span>
+              <span class="meta-category">{{ formatCategory(policy()!.category) }}</span>
+              <span class="meta-separator">•</span>
+              <span class="meta-department">{{ policy()!.department }}</span>
+            </div>
+          </div>
+          <div class="header-actions">
+            @if (canEdit()) {
+              <app-button variant="primary" size="sm" (btnClick)="editPolicy()">Edit</app-button>
+            }
+            @if (canArchive()) {
+              <app-button variant="outline" size="sm" [disabled]="actionLoading()" (btnClick)="archivePolicy()">Archive</app-button>
+            }
+            @if (canUnarchive()) {
+              <app-button variant="secondary" size="sm" [disabled]="actionLoading()" (btnClick)="unarchivePolicy()">Unarchive</app-button>
+            }
+            @if (canApprove()) {
+              <app-button variant="primary" size="sm" [disabled]="actionLoading()" (btnClick)="approvePolicy()">Approve</app-button>
+            }
+            @if (canReject()) {
+              <app-button variant="danger" size="sm" [disabled]="actionLoading()" (btnClick)="openRejectDialog()">Reject</app-button>
+            }
+          </div>
+        </div>
+
+        <!-- Error Banner -->
+        @if (error()) {
+          <div class="error-banner">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="8" x2="12" y2="12"></line>
+              <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+            {{ error() }}
+            <button class="error-dismiss" (click)="error.set(null)">×</button>
+          </div>
+        }
+      </div>
+
+      <!-- Main Content Grid -->
+      <div class="detail-grid">
+        <!-- Left Column: Description & Details -->
+        <div class="detail-main">
+          <div class="detail-card">
+            <h3 class="card-heading">Description</h3>
+            <p class="description-text">{{ policy()!.description }}</p>
+          </div>
+
+          @if (policy()!.required_documents && policy()!.required_documents!.length > 0) {
+            <div class="detail-card">
+              <h3 class="card-heading">Required Documents</h3>
+              <ul class="document-list">
+                @for (doc of policy()!.required_documents!; track doc) {
+                  <li class="document-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+                      <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
+                      <polyline points="14 2 14 8 20 8"></polyline>
+                    </svg>
+                    {{ doc }}
+                  </li>
+                }
+              </ul>
+            </div>
+          }
+
+          @if (policy()!.document_url) {
+            <div class="detail-card">
+              <h3 class="card-heading">Official Document</h3>
+              <a class="doc-link" [href]="policy()!.document_url" target="_blank" rel="noopener">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                  <polyline points="15 3 21 3 21 9"></polyline>
+                  <line x1="10" y1="14" x2="21" y2="3"></line>
+                </svg>
+                View Document
+              </a>
+            </div>
+          }
+
+          @if (policy()!.rejection_reason) {
+            <div class="detail-card rejection-card">
+              <h3 class="card-heading rejection-heading">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="15" y1="9" x2="9" y2="15"></line>
+                  <line x1="9" y1="9" x2="15" y2="15"></line>
+                </svg>
+                Rejection Reason
+              </h3>
+              <p class="rejection-text">{{ policy()!.rejection_reason }}</p>
+            </div>
+          }
+        </div>
+
+        <!-- Right Column: Info Sidebar -->
+        <div class="detail-sidebar">
+          <div class="detail-card info-card">
+            <h3 class="card-heading">Policy Information</h3>
+            <div class="info-grid">
+              <div class="info-item">
+                <span class="info-label">Category</span>
+                <span class="info-value">{{ formatCategory(policy()!.category) }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Department</span>
+                <span class="info-value">{{ policy()!.department }}</span>
+              </div>
+              @if (policy()!.ministry) {
+                <div class="info-item">
+                  <span class="info-label">Ministry</span>
+                  <span class="info-value">{{ policy()!.ministry }}</span>
+                </div>
+              }
+              @if (policy()!.state) {
+                <div class="info-item">
+                  <span class="info-label">State</span>
+                  <span class="info-value">{{ policy()!.state }}</span>
+                </div>
+              }
+              <div class="info-item">
+                <span class="info-label">Status</span>
+                <app-badge [variant]="getStatusBadgeVariant(policy()!.status)" size="sm">
+                  {{ formatStatus(policy()!.status) }}
+                </app-badge>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Published</span>
+                <span class="info-value">{{ formatDate(policy()!.published_date) }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Views</span>
+                <span class="info-value">{{ policy()!.view_count }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="detail-card info-card">
+            <h3 class="card-heading">Timestamps</h3>
+            <div class="info-grid">
+              <div class="info-item">
+                <span class="info-label">Created</span>
+                <span class="info-value">{{ formatDateTime(policy()!.created_at) }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Last Updated</span>
+                <span class="info-value">{{ formatDateTime(policy()!.updated_at) }}</span>
+              </div>
+              @if (policy()!.archived_at) {
+                <div class="info-item">
+                  <span class="info-label">Archived</span>
+                  <span class="info-value">{{ formatDateTime(policy()!.archived_at) }}</span>
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Reject Dialog -->
+  @if (showRejectDialog()) {
+    <div class="dialog-backdrop" (click)="closeRejectDialog()">
+      <div class="dialog" (click)="$event.stopPropagation()">
+        <div class="dialog-header">
+          <h3 class="dialog-title">Reject Policy</h3>
+          <button class="dialog-close" (click)="closeRejectDialog()">×</button>
+        </div>
+        <div class="dialog-body">
+          <p class="dialog-text">Provide a reason for rejecting this policy:</p>
+          <textarea
+            class="reject-textarea"
+            placeholder="Enter rejection reason..."
+            [value]="rejectReason()"
+            (input)="rejectReason.set($any($event.target).value)"
+            rows="4"
+          ></textarea>
+          @if (rejectReason().trim().length === 0) {
+            <p class="field-error">Rejection reason is required</p>
+          }
+        </div>
+        <div class="dialog-actions">
+          <app-button variant="ghost" size="sm" (btnClick)="closeRejectDialog()">Cancel</app-button>
+          <app-button
+            variant="danger"
+            size="sm"
+            [disabled]="actionLoading() || rejectReason().trim().length === 0"
+            (btnClick)="submitRejection()"
+          >
+            Reject Policy
+          </app-button>
+        </div>
+      </div>
+    </div>
+  }
+</div>

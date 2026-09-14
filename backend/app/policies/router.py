@@ -57,6 +57,7 @@ def list_policies_route(
 ):
     return list_policies(
         db=db,
+        current_user=current_user,
         include_archived=include_archived,
     )
 

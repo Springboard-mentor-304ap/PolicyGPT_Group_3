@@ -84,14 +84,26 @@ def get_scheme(
 
 def list_schemes(
     db: Session,
+    current_user: User,
     include_archived: bool = False,
 ) -> list[Scheme]:
     query = db.query(Scheme)
 
-    if not include_archived:
+    if current_user.role in (UserRole.ADMINISTRATOR, UserRole.SUPER_ADMIN):
+        # Admins see all statuses from all users
+        if not include_archived:
+            query = query.filter(Scheme.status != SchemeStatus.ARCHIVED)
+    elif current_user.role == UserRole.GOVERNMENT_OFFICIAL:
+        # Officials see their own records (all statuses) + ACTIVE from others
         query = query.filter(
-            Scheme.status != SchemeStatus.ARCHIVED
+            (Scheme.created_by == current_user.id)
+            | (Scheme.status == SchemeStatus.ACTIVE)
         )
+        if not include_archived:
+            query = query.filter(Scheme.status != SchemeStatus.ARCHIVED)
+    else:
+        # Citizens, researchers, organizations: ACTIVE only
+        query = query.filter(Scheme.status == SchemeStatus.ACTIVE)
 
     return query.order_by(
         Scheme.created_at.desc()

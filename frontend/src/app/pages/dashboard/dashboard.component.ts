@@ -229,6 +229,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   setActiveMenu(menuId: string): void {
     this.activeMenu.set(menuId);
+
+    // Navigate to dedicated pages for specific menu items
+    switch (menuId) {
+      case 'policies':
+        this.router.navigate(['/policies']);
+        break;
+    }
   }
 
   logout(): void {

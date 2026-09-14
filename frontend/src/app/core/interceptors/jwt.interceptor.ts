@@ -6,13 +6,13 @@ const ACCESS_TOKEN_KEY = 'policygpt_access_token';
  * Public authentication endpoints that do not require an Authorization header
  */
 const PUBLIC_ENDPOINTS = [
-  '/auth/login',
-  '/auth/register',
-  '/auth/forget-password',
-  '/auth/reset-password',
-  '/auth/refresh',
-  '/auth/verify-email',
-  '/auth/resend-verification',
+  '/api/auth/login',
+  '/api/auth/register',
+  '/api/auth/forget-password',
+  '/api/auth/reset-password',
+  '/api/auth/refresh',
+  '/api/auth/verify-email',
+  '/api/auth/resend-verification',
 ];
 
 /**
