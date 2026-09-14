@@ -1,19 +1,13 @@
-import { Injectable, computed, signal } from '@angular/core';
-import { Observable, of, delay } from 'rxjs';
+import { Injectable, inject, computed, signal } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable, map } from 'rxjs';
 import { ComparisonMatrix, ComparisonMatrixRow } from '../models/comparison.models';
 import { SearchResultItem } from '../models/search.models';
 
-// ╔══════════════════════════════════════════════════════════════════════════════╗
-// ║  HOW TO RECONNECT TO THE REAL BACKEND COMPARISON API                         ║
-// ║                                                                            ║
-// ║  1. In frontend/src/app/app.config.ts, ensure provideHttpClient() is active ║
-// ║  2. Inject HttpClient: private readonly http = inject(HttpClient);          ║
-// ║  3. Replace getComparisonMatrix() with:                                    ║
-// ║       return this.http.post<ComparisonMatrix>('/api/comparison', { ids })   ║
-// ╚══════════════════════════════════════════════════════════════════════════════╝
-
 @Injectable({ providedIn: 'root' })
 export class ComparisonService {
+  private readonly http = inject(HttpClient);
+
   readonly MAX_ITEMS = 4;
 
   // Global reactive state for selected comparison items
@@ -22,10 +16,6 @@ export class ComparisonService {
   readonly isFull = computed(() => this.selectedCount() >= this.MAX_ITEMS);
   readonly hasItems = computed(() => this.selectedCount() > 0);
 
-  /**
-   * Toggles item in comparison list.
-   * Returns true if added, false if removed or reached limit.
-   */
   toggleItem(item: SearchResultItem): boolean {
     const current = this.selectedItems();
     const exists = current.some((i) => i.id === item.id);
@@ -34,9 +24,7 @@ export class ComparisonService {
       this.removeItem(item.id);
       return false;
     } else {
-      if (current.length >= this.MAX_ITEMS) {
-        return false;
-      }
+      if (current.length >= this.MAX_ITEMS) return false;
       this.selectedItems.set([...current, item]);
       return true;
     }
@@ -64,68 +52,108 @@ export class ComparisonService {
   }
 
   /**
-   * Assembles a comparison matrix for the given or currently selected items.
+   * Fetch comparison data from the backend and assemble a matrix.
    *
-   * Backend Endpoint: POST /api/comparison
+   * Backend: POST /api/comparison  { ids: UUID[], type: "policy" | "scheme" }
+   * Response: { items: ComparisonItem[] }
    */
   getComparisonMatrix(itemsToCompare?: SearchResultItem[]): Observable<ComparisonMatrix> {
     const items = itemsToCompare || this.selectedItems();
 
     if (items.length === 0) {
-      return of({ items: [], rows: [] });
+      return new Observable((obs) => {
+        obs.next({ items: [], rows: [] });
+        obs.complete();
+      });
     }
 
-    const rows: ComparisonMatrixRow[] = [
+    // Determine type from first item (mixed comparison not supported by backend)
+    const type = items[0].itemType === 'policy' ? 'policy' : 'scheme';
+
+    const body = {
+      ids: items.map((i) => i.id),
+      type,
+    };
+
+    return this.http
+      .post<{ items: any[] }>('/api/comparison', body)
+      .pipe(
+        map((res) => {
+          // Map backend ComparisonItem to SearchResultItem for matrix building
+          const mappedItems: SearchResultItem[] = res.items.map((item) => ({
+            id: String(item.id),
+            itemType: item.type as 'policy' | 'scheme',
+            title: item.title,
+            description: item.description,
+            category: item.category || '',
+            categoryLabel: item.category
+              ? item.category.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())
+              : '',
+            department: item.department,
+            ministry: item.ministry,
+            state: item.state,
+            status: item.status || '',
+            benefits: Array.isArray(item.benefits)
+              ? item.benefits.join(', ')
+              : item.benefits || null,
+            application_process: item.application_process,
+            launch_date: item.launch_date,
+            deadline_date: item.deadline_date,
+            document_url: item.document_url,
+            view_count: 0,
+          }));
+
+          const rows = this.buildRows(mappedItems);
+          return { items: mappedItems, rows };
+        })
+      );
+  }
+
+  /** Build comparison matrix rows from items. */
+  private buildRows(items: SearchResultItem[]): ComparisonMatrixRow[] {
+    return [
       {
         attribute: { key: 'type', label: 'Item Type', category: 'overview' },
-        values: this.mapAttributeValues(items, (i) =>
+        values: this.mapVals(items, (i) =>
           i.itemType === 'policy' ? 'National Policy' : 'Welfare Scheme'
         ),
       },
       {
         attribute: { key: 'category', label: 'Domain Category', category: 'overview' },
-        values: this.mapAttributeValues(items, (i) => i.categoryLabel),
+        values: this.mapVals(items, (i) => i.categoryLabel),
       },
       {
         attribute: { key: 'department', label: 'Department / Ministry', category: 'overview' },
-        values: this.mapAttributeValues(items, (i) => i.department || i.ministry || 'Central Government'),
+        values: this.mapVals(items, (i) => i.department || i.ministry || 'Central Government'),
       },
       {
         attribute: { key: 'status', label: 'Current Status', category: 'overview' },
-        values: this.mapAttributeValues(items, (i) => i.status),
+        values: this.mapVals(items, (i) => i.status),
       },
       {
         attribute: { key: 'benefits', label: 'Financial & Core Benefits', category: 'benefits' },
-        values: this.mapAttributeValues(
-          items,
-          (i) => i.benefits || 'Broad policy framework and public initiative.'
-        ),
+        values: this.mapVals(items, (i) => i.benefits || 'Broad policy framework and public initiative.'),
       },
       {
         attribute: { key: 'application_process', label: 'Application & Access Mode', category: 'application' },
-        values: this.mapAttributeValues(
-          items,
-          (i) => i.application_process || 'Direct portal submission / designated nodal centers.'
-        ),
+        values: this.mapVals(items, (i) => i.application_process || 'Direct portal submission.'),
       },
       {
         attribute: { key: 'launch_date', label: 'Launch Date', category: 'overview' },
-        values: this.mapAttributeValues(items, (i) => i.launch_date || 'N/A'),
+        values: this.mapVals(items, (i) => i.launch_date || 'N/A'),
       },
       {
         attribute: { key: 'deadline_date', label: 'Application Deadline', category: 'application' },
-        values: this.mapAttributeValues(items, (i) => i.deadline_date || 'Ongoing / No fixed deadline'),
+        values: this.mapVals(items, (i) => i.deadline_date || 'Ongoing / No fixed deadline'),
       },
       {
         attribute: { key: 'document_url', label: 'Official Portal / Guidelines', category: 'application' },
-        values: this.mapAttributeValues(items, (i) => i.document_url || 'https://india.gov.in'),
+        values: this.mapVals(items, (i) => i.document_url || 'https://india.gov.in'),
       },
     ];
-
-    return of({ items, rows }).pipe(delay(250));
   }
 
-  private mapAttributeValues(
+  private mapVals(
     items: SearchResultItem[],
     extractor: (i: SearchResultItem) => string | null | undefined
   ): Record<string, string | null | undefined> {

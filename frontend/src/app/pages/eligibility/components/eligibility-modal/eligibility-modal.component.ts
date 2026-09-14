@@ -103,7 +103,7 @@ export class EligibilityModalComponent implements OnInit {
       disability_status: Boolean(val.disability_status),
     };
 
-    this.eligibilityService.checkSchemeEligibility(this.scheme.id, req).subscribe({
+    this.eligibilityService.checkSchemeEligibility(this.scheme.id).subscribe({
       next: (res) => {
         this.result.set(res);
         this.evaluating.set(false);
