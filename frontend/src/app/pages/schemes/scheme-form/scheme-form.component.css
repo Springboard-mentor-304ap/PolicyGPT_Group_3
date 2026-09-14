@@ -1,0 +1,185 @@
+.scheme-form-page {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: var(--space-6, 24px);
+}
+
+/* Back Button */
+.back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+  padding: var(--space-2, 8px) var(--space-3, 12px);
+  background: none;
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: var(--radius-md, 6px);
+  color: var(--color-text-secondary, #64748b);
+  font-size: var(--font-size-sm, 14px);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  margin-bottom: var(--space-4, 16px);
+}
+
+.back-btn:hover {
+  background: var(--color-bg-hover, #f8fafc);
+  color: var(--color-text, #1e293b);
+  border-color: var(--color-border-hover, #cbd5e1);
+}
+
+/* Page Header */
+.page-header {
+  margin-bottom: var(--space-6, 24px);
+}
+
+.page-title {
+  font-size: var(--font-size-2xl, 24px);
+  font-weight: 600;
+  color: var(--color-text, #1e293b);
+  margin: 0 0 var(--space-1, 4px);
+}
+
+.page-subtitle {
+  font-size: var(--font-size-sm, 14px);
+  color: var(--color-text-secondary, #64748b);
+  margin: 0;
+}
+
+/* Loading State */
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-12, 48px);
+  color: var(--color-text-secondary, #64748b);
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--color-border, #e2e8f0);
+  border-top-color: var(--color-primary, #3b82f6);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.spinner-small {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-right: var(--space-2, 8px);
+}
+
+/* Banners */
+.banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+  padding: var(--space-3, 12px) var(--space-4, 16px);
+  border-radius: var(--radius-md, 6px);
+  margin-bottom: var(--space-4, 16px);
+  font-size: var(--font-size-sm, 14px);
+}
+
+.error-banner {
+  background: var(--color-error-bg, #fef2f2);
+  color: var(--color-error, #ef4444);
+  border: 1px solid var(--color-error-border, #fecaca);
+}
+
+.success-banner {
+  background: var(--color-success-bg, #f0fdf4);
+  color: var(--color-success, #22c55e);
+  border: 1px solid var(--color-success-border, #bbf7d0);
+}
+
+/* Form */
+.scheme-form {
+  background: var(--color-bg-card, #ffffff);
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: var(--radius-lg, 8px);
+  padding: var(--space-6, 24px);
+}
+
+.form-group {
+  margin-bottom: var(--space-5, 20px);
+}
+
+.form-label {
+  display: block;
+  font-size: var(--font-size-sm, 14px);
+  font-weight: 500;
+  color: var(--color-text, #1e293b);
+  margin-bottom: var(--space-2, 8px);
+}
+
+.form-input,
+.form-textarea,
+.form-select {
+  width: 100%;
+  padding: var(--space-2, 8px) var(--space-3, 12px);
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: var(--radius-md, 6px);
+  font-size: var(--font-size-sm, 14px);
+  color: var(--color-text, #1e293b);
+  background: var(--color-bg-card, #ffffff);
+  transition: border-color 0.15s ease;
+  box-sizing: border-box;
+}
+
+.form-input:focus,
+.form-textarea:focus,
+.form-select:focus {
+  outline: none;
+  border-color: var(--color-primary, #3b82f6);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.form-textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.form-error {
+  display: block;
+  font-size: var(--font-size-xs, 12px);
+  color: var(--color-error, #ef4444);
+  margin-top: var(--space-1, 4px);
+}
+
+.form-hint {
+  display: block;
+  font-size: var(--font-size-xs, 12px);
+  color: var(--color-text-tertiary, #94a3b8);
+  margin-top: var(--space-1, 4px);
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4, 16px);
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3, 12px);
+  margin-top: var(--space-6, 24px);
+  padding-top: var(--space-4, 16px);
+  border-top: 1px solid var(--color-border, #e2e8f0);
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+}

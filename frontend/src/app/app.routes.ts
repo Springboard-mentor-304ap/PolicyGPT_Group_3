@@ -66,6 +66,40 @@ export const routes: Routes = [
         (m) => m.PolicyFormComponent
       ),
   },
+  // Scheme Management Routes
+  {
+    path: 'schemes',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./pages/schemes/scheme-list/scheme-list.component').then(
+        (m) => m.SchemeListComponent
+      ),
+  },
+  {
+    path: 'schemes/create',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./pages/schemes/scheme-form/scheme-form.component').then(
+        (m) => m.SchemeFormComponent
+      ),
+  },
+  {
+    path: 'schemes/:id',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./pages/schemes/scheme-details/scheme-details.component').then(
+        (m) => m.SchemeDetailsComponent
+      ),
+  },
+  {
+    path: 'schemes/:id/edit',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./pages/schemes/scheme-form/scheme-form.component').then(
+        (m) => m.SchemeFormComponent
+      ),
+  },
+  // Search, Eligibility, Comparison
   {
     path: 'search',
     canActivate: [authGuard],
