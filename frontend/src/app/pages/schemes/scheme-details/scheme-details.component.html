@@ -1,0 +1,244 @@
+<div class="scheme-details-page">
+  <!-- Back Button -->
+  <button class="back-btn" (click)="goBack()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+      <path d="m15 18-6-6 6-6"></path>
+    </svg>
+    Back to Schemes
+  </button>
+
+  <!-- Loading State -->
+  @if (loading()) {
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <p>Loading scheme...</p>
+    </div>
+  }
+
+  <!-- Error State -->
+  @if (error() && !scheme()) {
+    <div class="error-state">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="48" height="48">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="8" x2="12" y2="12"></line>
+        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+      </svg>
+      <p>{{ error() }}</p>
+      <app-button variant="secondary" (btnClick)="goBack()">Back to Schemes</app-button>
+    </div>
+  }
+
+  <!-- Scheme Details -->
+  @if (scheme(); as s) {
+    <!-- Header Card -->
+    <div class="detail-header-card">
+      <div class="header-top">
+        <div class="header-info">
+          <h1 class="scheme-title">{{ s.title }}</h1>
+          <div class="header-meta">
+            <app-badge [variant]="getStatusBadge(s.status)">
+              {{ getStatusLabel(s.status) }}
+            </app-badge>
+            <span class="category-badge">{{ getCategoryLabel(s.category) }}</span>
+          </div>
+        </div>
+        <div class="header-actions">
+          @if (canEdit()) {
+            <app-button variant="secondary" (btnClick)="editScheme()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+              </svg>
+              Edit
+            </app-button>
+          }
+          @if (canArchive()) {
+            <app-button variant="secondary" [disabled]="actionLoading()" (btnClick)="archiveScheme()">
+              Archive
+            </app-button>
+          }
+          @if (canUnarchive()) {
+            <app-button variant="primary" [disabled]="actionLoading()" (btnClick)="unarchiveScheme()">
+              Unarchive
+            </app-button>
+          }
+          @if (canApprove()) {
+            <app-button variant="primary" [disabled]="actionLoading()" (btnClick)="approveScheme()">
+              Approve
+            </app-button>
+          }
+          @if (canReject()) {
+            <app-button variant="danger" [disabled]="actionLoading()" (btnClick)="openRejectDialog()">
+              Reject
+            </app-button>
+          }
+        </div>
+      </div>
+
+      <!-- Rejection Reason -->
+      @if (s.rejection_reason) {
+        <div class="rejection-banner">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+          <div>
+            <strong>Rejection Reason:</strong> {{ s.rejection_reason }}
+          </div>
+        </div>
+      }
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="detail-grid">
+      <!-- Left Column: Description & Details -->
+      <div class="detail-main">
+        <!-- Description -->
+        <div class="detail-section">
+          <h2 class="section-title">Description</h2>
+          <p class="description-text">{{ s.description }}</p>
+        </div>
+
+        <!-- Benefits -->
+        @if (s.benefits && s.benefits.length > 0) {
+          <div class="detail-section">
+            <h2 class="section-title">Benefits</h2>
+            <ul class="benefits-list">
+              @for (benefit of s.benefits; track benefit) {
+                <li>{{ benefit }}</li>
+              }
+            </ul>
+          </div>
+        }
+
+        <!-- Application Process -->
+        @if (s.application_process) {
+          <div class="detail-section">
+            <h2 class="section-title">Application Process</h2>
+            <p class="process-text">{{ s.application_process }}</p>
+          </div>
+        }
+
+        <!-- Required Documents -->
+        @if (s.required_documents && s.required_documents.length > 0) {
+          <div class="detail-section">
+            <h2 class="section-title">Required Documents</h2>
+            <ul class="documents-list">
+              @for (doc of s.required_documents; track doc) {
+                <li>{{ doc }}</li>
+              }
+            </ul>
+          </div>
+        }
+      </div>
+
+      <!-- Right Column: Sidebar -->
+      <div class="detail-sidebar">
+        <!-- Info Card -->
+        <div class="info-card">
+          <h3 class="info-card-title">Scheme Information</h3>
+          <div class="info-row">
+            <span class="info-label">Category</span>
+            <span class="info-value">{{ getCategoryLabel(s.category) }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Department</span>
+            <span class="info-value">{{ s.department || '—' }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">State</span>
+            <span class="info-value">{{ s.state || '—' }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Policy ID</span>
+            <span class="info-value mono">{{ s.policy_id }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Launch Date</span>
+            <span class="info-value">{{ formatDate(s.launch_date) }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Deadline</span>
+            <span class="info-value">{{ formatDate(s.deadline_date) }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Views</span>
+            <span class="info-value">{{ s.view_count }}</span>
+          </div>
+        </div>
+
+        <!-- Official Document -->
+        @if (s.document_url) {
+          <div class="info-card">
+            <h3 class="info-card-title">Official Document</h3>
+            <a [href]="s.document_url" target="_blank" rel="noopener noreferrer" class="doc-link">
+              View Document
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                <polyline points="15 3 21 3 21 9"></polyline>
+                <line x1="10" y1="14" x2="21" y2="3"></line>
+              </svg>
+            </a>
+          </div>
+        }
+
+        <!-- Timestamps -->
+        <div class="info-card">
+          <h3 class="info-card-title">Timestamps</h3>
+          <div class="info-row">
+            <span class="info-label">Created</span>
+            <span class="info-value">{{ formatDateTime(s.created_at) }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Updated</span>
+            <span class="info-value">{{ formatDateTime(s.updated_at) }}</span>
+          </div>
+          @if (s.archived_at) {
+            <div class="info-row">
+              <span class="info-label">Archived</span>
+              <span class="info-value">{{ formatDateTime(s.archived_at) }}</span>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Reject Dialog -->
+  @if (showRejectDialog()) {
+    <div class="dialog-overlay" (click)="closeRejectDialog()">
+      <div class="dialog" (click)="$event.stopPropagation()">
+        <div class="dialog-header">
+          <h3>Reject Scheme</h3>
+          <button class="dialog-close" (click)="closeRejectDialog()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        <div class="dialog-body">
+          <p>Please provide a reason for rejection:</p>
+          <textarea
+            class="rejection-textarea"
+            rows="4"
+            placeholder="Enter rejection reason..."
+            [value]="rejectionReason()"
+            (input)="rejectionReason.set($any($event.target).value)"
+          ></textarea>
+        </div>
+        <div class="dialog-actions">
+          <app-button variant="secondary" (btnClick)="closeRejectDialog()">Cancel</app-button>
+          <app-button
+            variant="danger"
+            [disabled]="!rejectionReason().trim() || actionLoading()"
+            (btnClick)="rejectScheme()"
+          >
+            Reject Scheme
+          </app-button>
+        </div>
+      </div>
+    </div>
+  }
+</div>

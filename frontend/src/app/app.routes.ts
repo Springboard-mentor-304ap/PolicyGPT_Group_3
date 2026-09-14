@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { AuthLayoutComponent } from './layouts/auth-layout/auth-layout.component';
 import { DashboardComponent } from './pages/dashboard/dashboard.component';
+import { authGuard } from './core/guards/auth.guard';
 
 export const routes: Routes = [
   {
@@ -32,28 +33,39 @@ export const routes: Routes = [
         (m) => m.RoleRequestComponent
       ),
   },
-    {
+  // Scheme Management Routes
+  {
     path: 'schemes',
+    canActivate: [authGuard],
     loadComponent: () =>
-      import('./pages/schemes/scheme-form/scheme-form').then(
-        (m) => m.SchemeForm
+      import('./pages/schemes/scheme-list/scheme-list.component').then(
+        (m) => m.SchemeListComponent
       ),
   },
   {
-  path: 'scheme-list',
-  loadComponent: () =>
-    import('./pages/schemes/scheme-list/scheme-list').then(
-      (m) => m.SchemeList
-    ),
-},
-
-{
-  path: 'scheme-details',
-  loadComponent: () =>
-    import('./pages/schemes/scheme-details/scheme-details').then(
-      (m) => m.SchemeDetails
-    ),
-},
+    path: 'schemes/create',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./pages/schemes/scheme-form/scheme-form.component').then(
+        (m) => m.SchemeFormComponent
+      ),
+  },
+  {
+    path: 'schemes/:id',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./pages/schemes/scheme-details/scheme-details.component').then(
+        (m) => m.SchemeDetailsComponent
+      ),
+  },
+  {
+    path: 'schemes/:id/edit',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./pages/schemes/scheme-form/scheme-form.component').then(
+        (m) => m.SchemeFormComponent
+      ),
+  },
   {
     path: '',
     redirectTo: 'dashboard',

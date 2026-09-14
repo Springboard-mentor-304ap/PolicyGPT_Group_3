@@ -229,6 +229,28 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   setActiveMenu(menuId: string): void {
     this.activeMenu.set(menuId);
+    // Navigate to dedicated pages for specific menu items
+    switch (menuId) {
+      case 'policies':
+        this.router.navigate(['/policies']);
+        break;
+      case 'schemes':
+        this.router.navigate(['/schemes']);
+        break;
+      case 'search':
+        this.router.navigate(['/search']);
+        break;
+      case 'eligibility':
+        this.router.navigate(['/eligibility']);
+        break;
+      case 'compare':
+        this.router.navigate(['/compare']);
+        break;
+      case 'overview':
+      default:
+        // remain on overview
+        break;
+    }
   }
 
   logout(): void {
