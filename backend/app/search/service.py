@@ -29,9 +29,16 @@ def search_policies(
         )
 
     if category:
-        statement = statement.filter(
-            Policy.category == category
-        )
+        # Only filter by category if it's a valid PolicyCategory
+        from backend.app.models.policy import PolicyCategory
+        try:
+            PolicyCategory(category)
+            statement = statement.filter(
+                Policy.category == category
+            )
+        except ValueError:
+            # Invalid policy category — skip filter, return no results
+            return []
 
     if department: 
         statement = statement.filter(
@@ -86,9 +93,16 @@ def search_schemes(
         )
 
     if category:
-        statement = statement.filter(
-            Scheme.category == category
-        )
+        # Only filter by category if it's a valid SchemeCategory
+        from backend.app.models.scheme import SchemeCategory
+        try:
+            SchemeCategory(category)
+            statement = statement.filter(
+                Scheme.category == category
+            )
+        except ValueError:
+            # Invalid scheme category — skip filter, return no results
+            return []
 
     if department: 
         statement = statement.filter(
