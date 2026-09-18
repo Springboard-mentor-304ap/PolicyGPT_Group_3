@@ -47,18 +47,25 @@
   <!-- Form -->
   @if (!loading()) {
     <form [formGroup]="schemeForm" (ngSubmit)="onSubmit()" class="scheme-form">
-      <!-- Policy ID -->
+      <!-- Parent Policy -->
       <div class="form-group">
-        <label for="policy_id" class="form-label">Policy ID *</label>
-        <input
+        <label for="policy_id" class="form-label">Parent Policy *</label>
+        <select
           id="policy_id"
-          type="text"
           formControlName="policy_id"
-          class="form-input"
-          placeholder="Enter the approved policy UUID"
-        />
+          class="form-select"
+          [disabled]="isEditMode() || policiesLoading()"
+        >
+          <option value="">{{ policiesLoading() ? 'Loading approved policies…' : 'Select an approved policy' }}</option>
+          @for (policy of policies(); track policy.id) {
+            <option [value]="policy.id">{{ policy.title }} — {{ policy.department }}</option>
+          }
+        </select>
+        @if (!policiesLoading() && !policies().length && !isEditMode()) {
+          <span class="form-hint">No approved policies are available. A scheme can only be created under an approved policy.</span>
+        }
         @if (schemeForm.get('policy_id')?.touched && schemeForm.get('policy_id')?.invalid) {
-          <span class="form-error">Policy ID is required</span>
+          <span class="form-error">Please select an approved policy</span>
         }
       </div>
 
@@ -145,13 +152,16 @@
         </div>
         <div class="form-group">
           <label for="state" class="form-label">State</label>
-          <input
+          <select
             id="state"
-            type="text"
             formControlName="state"
-            class="form-input"
-            placeholder="e.g., Maharashtra"
-          />
+            class="form-select"
+          >
+            <option value="">Select state or Union Territory</option>
+            @for (state of states; track state) {
+              <option [value]="state">{{ state }}</option>
+            }
+          </select>
         </div>
       </div>
 
@@ -201,6 +211,34 @@
           placeholder="https://example.gov.in/document"
         />
       </div>
+
+      @if (!isEditMode()) {
+        <section class="eligibility-rules-section">
+          <div class="rules-heading">
+            <div>
+              <h2>Eligibility rules</h2>
+              <p>Optionally define who qualifies for this scheme. You can also manage rules later from the scheme page.</p>
+            </div>
+            <app-button variant="secondary" type="button" (btnClick)="addEligibilityRule()">Add rule</app-button>
+          </div>
+          <div formArrayName="eligibilityRules">
+            @for (rule of eligibilityRules.controls; track $index; let i = $index) {
+              <div class="eligibility-rule-row" [formGroupName]="i">
+                <select class="form-select" formControlName="parameter" aria-label="Eligibility parameter">
+                  @for (parameter of eligibilityParameters; track parameter.value) { <option [value]="parameter.value">{{ parameter.label }}</option> }
+                </select>
+                <select class="form-select" formControlName="operator" aria-label="Eligibility operator">
+                  @for (operator of eligibilityOperators; track operator.value) { <option [value]="operator.value">{{ operator.label }}</option> }
+                </select>
+                <input class="form-input" formControlName="value" placeholder="Value, e.g. 18" aria-label="Eligibility value" />
+                <app-button variant="ghost" type="button" (btnClick)="removeEligibilityRule(i)">Remove</app-button>
+              </div>
+            } @empty {
+              <p class="form-hint">No rules added. Citizens will not be filtered by eligibility criteria.</p>
+            }
+          </div>
+        </section>
+      }
 
       <!-- Actions -->
       <div class="form-actions">

@@ -177,9 +177,36 @@
   border-top: 1px solid var(--color-border, #e2e8f0);
 }
 
+.eligibility-rules-section {
+  margin-top: var(--space-6, 24px);
+  padding-top: var(--space-5, 20px);
+  border-top: 1px solid var(--color-border, #e2e8f0);
+}
+
+.rules-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-4, 16px);
+  align-items: flex-start;
+  margin-bottom: var(--space-4, 16px);
+}
+
+.rules-heading h2 { margin: 0 0 var(--space-1, 4px); font-size: var(--font-size-lg, 18px); }
+.rules-heading p { margin: 0; color: var(--color-text-secondary, #64748b); font-size: var(--font-size-sm, 14px); }
+
+.eligibility-rule-row {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 1fr auto;
+  gap: var(--space-2, 8px);
+  align-items: center;
+  margin-bottom: var(--space-3, 12px);
+}
+
 /* Responsive */
 @media (max-width: 640px) {
   .form-row {
     grid-template-columns: 1fr;
   }
+
+  .rules-heading, .eligibility-rule-row { grid-template-columns: 1fr; display: grid; }
 }

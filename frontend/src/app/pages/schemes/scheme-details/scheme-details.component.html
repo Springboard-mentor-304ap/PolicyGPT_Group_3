@@ -131,6 +131,41 @@
             </ul>
           </div>
         }
+
+        <div class="detail-section eligibility-section">
+          <h2 class="section-title">Eligibility rules</h2>
+          @if (ruleError()) { <p class="rule-error">{{ ruleError() }}</p> }
+          @if (rulesLoading()) {
+            <p class="rule-empty">Loading eligibility rules...</p>
+          } @else if (eligibilityRules().length) {
+            <div class="rule-list">
+              @for (rule of eligibilityRules(); track rule.id) {
+                <div class="rule-item">
+                  <span>{{ getEligibilityParameterLabel(rule.parameter) }} {{ getEligibilityOperatorLabel(rule.operator) }} <strong>{{ rule.value }}</strong></span>
+                  @if (canManageEligibility()) {
+                    <app-button variant="ghost" size="sm" [disabled]="ruleSaving()" (btnClick)="deleteEligibilityRule(rule)">Remove</app-button>
+                  }
+                </div>
+              }
+            </div>
+          } @else {
+            <p class="rule-empty">No eligibility rules have been added.</p>
+          }
+
+          @if (canManageEligibility()) {
+            <div class="add-rule-form">
+              <select class="rule-select" [ngModel]="newRuleParameter()" (ngModelChange)="newRuleParameter.set($event)">
+                @for (parameter of eligibilityParameters; track parameter.value) { <option [value]="parameter.value">{{ parameter.label }}</option> }
+              </select>
+              <select class="rule-select" [ngModel]="newRuleOperator()" (ngModelChange)="newRuleOperator.set($event)">
+                @for (operator of eligibilityOperators; track operator.value) { <option [value]="operator.value">{{ operator.label }}</option> }
+              </select>
+              <input class="rule-input" [ngModel]="newRuleValue()" (ngModelChange)="newRuleValue.set($event)" placeholder="Value, e.g. 18" />
+              <app-button variant="primary" size="sm" [disabled]="!newRuleValue().trim() || ruleSaving()" (btnClick)="addEligibilityRule()">Add rule</app-button>
+            </div>
+            <p class="form-hint">For “one of” rules, separate values with commas.</p>
+          }
+        </div>
       </div>
 
       <!-- Right Column: Sidebar -->

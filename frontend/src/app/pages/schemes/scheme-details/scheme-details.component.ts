@@ -11,6 +11,11 @@ import {
   SCHEME_STATUS_BADGE,
   SCHEME_CATEGORY_LABELS,
   BadgeVariant,
+  EligibilityRule,
+  EligibilityParameter,
+  EligibilityOperator,
+  ELIGIBILITY_PARAMETER_LABELS,
+  ELIGIBILITY_OPERATOR_LABELS,
 } from '../../../core/models/scheme.models';
 import { UserRole } from '../../../core/models/auth.models';
 import { ButtonComponent } from '../../../shared/components/button/button.component';
@@ -33,6 +38,15 @@ export class SchemeDetailsComponent implements OnInit {
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
   readonly actionLoading = signal(false);
+  readonly eligibilityRules = signal<EligibilityRule[]>([]);
+  readonly rulesLoading = signal(false);
+  readonly ruleSaving = signal(false);
+  readonly ruleError = signal<string | null>(null);
+  readonly newRuleParameter = signal<EligibilityParameter>(EligibilityParameter.AGE);
+  readonly newRuleOperator = signal<EligibilityOperator>(EligibilityOperator.GTE);
+  readonly newRuleValue = signal('');
+  readonly eligibilityParameters = Object.values(EligibilityParameter).map((value) => ({ value, label: ELIGIBILITY_PARAMETER_LABELS[value] }));
+  readonly eligibilityOperators = Object.values(EligibilityOperator).map((value) => ({ value, label: ELIGIBILITY_OPERATOR_LABELS[value] }));
 
   // Reject dialog state
   readonly showRejectDialog = signal(false);
@@ -78,6 +92,14 @@ export class SchemeDetailsComponent implements OnInit {
     return s.status === SchemeStatus.PENDING_APPROVAL;
   });
 
+  readonly canManageEligibility = computed(() => {
+    const s = this.scheme();
+    return !!s
+      && this.isGovernmentOfficial()
+      && this.authService.currentUser()?.id === s.created_by
+      && s.status !== SchemeStatus.ARCHIVED;
+  });
+
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
@@ -95,12 +117,42 @@ export class SchemeDetailsComponent implements OnInit {
     this.schemeService.getScheme(id).subscribe({
       next: (scheme) => {
         this.scheme.set(scheme);
+        this.loadEligibilityRules(scheme.id);
         this.loading.set(false);
       },
       error: (err) => {
         this.error.set(err.error?.detail || 'Failed to load scheme');
         this.loading.set(false);
       },
+    });
+  }
+
+  loadEligibilityRules(schemeId: string): void {
+    this.rulesLoading.set(true);
+    this.schemeService.listEligibilityRules(schemeId).subscribe({
+      next: (rules) => { this.eligibilityRules.set(rules); this.rulesLoading.set(false); },
+      error: () => { this.ruleError.set('Could not load eligibility rules.'); this.rulesLoading.set(false); },
+    });
+  }
+
+  addEligibilityRule(): void {
+    const scheme = this.scheme();
+    const value = this.newRuleValue().trim();
+    if (!scheme || !value) return;
+    this.ruleSaving.set(true);
+    this.ruleError.set(null);
+    this.schemeService.createEligibilityRule(scheme.id, { parameter: this.newRuleParameter(), operator: this.newRuleOperator(), value }).subscribe({
+      next: (rule) => { this.eligibilityRules.update((rules) => [...rules, rule]); this.newRuleValue.set(''); this.ruleSaving.set(false); },
+      error: (err) => { this.ruleError.set(err.error?.detail || 'Could not add eligibility rule.'); this.ruleSaving.set(false); },
+    });
+  }
+
+  deleteEligibilityRule(rule: EligibilityRule): void {
+    this.ruleSaving.set(true);
+    this.ruleError.set(null);
+    this.schemeService.deleteEligibilityRule(rule.id).subscribe({
+      next: () => { this.eligibilityRules.update((rules) => rules.filter((item) => item.id !== rule.id)); this.ruleSaving.set(false); },
+      error: (err) => { this.ruleError.set(err.error?.detail || 'Could not remove eligibility rule.'); this.ruleSaving.set(false); },
     });
   }
 
@@ -206,6 +258,14 @@ export class SchemeDetailsComponent implements OnInit {
 
   getCategoryLabel(category: string): string {
     return (SCHEME_CATEGORY_LABELS as Record<string, string>)[category] || category;
+  }
+
+  getEligibilityParameterLabel(parameter: EligibilityParameter): string {
+    return ELIGIBILITY_PARAMETER_LABELS[parameter] || parameter;
+  }
+
+  getEligibilityOperatorLabel(operator: EligibilityOperator): string {
+    return ELIGIBILITY_OPERATOR_LABELS[operator] || operator;
   }
 
   formatDate(dateStr: string | null): string {

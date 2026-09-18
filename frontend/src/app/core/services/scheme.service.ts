@@ -6,6 +6,8 @@ import {
   SchemeCreateRequest,
   SchemeUpdateRequest,
   SchemeRejectRequest,
+  EligibilityRule,
+  EligibilityRuleCreateRequest,
 } from '../models/scheme.models';
 
 @Injectable({ providedIn: 'root' })
@@ -88,5 +90,26 @@ export class SchemeService {
       data,
       { headers: this.getAuthHeaders() }
     );
+  }
+
+  listEligibilityRules(schemeId: string): Observable<EligibilityRule[]> {
+    return this.http.get<EligibilityRule[]>(`/api/schemes/${schemeId}/eligibility-rules`, {
+      headers: this.getAuthHeaders(),
+    });
+  }
+
+  createEligibilityRule(
+    schemeId: string,
+    data: EligibilityRuleCreateRequest,
+  ): Observable<EligibilityRule> {
+    return this.http.post<EligibilityRule>(`/api/schemes/${schemeId}/eligibility-rules`, data, {
+      headers: this.getAuthHeaders(),
+    });
+  }
+
+  deleteEligibilityRule(ruleId: string): Observable<void> {
+    return this.http.delete<void>(`/api/schemes/eligibility-rules/${ruleId}`, {
+      headers: this.getAuthHeaders(),
+    });
   }
 }

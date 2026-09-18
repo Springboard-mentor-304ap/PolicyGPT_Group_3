@@ -81,6 +81,65 @@ export interface SchemeRejectRequest {
   rejection_reason: string;
 }
 
+export enum EligibilityParameter {
+  AGE = 'age',
+  GENDER = 'gender',
+  INCOME = 'income',
+  OCCUPATION = 'occupation',
+  EDUCATION = 'education',
+  STATE = 'state',
+  DISTRICT = 'district',
+  SOCIAL_CATEGORY = 'social_category',
+  DISABILITY_STATUS = 'disability_status',
+}
+
+export enum EligibilityOperator {
+  EQ = 'eq',
+  NEQ = 'neq',
+  LT = 'lt',
+  LTE = 'lte',
+  GT = 'gt',
+  GTE = 'gte',
+  IN = 'in',
+  NOT_IN = 'not_in',
+}
+
+export interface EligibilityRuleCreateRequest {
+  parameter: EligibilityParameter;
+  operator: EligibilityOperator;
+  value: string;
+}
+
+export interface EligibilityRule extends EligibilityRuleCreateRequest {
+  id: string;
+  scheme_id: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export const ELIGIBILITY_PARAMETER_LABELS: Record<EligibilityParameter, string> = {
+  [EligibilityParameter.AGE]: 'Age',
+  [EligibilityParameter.GENDER]: 'Gender',
+  [EligibilityParameter.INCOME]: 'Annual income',
+  [EligibilityParameter.OCCUPATION]: 'Occupation',
+  [EligibilityParameter.EDUCATION]: 'Education',
+  [EligibilityParameter.STATE]: 'State',
+  [EligibilityParameter.DISTRICT]: 'District',
+  [EligibilityParameter.SOCIAL_CATEGORY]: 'Social category',
+  [EligibilityParameter.DISABILITY_STATUS]: 'Disability status',
+};
+
+export const ELIGIBILITY_OPERATOR_LABELS: Record<EligibilityOperator, string> = {
+  [EligibilityOperator.EQ]: 'is',
+  [EligibilityOperator.NEQ]: 'is not',
+  [EligibilityOperator.LT]: 'is less than',
+  [EligibilityOperator.LTE]: 'is at most',
+  [EligibilityOperator.GT]: 'is greater than',
+  [EligibilityOperator.GTE]: 'is at least',
+  [EligibilityOperator.IN]: 'is one of',
+  [EligibilityOperator.NOT_IN]: 'is not one of',
+};
+
 /** Display-friendly category labels */
 export const SCHEME_CATEGORY_LABELS: Record<SchemeCategory, string> = {
   [SchemeCategory.SCHOLARSHIPS]: 'Scholarships',
