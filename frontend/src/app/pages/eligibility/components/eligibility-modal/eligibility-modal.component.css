@@ -1,54 +1,52 @@
-.modal-form {
+.loading-state {
   display: flex;
   flex-direction: column;
-  gap: var(--space-5);
-}
-
-.form-intro {
-  font-size: var(--font-size-sm);
-  color: var(--color-text-body);
-  line-height: var(--line-height-relaxed);
-  margin: 0;
-  background-color: var(--color-bg-subtle);
-  padding: var(--space-3) var(--space-4);
-  border-radius: var(--radius-md);
-  border-left: 3px solid var(--color-primary-navy);
-}
-
-.form-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: var(--space-4);
-}
-
-.checkbox-row {
-  padding: var(--space-2) 0;
-}
-
-.custom-checkbox-label {
-  display: flex;
   align-items: center;
-  gap: var(--space-2);
-  cursor: pointer;
-  user-select: none;
+  justify-content: center;
+  padding: var(--space-8, 32px);
+  color: var(--color-text-secondary, #64748b);
+  text-align: center;
 }
 
-.checkbox-input {
-  accent-color: var(--color-primary-navy);
-  width: 1.125rem;
-  height: 1.125rem;
-  cursor: pointer;
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--color-border, #e2e8f0);
+  border-top-color: var(--color-primary, #3b82f6);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-bottom: var(--space-4, 16px);
 }
 
-.checkbox-text {
-  font-size: var(--font-size-sm);
-  color: var(--color-text-body);
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
-.form-submit-row {
-  margin-top: var(--space-3);
+.loading-state p {
+  font-size: var(--font-size-sm, 14px);
+  margin: 0;
+}
+
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-8, 32px);
+  color: var(--color-text-secondary, #64748b);
+  text-align: center;
+}
+
+.error-state svg {
+  color: var(--color-error, #ef4444);
+  margin-bottom: var(--space-4, 16px);
+}
+
+.error-state p {
+  font-size: var(--font-size-sm, 14px);
+  margin: 0 0 var(--space-4, 16px);
 }
 
 .result-wrapper {
-  padding-top: var(--space-2);
+  padding-top: var(--space-2, 8px);
 }

@@ -134,7 +134,7 @@
             </svg>
             <span class="notification-badge">3</span>
           </div>
-          <div class="user-avatar">{{ userInitial }}</div>
+          <div class="user-avatar" (click)="navigateToProfile()" role="button" tabindex="0" title="View Profile">{{ userInitial }}</div>
         } @else {
           <a class="header-btn header-btn-primary" routerLink="/login">Sign In</a>
           <a class="header-btn" routerLink="/register">Register</a>

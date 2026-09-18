@@ -47,9 +47,7 @@ export class EligibilityService {
    * No batch backend endpoint — fetches all scheme IDs via the search API,
    * then calls the single-scheme eligibility endpoint for each.
    */
-  evaluateAllSchemes(
-    _req: EligibilityCheckRequest
-  ): Observable<EligibilityResult[]> {
+  evaluateAllSchemes(): Observable<EligibilityResult[]> {
     return this.http
       .get<{ results: any[]; total: number }>('/api/search', {
         params: { search_type: 'scheme', page_size: '100' },

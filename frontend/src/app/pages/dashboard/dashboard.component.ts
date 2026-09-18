@@ -274,6 +274,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.router.navigate(['/login']);
   }
 
+  navigateToProfile(): void {
+    this.router.navigate(['/citizen-profile']);
+  }
+
   get userName(): string {
     return this.authService.currentUser()?.full_name ?? 'User';
   }

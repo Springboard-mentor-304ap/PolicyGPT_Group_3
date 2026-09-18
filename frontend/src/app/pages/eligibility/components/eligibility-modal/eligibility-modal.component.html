@@ -5,99 +5,33 @@
   size="drawer"
   (close)="onClose()"
 >
-  @if (!result()) {
-    <form [formGroup]="checkForm" (ngSubmit)="onEvaluate()" class="modal-form">
-      <p class="form-intro">
-        Enter your demographic and socio-economic details to check if you fulfill the official eligibility rules for <strong>{{ scheme.title }}</strong>.
-      </p>
+  <!-- Loading State -->
+  @if (evaluating()) {
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <p>Checking your eligibility for <strong>{{ scheme.title }}</strong>...</p>
+    </div>
+  }
 
-      <div class="form-grid">
-        <!-- Age -->
-        <app-input
-          label="Your Age (Years)"
-          type="number"
-          id="modal-age"
-          formControlName="age"
-          [required]="true"
-          placeholder="e.g. 28"
-        ></app-input>
+  <!-- Error State -->
+  @if (error() && !evaluating()) {
+    <div class="error-state">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="48" height="48">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="8" x2="12" y2="12"></line>
+        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+      </svg>
+      <p>{{ error() }}</p>
+      <app-button variant="secondary" (btnClick)="checkEligibility()">Retry</app-button>
+    </div>
+  }
 
-        <!-- Gender -->
-        <app-select
-          label="Gender"
-          id="modal-gender"
-          [options]="genderOptions"
-          formControlName="gender"
-          [required]="true"
-        ></app-select>
-
-        <!-- Annual Income -->
-        <app-input
-          label="Annual Household Income (₹ INR)"
-          type="number"
-          id="modal-income"
-          formControlName="annual_income"
-          [required]="true"
-          placeholder="e.g. 250000"
-          hint="Total annual income from all sources"
-        ></app-input>
-
-        <!-- Social Category -->
-        <app-select
-          label="Social Category"
-          id="modal-category"
-          [options]="socialCategoryOptions"
-          formControlName="social_category"
-          [required]="true"
-        ></app-select>
-
-        <!-- Occupation -->
-        <app-select
-          label="Current Occupation"
-          id="modal-occupation"
-          [options]="occupationOptions"
-          formControlName="occupation"
-          [required]="true"
-        ></app-select>
-
-        <!-- State -->
-        <app-select
-          label="State of Residence"
-          id="modal-state"
-          [options]="stateOptions"
-          formControlName="state"
-          [required]="true"
-        ></app-select>
-      </div>
-
-      <!-- Disability Checkbox -->
-      <div class="checkbox-row">
-        <label class="custom-checkbox-label">
-          <input
-            type="checkbox"
-            formControlName="disability_status"
-            class="checkbox-input"
-          />
-          <span class="checkbox-text">Applicant has a recognized disability (PwD)</span>
-        </label>
-      </div>
-
-      <div class="form-submit-row">
-        <app-button
-          variant="primary"
-          type="submit"
-          [loading]="evaluating()"
-          [fullWidth]="true"
-        >
-          Evaluate Eligibility Now
-        </app-button>
-      </div>
-    </form>
-  } @else {
+  <!-- Result -->
+  @if (result() && !evaluating()) {
     <div class="result-wrapper">
       <app-eligibility-result
         [result]="result()!"
-        (recheck)="onReset()"
+        (modifyProfile)="onModifyProfile()"
       ></app-eligibility-result>
     </div>
   }

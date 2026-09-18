@@ -14,11 +14,11 @@ import { ButtonComponent } from '../../../../shared/components/button/button.com
 export class EligibilityResultComponent {
   @Input({ required: true }) result!: EligibilityResult;
 
-  @Output() recheck = new EventEmitter<void>();
+  @Output() modifyProfile = new EventEmitter<void>();
   @Output() apply = new EventEmitter<EligibilityResult>();
 
-  onRecheck(): void {
-    this.recheck.emit();
+  onModifyProfile(): void {
+    this.modifyProfile.emit();
   }
 
   onApply(): void {
