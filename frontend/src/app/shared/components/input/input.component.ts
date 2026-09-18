@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, Input, forwardRef } from '@angular/core';
+import { Component, ElementRef, Input, ViewChild, forwardRef } from '@angular/core';
 import { ControlValueAccessor, FormsModule, NG_VALUE_ACCESSOR } from '@angular/forms';
 
 @Component({
@@ -29,6 +29,8 @@ export class InputComponent implements ControlValueAccessor {
   @Input() icon: 'user' | 'lock' | 'mail' | null = null;
   @Input() autocomplete = '';
 
+  @ViewChild('inputEl') inputEl!: ElementRef<HTMLInputElement>;
+
   value = '';
   showPassword = false;
 
@@ -38,6 +40,10 @@ export class InputComponent implements ControlValueAccessor {
 
   writeValue(val: string): void {
     this.value = val ?? '';
+    // Directly sync the native input element for reliable rendering
+    if (this.inputEl) {
+      this.inputEl.nativeElement.value = this.value;
+    }
   }
 
   registerOnChange(fn: (value: string) => void): void {
