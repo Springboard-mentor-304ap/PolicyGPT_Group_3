@@ -5,7 +5,6 @@ import {
   SearchParams,
   SearchResponse,
   SearchResultItem,
-  SortOption,
 } from '../models/search.models';
 
 @Injectable({ providedIn: 'root' })
@@ -13,7 +12,6 @@ export class SearchService {
   private readonly http = inject(HttpClient);
 
   readonly searchQuery = signal<string>('');
-  readonly activeSort = signal<SortOption>('relevance');
 
   /**
    * Search & Filter Policies and Schemes via the real backend.

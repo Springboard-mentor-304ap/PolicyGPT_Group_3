@@ -17,7 +17,6 @@ export class FilterSidebarComponent {
     category: 'all',
     state: 'all',
     department: '',
-    status: 'all',
   };
 
   @Output() filtersChange = new EventEmitter<SearchFilters>();
@@ -55,13 +54,6 @@ export class FilterSidebarComponent {
     { value: 'Rajasthan', label: 'Rajasthan' },
   ];
 
-  statusOptions: SelectOption[] = [
-    { value: 'all', label: 'All Statuses' },
-    { value: 'active', label: 'Active & Open' },
-    { value: 'approved', label: 'Approved' },
-    { value: 'draft', label: 'Draft / Upcoming' },
-  ];
-
   onTypeSelect(type: SearchItemType): void {
     this.filters.type = type;
     this.emitChange();
@@ -77,18 +69,12 @@ export class FilterSidebarComponent {
     this.emitChange();
   }
 
-  onStatusSelect(status: string): void {
-    this.filters.status = status;
-    this.emitChange();
-  }
-
   onReset(): void {
     this.filters = {
       type: 'all',
       category: 'all',
       state: 'all',
       department: '',
-      status: 'all',
     };
     this.reset.emit();
     this.emitChange();
@@ -99,7 +85,6 @@ export class FilterSidebarComponent {
     if (this.filters.type !== 'all') count++;
     if (this.filters.category !== 'all') count++;
     if (this.filters.state !== 'all') count++;
-    if (this.filters.status !== 'all') count++;
     return count;
   }
 

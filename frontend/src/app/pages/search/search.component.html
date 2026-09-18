@@ -87,18 +87,6 @@
           </span>
         </div>
 
-        <div class="toolbar-right">
-          <div class="sort-control">
-            <label class="sort-label">Sort By:</label>
-            <app-select
-              id="sort-select"
-              size="sm"
-              [options]="sortOptions"
-              [value]="sortBy()"
-              (selectionChange)="onSortChange($event)"
-            ></app-select>
-          </div>
-        </div>
       </div>
 
       <!-- Loading State -->
@@ -148,6 +136,7 @@
           @for (item of results(); track item.id) {
             <app-policy-card
               [item]="item"
+              (viewDetails)="viewItem($event)"
               (checkEligibility)="openEligibilityModal($event)"
             ></app-policy-card>
           }

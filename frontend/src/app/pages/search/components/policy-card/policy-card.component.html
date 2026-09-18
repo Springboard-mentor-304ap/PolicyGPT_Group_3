@@ -13,7 +13,7 @@
         {{ item.categoryLabel }}
       </app-badge>
 
-      <app-badge [variant]="statusVariant" size="sm" [dot]="true">
+      <app-badge [variant]="statusVariant" size="sm">
         {{ item.status }}
       </app-badge>
     </div>
@@ -31,7 +31,7 @@
 
   <!-- Title & Description -->
   <div class="card-body">
-    <h3 class="card-title">{{ item.title }}</h3>
+    <h3 class="card-title" (click)="onViewDetails()" role="button" tabindex="0">{{ item.title }}</h3>
     <p class="card-desc">{{ item.description }}</p>
 
     <!-- Key Benefits Preview -->
@@ -99,6 +99,13 @@
     }
 
     <div class="footer-actions">
+      <app-button
+        variant="secondary"
+        size="sm"
+        (btnClick)="onViewDetails()"
+      >
+        View Details
+      </app-button>
       @if (item.itemType === 'scheme') {
         <app-button
           variant="primary"

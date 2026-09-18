@@ -2,14 +2,11 @@ import { PolicyCategory, SchemeCategory } from './policy.models';
 
 export type SearchItemType = 'all' | 'policy' | 'scheme';
 
-export type SortOption = 'relevance' | 'newest' | 'oldest' | 'views' | 'deadline';
-
 export interface SearchFilters {
   type: SearchItemType;
   category: string; // 'all' or specific PolicyCategory / SchemeCategory
   state: string; // 'all' or specific State
   department: string;
-  status: string; // 'all' | 'active' | 'approved' | etc.
 }
 
 export interface SearchParams {
@@ -18,8 +15,6 @@ export interface SearchParams {
   category?: string;
   state?: string;
   department?: string;
-  status?: string;
-  sort_by?: SortOption;
   page?: number;
   page_size?: number;
 }

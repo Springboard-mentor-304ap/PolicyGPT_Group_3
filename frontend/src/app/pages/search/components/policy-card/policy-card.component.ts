@@ -20,6 +20,10 @@ export class PolicyCardComponent {
   @Output() checkEligibility = new EventEmitter<SearchResultItem>();
   @Output() viewDetails = new EventEmitter<SearchResultItem>();
 
+  onViewDetails(): void {
+    this.viewDetails.emit(this.item);
+  }
+
   onCheckEligibility(): void {
     this.checkEligibility.emit(this.item);
   }

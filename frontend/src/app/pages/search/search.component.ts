@@ -5,14 +5,12 @@ import {
   SearchFilters,
   SearchParams,
   SearchResultItem,
-  SortOption
 } from '../../core/models/search.models';
 import { SearchService } from '../../core/services/search.service';
 import { ComparisonService } from '../../core/services/comparison.service';
 import { SearchBarComponent } from './components/search-bar/search-bar.component';
 import { FilterSidebarComponent } from './components/filter-sidebar/filter-sidebar.component';
 import { PolicyCardComponent } from './components/policy-card/policy-card.component';
-import { SelectComponent, SelectOption } from '../../shared/components/select/select.component';
 import { SkeletonComponent } from '../../shared/components/skeleton/skeleton.component';
 import { ButtonComponent } from '../../shared/components/button/button.component';
 import { FloatingCompareDockComponent } from '../comparison/components/floating-compare-dock/floating-compare-dock.component';
@@ -27,7 +25,6 @@ import { EligibilityModalComponent } from '../eligibility/components/eligibility
     SearchBarComponent,
     FilterSidebarComponent,
     PolicyCardComponent,
-    SelectComponent,
     SkeletonComponent,
     ButtonComponent,
     FloatingCompareDockComponent,
@@ -49,9 +46,7 @@ export class SearchComponent implements OnInit {
     category: 'all',
     state: 'all',
     department: '',
-    status: 'all',
   });
-  sortBy = signal<SortOption>('relevance');
   results = signal<SearchResultItem[]>([]);
   totalCount = signal<number>(0);
   isLoading = signal<boolean>(false);
@@ -63,14 +58,6 @@ export class SearchComponent implements OnInit {
   // Quick Eligibility Modal Target
   selectedSchemeForEligibility = signal<SearchResultItem | null>(null);
 
-  sortOptions: SelectOption[] = [
-    { value: 'relevance', label: 'Most Relevant' },
-    { value: 'newest', label: 'Newest First' },
-    { value: 'oldest', label: 'Oldest First' },
-    { value: 'views', label: 'Most Viewed' },
-    { value: 'deadline', label: 'Deadline (Closing Soon)' },
-  ];
-
   ngOnInit(): void {
     // Read initial search query and filters from URL parameters
     this.route.queryParams.subscribe((params) => {
@@ -78,8 +65,6 @@ export class SearchComponent implements OnInit {
       const type = params['type'] || 'all';
       const category = params['category'] || 'all';
       const state = params['state'] || 'all';
-      const status = params['status'] || 'all';
-      const sort = (params['sort'] as SortOption) || 'relevance';
 
       this.query.set(q);
       this.filters.set({
@@ -87,9 +72,7 @@ export class SearchComponent implements OnInit {
         category,
         state,
         department: params['department'] || '',
-        status,
       });
-      this.sortBy.set(sort);
 
       this.executeSearch();
     });
@@ -106,8 +89,6 @@ export class SearchComponent implements OnInit {
       category: f.category,
       state: f.state,
       department: f.department,
-      status: f.status,
-      sort_by: this.sortBy(),
       page: 1,
       page_size: 20,
     };
@@ -135,11 +116,6 @@ export class SearchComponent implements OnInit {
     this.syncUrlParams();
   }
 
-  onSortChange(newSort: string): void {
-    this.sortBy.set(newSort as SortOption);
-    this.syncUrlParams();
-  }
-
   onResetAll(): void {
     this.query.set('');
     this.filters.set({
@@ -147,14 +123,20 @@ export class SearchComponent implements OnInit {
       category: 'all',
       state: 'all',
       department: '',
-      status: 'all',
     });
-    this.sortBy.set('relevance');
     this.syncUrlParams();
   }
 
   toggleMobileFilters(): void {
     this.mobileFiltersOpen.set(!this.mobileFiltersOpen());
+  }
+
+  viewItem(item: SearchResultItem): void {
+    if (item.itemType === 'policy') {
+      this.router.navigate(['/policies', item.id]);
+    } else {
+      this.router.navigate(['/schemes', item.id]);
+    }
   }
 
   openEligibilityModal(item: SearchResultItem): void {
@@ -173,8 +155,6 @@ export class SearchComponent implements OnInit {
     if (f.type !== 'all') qParams['type'] = f.type;
     if (f.category !== 'all') qParams['category'] = f.category;
     if (f.state !== 'all') qParams['state'] = f.state;
-    if (f.status !== 'all') qParams['status'] = f.status;
-    if (this.sortBy() !== 'relevance') qParams['sort'] = this.sortBy();
 
     this.router.navigate([], {
       relativeTo: this.route,
