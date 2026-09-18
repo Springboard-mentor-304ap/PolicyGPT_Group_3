@@ -4,6 +4,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 from backend.app.models.policy import PolicyCategory, PolicyStatus
+from backend.app.models.scheme import SchemeCategory, SchemeStatus
 
 
 class PolicyCreate(BaseModel):
@@ -55,3 +56,21 @@ class PolicyResponse(BaseModel):
     archived_at: datetime | None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class PolicySchemeSummary(BaseModel):
+    id: UUID
+    title: str
+    description: str
+    category: SchemeCategory
+    state: str | None
+    status: SchemeStatus
+    benefits: list[str] | None
+    launch_date: date | None
+    deadline_date: date | None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PolicyDetailResponse(PolicyResponse):
+    schemes: list[PolicySchemeSummary] = []

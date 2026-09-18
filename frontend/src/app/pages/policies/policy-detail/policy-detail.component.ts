@@ -104,7 +104,7 @@ export class PolicyDetailComponent implements OnInit {
     this.error.set(null);
     this.policyService.getPolicy(id).subscribe({
       next: (policy) => {
-        this.policy.set(policy);
+        this.updatePolicyDetails(policy);
         this.loading.set(false);
       },
       error: (err) => {
@@ -126,7 +126,7 @@ export class PolicyDetailComponent implements OnInit {
     this.actionLoading.set(true);
     this.policyService.archivePolicy(this.policyId()).subscribe({
       next: (policy) => {
-        this.policy.set(policy);
+        this.updatePolicyDetails(policy);
         this.actionLoading.set(false);
       },
       error: (err) => {
@@ -140,7 +140,7 @@ export class PolicyDetailComponent implements OnInit {
     this.actionLoading.set(true);
     this.policyService.unarchivePolicy(this.policyId()).subscribe({
       next: (policy) => {
-        this.policy.set(policy);
+        this.updatePolicyDetails(policy);
         this.actionLoading.set(false);
       },
       error: (err) => {
@@ -155,7 +155,7 @@ export class PolicyDetailComponent implements OnInit {
     this.actionLoading.set(true);
     this.policyService.approvePolicy(this.policyId()).subscribe({
       next: (policy) => {
-        this.policy.set(policy);
+        this.updatePolicyDetails(policy);
         this.actionLoading.set(false);
       },
       error: (err) => {
@@ -198,6 +198,11 @@ export class PolicyDetailComponent implements OnInit {
     this.router.navigate(['/policies']);
   }
 
+  private updatePolicyDetails(policy: Policy): void {
+    const schemes = this.policy()?.schemes;
+    this.policy.set({ ...policy, schemes });
+  }
+
   formatCategory(category: string): string {
     return POLICY_CATEGORY_LABELS[category as keyof typeof POLICY_CATEGORY_LABELS] || category;
   }
@@ -208,6 +213,14 @@ export class PolicyDetailComponent implements OnInit {
 
   getStatusBadgeVariant(status: PolicyStatus): BadgeVariant {
     return POLICY_STATUS_BADGE[status] || 'neutral';
+  }
+
+  viewScheme(schemeId: string): void {
+    this.router.navigate(['/schemes', schemeId]);
+  }
+
+  formatSchemeCategory(category: string): string {
+    return category.replace(/_/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
   }
 
   formatDate(dateStr: string | null): string {

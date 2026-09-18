@@ -5,8 +5,15 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from backend.app.models.policy import Policy, PolicyStatus
+from backend.app.models.scheme import Scheme, SchemeStatus
 from backend.app.models.user import User, UserRole
-from backend.app.policies.schemas import PolicyCreate, PolicyUpdate
+from backend.app.policies.schemas import (
+    PolicyCreate,
+    PolicyDetailResponse,
+    PolicyResponse,
+    PolicySchemeSummary,
+    PolicyUpdate,
+)
 
 
 def create_policy(
@@ -54,6 +61,32 @@ def get_policy(
         )
 
     return policy
+
+
+def get_policy_details(
+    db: Session,
+    policy_id: UUID,
+    current_user: User,
+) -> PolicyDetailResponse:
+    policy = get_policy(db, policy_id)
+    query = db.query(Scheme).filter(Scheme.policy_id == policy.id)
+
+    if current_user.role in (UserRole.ADMINISTRATOR, UserRole.SUPER_ADMIN):
+        query = query.filter(Scheme.status != SchemeStatus.ARCHIVED)
+    elif current_user.role == UserRole.GOVERNMENT_OFFICIAL:
+        query = query.filter(
+            (Scheme.created_by == current_user.id)
+            | (Scheme.status == SchemeStatus.ACTIVE)
+        ).filter(Scheme.status != SchemeStatus.ARCHIVED)
+    else:
+        query = query.filter(Scheme.status == SchemeStatus.ACTIVE)
+
+    schemes = query.order_by(Scheme.created_at.desc()).all()
+    policy_data = PolicyResponse.model_validate(policy).model_dump()
+    return PolicyDetailResponse(
+        **policy_data,
+        schemes=[PolicySchemeSummary.model_validate(scheme) for scheme in schemes],
+    )
 
 
 def list_policies(

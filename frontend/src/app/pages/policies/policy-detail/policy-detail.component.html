@@ -88,6 +88,25 @@
             <p class="description-text">{{ policy()!.description }}</p>
           </div>
 
+          <div class="detail-card">
+            <h3 class="card-heading">Available Schemes <span class="scheme-count">{{ policy()!.schemes?.length || 0 }}</span></h3>
+            @if (policy()!.schemes?.length) {
+              <div class="scheme-list">
+                @for (scheme of policy()!.schemes!; track scheme.id) {
+                  <button class="scheme-row" (click)="viewScheme(scheme.id)">
+                    <span class="scheme-row-content">
+                      <span class="scheme-title">{{ scheme.title }}</span>
+                      <span class="scheme-meta">{{ formatSchemeCategory(scheme.category) }} @if (scheme.state) { · {{ scheme.state }} }</span>
+                    </span>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg>
+                  </button>
+                }
+              </div>
+            } @else {
+              <p class="empty-schemes">No schemes are currently available under this policy.</p>
+            }
+          </div>
+
           @if (policy()!.required_documents && policy()!.required_documents!.length > 0) {
             <div class="detail-card">
               <h3 class="card-heading">Required Documents</h3>

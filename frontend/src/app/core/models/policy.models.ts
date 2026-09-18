@@ -43,6 +43,19 @@ export interface Policy {
   created_at: string;
   updated_at: string;
   archived_at: string | null;
+  schemes?: PolicyScheme[];
+}
+
+export interface PolicyScheme {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  state: string | null;
+  status: string;
+  benefits: string[] | null;
+  launch_date: string | null;
+  deadline_date: string | null;
 }
 
 export interface PolicyCreateRequest {

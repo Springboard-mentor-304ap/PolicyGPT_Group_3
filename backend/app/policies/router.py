@@ -8,6 +8,7 @@ from backend.app.db.database import get_db
 from backend.app.models.user import User
 from backend.app.policies.schemas import (
     PolicyCreate,
+    PolicyDetailResponse,
     PolicyReject,
     PolicyResponse,
     PolicyUpdate,
@@ -17,6 +18,7 @@ from backend.app.policies.service import (
     archive_policy,
     create_policy,
     get_policy,
+    get_policy_details,
     list_policies,
     reject_policy,
     unarchive_policy,
@@ -62,18 +64,16 @@ def list_policies_route(
     )
 
 
-@router.get(
-    "/{policy_id}",
-    response_model=PolicyResponse,
-)
+@router.get("/{policy_id}", response_model=PolicyDetailResponse)
 def get_policy_route(
     policy_id: UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return get_policy(
+    return get_policy_details(
         db=db,
         policy_id=policy_id,
+        current_user=current_user,
     )
 
 
