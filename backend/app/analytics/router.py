@@ -6,6 +6,7 @@ from backend.app.analytics.schemas import AnalyticsOverview
 from backend.app.analytics.service import (
     get_analytics_overview,
     get_policy_statistics,
+    get_scheme_statistics,
 )
 
 router = APIRouter(prefix="/analytics", tags=["Analytics"])
@@ -19,3 +20,6 @@ def analytics_overview(db: Session = Depends(get_db)):
 @router.get("/policies")
 def policy_statistics(db: Session = Depends(get_db)):
     return get_policy_statistics(db)
+@router.get("/schemes")
+def scheme_statistics(db: Session = Depends(get_db)):
+    return get_scheme_statistics(db)

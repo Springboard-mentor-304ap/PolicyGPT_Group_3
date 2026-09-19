@@ -51,3 +51,42 @@ def get_policy_statistics(db: Session) -> dict:
             department: count for department, count in department_rows
         },
     }
+def get_scheme_statistics(db: Session) -> dict:
+    category_rows = (
+        db.query(Scheme.category, func.count(Scheme.id))
+        .group_by(Scheme.category)
+        .all()
+    )
+
+    status_rows = (
+        db.query(Scheme.status, func.count(Scheme.id))
+        .group_by(Scheme.status)
+        .all()
+    )
+
+    usage_rows = (
+        db.query(
+            Scheme.id,
+            Scheme.title,
+            Scheme.view_count,
+        )
+        .order_by(Scheme.view_count.desc())
+        .all()
+    )
+
+    return {
+        "schemes_by_category": {
+            category.value: count for category, count in category_rows
+        },
+        "schemes_by_status": {
+            status.value: count for status, count in status_rows
+        },
+        "scheme_usage": [
+            {
+                "scheme_id": str(scheme_id),
+                "title": title,
+                "view_count": view_count,
+            }
+            for scheme_id, title, view_count in usage_rows
+        ],
+    }
