@@ -90,3 +90,75 @@ def get_scheme_statistics(db: Session) -> dict:
             for scheme_id, title, view_count in usage_rows
         ],
     }
+def get_user_usage_statistics(db: Session) -> dict:
+    # Users by role
+    role_rows = (
+        db.query(User.role, func.count(User.id))
+        .group_by(User.role)
+        .all()
+    )
+
+    # Active and inactive users
+    active_users = (
+        db.query(func.count(User.id))
+        .filter(User.is_active.is_(True))
+        .scalar()
+        or 0
+    )
+
+    inactive_users = (
+        db.query(func.count(User.id))
+        .filter(User.is_active.is_(False))
+        .scalar()
+        or 0
+    )
+
+    # User registrations over time
+    registration_rows = (
+        db.query(
+            func.date(User.created_at).label("date"),
+            func.count(User.id),
+        )
+        .group_by(func.date(User.created_at))
+        .order_by(func.date(User.created_at))
+        .all()
+    )
+
+    # Searches over time
+    search_rows = (
+        db.query(
+            func.date(SearchHistory.searched_at).label("date"),
+            func.count(SearchHistory.id),
+        )
+        .group_by(func.date(SearchHistory.searched_at))
+        .order_by(func.date(SearchHistory.searched_at))
+        .all()
+    )
+
+    total_searches = (
+        db.query(func.count(SearchHistory.id)).scalar()
+        or 0
+    )
+
+    return {
+        "users_by_role": {
+            role.value: count for role, count in role_rows
+        },
+        "active_users": active_users,
+        "inactive_users": inactive_users,
+        "user_registrations_over_time": [
+            {
+                "date": str(date),
+                "count": count,
+            }
+            for date, count in registration_rows
+        ],
+        "total_searches": total_searches,
+        "searches_over_time": [
+            {
+                "date": str(date),
+                "count": count,
+            }
+            for date, count in search_rows
+        ],
+    }
