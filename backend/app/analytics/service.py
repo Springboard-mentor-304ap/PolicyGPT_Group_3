@@ -162,3 +162,32 @@ def get_user_usage_statistics(db: Session) -> dict:
             for date, count in search_rows
         ],
     }
+def get_department_statistics(db: Session) -> dict:
+    policy_rows = (
+        db.query(
+            Policy.department,
+            func.count(Policy.id),
+        )
+        .group_by(Policy.department)
+        .all()
+    )
+
+    scheme_rows = (
+        db.query(
+            Scheme.department,
+            func.count(Scheme.id),
+        )
+        .group_by(Scheme.department)
+        .all()
+    )
+
+    return {
+        "policies_by_department": {
+            department: count
+            for department, count in policy_rows
+        },
+        "schemes_by_department": {
+            department: count
+            for department, count in scheme_rows
+        },
+    }

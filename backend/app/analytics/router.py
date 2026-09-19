@@ -8,6 +8,7 @@ from backend.app.analytics.service import (
     get_policy_statistics,
     get_scheme_statistics,
     get_user_usage_statistics,
+    get_department_statistics,
 )
 
 router = APIRouter(prefix="/analytics", tags=["Analytics"])
@@ -27,3 +28,6 @@ def scheme_statistics(db: Session = Depends(get_db)):
 @router.get("/users")
 def user_usage_statistics(db: Session = Depends(get_db)):
     return get_user_usage_statistics(db)
+@router.get("/departments")
+def department_statistics(db: Session = Depends(get_db)):
+    return get_department_statistics(db)
