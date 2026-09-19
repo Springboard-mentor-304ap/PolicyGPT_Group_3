@@ -9,6 +9,7 @@ from backend.app.analytics.service import (
     get_scheme_statistics,
     get_user_usage_statistics,
     get_department_statistics,
+    get_notification_statistics,
 )
 
 router = APIRouter(prefix="/analytics", tags=["Analytics"])
@@ -31,3 +32,6 @@ def user_usage_statistics(db: Session = Depends(get_db)):
 @router.get("/departments")
 def department_statistics(db: Session = Depends(get_db)):
     return get_department_statistics(db)
+@router.get("/notifications")
+def notification_statistics(db: Session = Depends(get_db)):
+    return get_notification_statistics(db)

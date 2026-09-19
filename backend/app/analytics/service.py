@@ -5,6 +5,7 @@ from backend.app.models.policy import Policy
 from backend.app.models.scheme import Scheme
 from backend.app.models.search_history import SearchHistory
 from backend.app.models.user import User
+from backend.app.models.notification import Notification
 
 
 def get_analytics_overview(db: Session) -> dict:
@@ -190,4 +191,63 @@ def get_department_statistics(db: Session) -> dict:
             department: count
             for department, count in scheme_rows
         },
+    }
+def get_notification_statistics(db: Session) -> dict:
+    type_rows = (
+        db.query(
+            Notification.type,
+            func.count(Notification.id),
+        )
+        .group_by(Notification.type)
+        .all()
+    )
+
+    channel_rows = (
+        db.query(
+            Notification.channel,
+            func.count(Notification.id),
+        )
+        .group_by(Notification.channel)
+        .all()
+    )
+
+    read_rows = (
+        db.query(
+            Notification.is_read,
+            func.count(Notification.id),
+        )
+        .group_by(Notification.is_read)
+        .all()
+    )
+
+    notification_rows = (
+        db.query(
+            func.date(Notification.created_at).label("date"),
+            func.count(Notification.id),
+        )
+        .group_by(func.date(Notification.created_at))
+        .order_by(func.date(Notification.created_at))
+        .all()
+    )
+
+    return {
+        "notifications_by_type": {
+            notification_type.value: count
+            for notification_type, count in type_rows
+        },
+        "notifications_by_channel": {
+            channel.value: count
+            for channel, count in channel_rows
+        },
+        "notifications_by_read_status": {
+            str(is_read).lower(): count
+            for is_read, count in read_rows
+        },
+        "notifications_over_time": [
+            {
+                "date": str(date),
+                "count": count,
+            }
+            for date, count in notification_rows
+        ],
     }
