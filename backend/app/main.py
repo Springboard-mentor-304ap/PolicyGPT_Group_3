@@ -8,6 +8,8 @@ from backend.app.search.router import router as search_router
 from backend.app.comparison.router import router as comparison_router
 from backend.app.policies.router import router as policy_router
 from backend.app.schemes.router import router as scheme_router
+from backend.app.notifications.router import router as notification_router
+
 
 app = FastAPI()
 
@@ -20,6 +22,7 @@ app.include_router(search_router, prefix="/api")
 app.include_router(comparison_router, prefix="/api")
 app.include_router(policy_router, prefix="/api")
 app.include_router(scheme_router, prefix="/api")
+app.include_router(notification_router, prefix="/api")
 
 @app.get("/")
 def root():
