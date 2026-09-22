@@ -28,12 +28,22 @@ def get_current_user(
             algorithms=[ALGORITHM],
         )
 
+        # Get user ID from token
         user_id = payload.get("sub")
 
         if not user_id:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid token",
+            )
+
+        # Only access tokens can authenticate API requests
+        token_type = payload.get("type")
+
+        if token_type != "access":
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token type",
             )
 
     except JWTError:
