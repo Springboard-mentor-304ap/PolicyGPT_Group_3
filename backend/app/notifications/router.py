@@ -8,6 +8,8 @@ from backend.app.models.user import User
 from backend.app.notifications.schemas import (
     NotificationResponse,
     UnreadCountResponse,
+    MarkAllReadResponse,
+    MarkReadResponse,
 )
 from backend.app.notifications.service import (
     get_unread_count,
@@ -45,7 +47,7 @@ def get_notification_unread_count(
     )
 
 
-@router.patch("/read-all")
+@router.patch("/read-all", response_model=MarkAllReadResponse)
 def mark_all_as_read(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -58,7 +60,7 @@ def mark_all_as_read(
     return {"updated_count": updated_count}
 
 
-@router.patch("/{notification_id}/read", response_model=NotificationResponse)
+@router.patch("/{notification_id}/read", response_model=MarkReadResponse)
 def mark_as_read(
     notification_id: UUID,
     db: Session = Depends(get_db),
