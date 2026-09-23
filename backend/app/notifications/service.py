@@ -1,9 +1,49 @@
+import os
+import smtplib
+from email.message import EmailMessage
+from dotenv import load_dotenv
+
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 from uuid import UUID
+from datetime import datetime, timezone
+
 
 from backend.app.models.notification import Notification, NotificationChannel, NotificationType
 from backend.app.models.user import User
+
+load_dotenv()
+
+def send_email(
+    to_email: str,
+    subject: str,
+    body: str,
+) -> None:
+    smtp_host = os.getenv("BREVO_SMTP_HOST")
+    smtp_port = int(os.getenv("BREVO_SMTP_PORT", "587"))
+    smtp_login = os.getenv("BREVO_SMTP_LOGIN")
+    smtp_password = os.getenv("BREVO_SMTP_PASSWORD")
+    from_email = os.getenv("BREVO_FROM_EMAIL")
+    from_name = os.getenv("BREVO_FROM_NAME", "PolicyGPT")
+
+    if not all([
+        smtp_host,
+        smtp_login,
+        smtp_password,
+        from_email,
+    ]):
+        raise RuntimeError("Brevo SMTP configuration is incomplete")
+
+    email = EmailMessage()
+    email["From"] = f"{from_name} <{from_email}>"
+    email["To"] = to_email
+    email["Subject"] = subject
+    email.set_content(body)
+
+    with smtplib.SMTP(smtp_host, smtp_port) as smtp:
+        smtp.starttls()
+        smtp.login(smtp_login, smtp_password)
+        smtp.send_message(email)
 
 def create_notification(
     db: Session,
@@ -65,6 +105,16 @@ def send_notification(
 
     channels = get_notification_channels(notification_type)
 
+    user = db.query(User).filter(
+        User.id == user_id
+    ).first()
+
+    if not user:
+        raise HTTPException(
+            status_code=404,
+            detail="User not found",
+        )
+
     notifications = []
 
     for channel in channels:
@@ -78,6 +128,14 @@ def send_notification(
             related_entity_type=related_entity_type,
             related_entity_id=related_entity_id,
         )
+
+        if channel == NotificationChannel.EMAIL:
+            send_email(
+                to_email=user.email,
+                subject=title,
+                body = message,
+            )
+            notification.sent_at = datetime.now(timezone.utc)
 
         notifications.append(notification)
 
