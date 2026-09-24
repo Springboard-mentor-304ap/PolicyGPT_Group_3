@@ -28,7 +28,7 @@ ALLOWED_STATUS_TRANSITIONS = {
 def create_application(
     db: Session,
     scheme_id: UUID,
-    current_user: UUID,
+    current_user: User,
 ) -> Application:
     if current_user.role not in {
         UserRole.CITIZEN,

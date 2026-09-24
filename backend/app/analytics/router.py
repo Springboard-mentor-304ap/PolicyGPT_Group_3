@@ -37,6 +37,20 @@ def require_analytics_access(
 
     return current_user
 
+def require_user_analytics_access(
+    current_user: User = Depends(get_current_user),
+) -> User:
+    if current_user.role not in {
+        UserRole.ADMINISTRATOR,
+        UserRole.SUPER_ADMIN,
+    }:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to access user analytics",
+        )
+
+    return current_user
+
 
 router = APIRouter(
     prefix="/analytics",
@@ -46,28 +60,43 @@ router = APIRouter(
 
 
 @router.get("/overview", response_model=AnalyticsOverview)
-def analytics_overview(db: Session = Depends(get_db)):
-    return get_analytics_overview(db)
+def analytics_overview(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_analytics_access),
+):
+    return get_analytics_overview(db, current_user)
 
 
 @router.get("/policies")
-def policy_statistics(db: Session = Depends(get_db)):
-    return get_policy_statistics(db)
+def policy_statistics(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_analytics_access),
+):
+    return get_policy_statistics(db, current_user)
 
 
 @router.get("/schemes")
-def scheme_statistics(db: Session = Depends(get_db)):
-    return get_scheme_statistics(db)
+def scheme_statistics(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_analytics_access),
+):
+    return get_scheme_statistics(db, current_user)
 
 
 @router.get("/users")
-def user_usage_statistics(db: Session = Depends(get_db)):
+def user_usage_statistics(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_user_analytics_access),
+):
     return get_user_usage_statistics(db)
 
 
 @router.get("/departments")
-def department_statistics(db: Session = Depends(get_db)):
-    return get_department_statistics(db)
+def department_statistics(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_analytics_access),
+):
+    return get_department_statistics(db, current_user)
 
 
 @router.get("/notifications")
