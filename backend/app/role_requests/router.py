@@ -14,6 +14,7 @@ from backend.app.auth.schemas import (
 from backend.app.db.database import get_db
 from backend.app.models.user import User, UserRole
 from backend.app.models.role_request import RoleRequest, RequestedRole, RequestStatus
+from backend.app.models.government_official_profile import GovernmentOfficialProfile
 
 router = APIRouter(
     prefix="/role-requests",
@@ -311,6 +312,21 @@ def approve_request(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
     user.role = UserRole(requested_role)
+
+    if requested_role == UserRole.GOVERNMENT_OFFICIAL.value:
+        details = role_request.details or {}
+
+        government_official_profile = GovernmentOfficialProfile(
+            user_id=user.id,
+            department=details["department_ministry"],
+            designation=details["designation"],
+            official_id=details["official_id"],
+            state=details["state"],
+            district=details.get("district"),
+        )
+
+        db.add(government_official_profile)
+        
     role_request.status = RequestStatus.APPROVED
     role_request.reviewer_id = current_user.id
     role_request.reviewed_at = datetime.now(timezone.utc)

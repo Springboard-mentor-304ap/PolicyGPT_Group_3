@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from backend.app.models.user_profile import UserProfile
+    from backend.app.models.government_official_profile import GovernmentOfficialProfile
 
 
 class UserRole(str, Enum):
@@ -63,6 +64,13 @@ class User(Base):
     )
 
     profile: Mapped["UserProfile"] = relationship(
+        back_populates="user",
+        uselist=False,
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+    government_official_profile: Mapped["GovernmentOfficialProfile | None"] = relationship(
         back_populates="user",
         uselist=False,
         cascade="all, delete-orphan",
