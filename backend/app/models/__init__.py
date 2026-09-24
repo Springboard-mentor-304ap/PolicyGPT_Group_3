@@ -9,5 +9,6 @@ from backend.app.models.eligibility_rule import EligibilityRule
 from backend.app.models.search_history import SearchHistory
 from backend.app.models.notification import Notification
 from backend.app.models.feedback import Feedback
+from backend.app.models.faq import FAQ
 from backend.app.models.report import Report
 from backend.app.models.audit_log import AuditLog
