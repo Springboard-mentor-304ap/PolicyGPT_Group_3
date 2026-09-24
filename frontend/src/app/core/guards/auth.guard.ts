@@ -2,7 +2,6 @@ import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 import { catchError, map, of, tap } from 'rxjs';
 import { AuthService } from '../services/auth.service';
-
 /**
  * Functional Auth Guard
  * Protects authenticated routes by verifying user session and access token.

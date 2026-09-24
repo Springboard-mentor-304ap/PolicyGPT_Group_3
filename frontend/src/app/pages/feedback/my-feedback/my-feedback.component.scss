@@ -1,0 +1,61 @@
+.my-feedback {
+  width: 100%;
+}
+
+.section-header {
+  margin-bottom: 24px;
+}
+
+.section-header h2 {
+  margin-bottom: 8px;
+}
+
+.section-header p {
+  margin: 0;
+}
+
+.feedback-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.feedback-card {
+  padding: 20px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+}
+
+.feedback-card-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.feedback-card-header h3 {
+  margin: 0;
+}
+
+.status {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 13px;
+}
+
+.feedback-description {
+  margin: 16px 0;
+}
+
+.feedback-meta {
+  display: flex;
+  gap: 20px;
+  font-size: 13px;
+}
+
+.loading-state,
+.empty-state,
+.error-state {
+  padding: 30px;
+  text-align: center;
+}

@@ -1,17 +1,24 @@
 import { Routes } from '@angular/router';
+
 import { AuthLayoutComponent } from './layouts/auth-layout/auth-layout.component';
+
 import { DashboardComponent } from './pages/dashboard/dashboard.component';
+
 import { authGuard } from './core/guards/auth.guard';
+import { FeedbackPageComponent } from './pages/feedback/feedback-page/feedback-page.component';
 
 export const routes: Routes = [
+
   {
     path: 'dashboard',
     component: DashboardComponent,
   },
+
   {
     path: 'admin',
     component: DashboardComponent,
   },
+
   {
     path: 'verify-email',
     loadComponent: () =>
@@ -19,6 +26,7 @@ export const routes: Routes = [
         (m) => m.VerifyEmailComponent
       ),
   },
+
   {
     path: 'citizen-profile',
     loadComponent: () =>
@@ -26,6 +34,7 @@ export const routes: Routes = [
         (m) => m.CitizenProfileComponent
       ),
   },
+
   {
     path: 'role-request',
     loadComponent: () =>
@@ -33,6 +42,7 @@ export const routes: Routes = [
         (m) => m.RoleRequestComponent
       ),
   },
+
   // Policy Management Routes
   {
     path: 'policies',
@@ -42,6 +52,7 @@ export const routes: Routes = [
         (m) => m.PolicyListComponent
       ),
   },
+
   {
     path: 'policies/create',
     canActivate: [authGuard],
@@ -50,6 +61,7 @@ export const routes: Routes = [
         (m) => m.PolicyFormComponent
       ),
   },
+
   {
     path: 'policies/:id',
     canActivate: [authGuard],
@@ -58,6 +70,7 @@ export const routes: Routes = [
         (m) => m.PolicyDetailComponent
       ),
   },
+
   {
     path: 'policies/:id/edit',
     canActivate: [authGuard],
@@ -66,6 +79,7 @@ export const routes: Routes = [
         (m) => m.PolicyFormComponent
       ),
   },
+
   // Scheme Management Routes
   {
     path: 'schemes',
@@ -75,6 +89,7 @@ export const routes: Routes = [
         (m) => m.SchemeListComponent
       ),
   },
+
   {
     path: 'schemes/create',
     canActivate: [authGuard],
@@ -83,6 +98,7 @@ export const routes: Routes = [
         (m) => m.SchemeFormComponent
       ),
   },
+
   {
     path: 'schemes/:id',
     canActivate: [authGuard],
@@ -91,6 +107,7 @@ export const routes: Routes = [
         (m) => m.SchemeDetailsComponent
       ),
   },
+
   {
     path: 'schemes/:id/edit',
     canActivate: [authGuard],
@@ -99,30 +116,51 @@ export const routes: Routes = [
         (m) => m.SchemeFormComponent
       ),
   },
+
   // Search, Eligibility, Comparison
   {
     path: 'search',
     canActivate: [authGuard],
     loadComponent: () =>
-      import('./pages/search/search.component').then((m) => m.SearchComponent),
+      import('./pages/search/search.component').then(
+        (m) => m.SearchComponent
+      ),
   },
+
   {
     path: 'eligibility',
     canActivate: [authGuard],
     loadComponent: () =>
-      import('./pages/eligibility/eligibility.component').then((m) => m.EligibilityComponent),
+      import('./pages/eligibility/eligibility.component').then(
+        (m) => m.EligibilityComponent
+      ),
   },
+
   {
     path: 'compare',
     canActivate: [authGuard],
     loadComponent: () =>
-      import('./pages/comparison/comparison.component').then((m) => m.ComparisonComponent),
+      import('./pages/comparison/comparison.component').then(
+        (m) => m.ComparisonComponent
+      ),
   },
+
+  // ⬇️ ADD FEEDBACK ROUTE HERE
+  {
+    path: 'feedback',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./pages/feedback/feedback-page/feedback-page.component').then(
+        (m) => m.FeedbackPageComponent
+      ),
+  },
+
   {
     path: '',
     redirectTo: 'dashboard',
     pathMatch: 'full',
   },
+
   {
     path: '',
     component: AuthLayoutComponent,
@@ -134,6 +172,7 @@ export const routes: Routes = [
             (m) => m.LoginComponent
           ),
       },
+
       {
         path: 'register',
         loadComponent: () =>
@@ -141,6 +180,7 @@ export const routes: Routes = [
             (m) => m.RegisterComponent
           ),
       },
+
       {
         path: 'forgot-password',
         loadComponent: () =>
@@ -148,6 +188,7 @@ export const routes: Routes = [
             (m) => m.ForgotPasswordComponent
           ),
       },
+
       {
         path: 'reset-password',
         loadComponent: () =>
@@ -157,6 +198,7 @@ export const routes: Routes = [
       },
     ],
   },
+
   {
     path: '**',
     redirectTo: 'dashboard',
