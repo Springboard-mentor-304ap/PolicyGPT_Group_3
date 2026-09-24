@@ -3,6 +3,7 @@ from backend.app.models.user_profile import UserProfile
 from backend.app.models.role_request import RoleRequest
 from backend.app.models.policy import Policy
 from backend.app.models.scheme import Scheme
+from backend.app.models.application import Application
 from backend.app.models.eligibility_rule import EligibilityRule
 from backend.app.models.search_history import SearchHistory
 from backend.app.models.notification import Notification
