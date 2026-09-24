@@ -9,9 +9,10 @@ from backend.app.comparison.router import router as comparison_router
 from backend.app.policies.router import router as policy_router
 from backend.app.schemes.router import router as scheme_router
 from backend.app.analytics.router import router as analytics_router
+from backend.app.notifications.router import router as notification_router
+from backend.app.applications.router import router as application_router
 
 app = FastAPI()
-
 
 app.include_router(auth_router, prefix="/api")
 app.include_router(role_requests_router, prefix="/api")
@@ -22,6 +23,8 @@ app.include_router(comparison_router, prefix="/api")
 app.include_router(policy_router, prefix="/api")
 app.include_router(scheme_router, prefix="/api")
 app.include_router(analytics_router, prefix="/api")
+app.include_router(notification_router, prefix="/api")
+app.include_router(application_router, prefix="/api")
 
 @app.get("/")
 def root():

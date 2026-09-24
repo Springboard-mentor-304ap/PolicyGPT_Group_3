@@ -7,6 +7,8 @@ from sqlalchemy.orm import Session
 from backend.app.models.policy import Policy, PolicyStatus
 from backend.app.models.scheme import Scheme, SchemeStatus
 from backend.app.models.user import User, UserRole
+from backend.app.models.notification import NotificationType
+from backend.app.notifications.service import send_notification
 from backend.app.policies.schemas import (
     PolicyCreate,
     PolicyDetailResponse,
@@ -287,7 +289,41 @@ def approve_policy(
 
     if policy.published_date is None:
         policy.published_date = date.today()
+    send_notification(
+        db=db,
+        user_id=policy.uploaded_by,
+        notification_type=NotificationType.NEW_POLICY,
+        title="Policy Approved",
+        message=f'Your policy "{policy.title}" has been approved and published',
+        related_entity_type="policy",
+        related_entity_id=policy.id,
+    )
+    recipients = (
+        db.query(User)
+        .filter(
+            User.is_active.is_(True),
+            User.role.in_(
+                [
+                    UserRole.CITIZEN,
+                    UserRole.RESEARCHER,
+                    UserRole.ORGANIZATION,
+                ]
+            ),
+            User.id != policy.uploaded_by,
+        )
+        .all()
+    )
 
+    for recipient in recipients:
+        send_notification(
+            db=db,
+            user_id=recipient.id,
+            notification_type=NotificationType.NEW_POLICY,
+            title="New Policy Published",
+            message=f'A new policy "{policy.title}" has been published.',
+            related_entity_type="policy",
+            related_entity_id=policy.id,
+        )
     db.commit()
     db.refresh(policy)
 
