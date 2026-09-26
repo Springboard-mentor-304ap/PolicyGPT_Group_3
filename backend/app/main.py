@@ -13,6 +13,7 @@ from backend.app.notifications.router import router as notification_router
 from backend.app.applications.router import router as application_router
 from backend.app.feedback.router import router as feedback_router
 from backend.app.faq.router import router as faq_router
+from backend.app.reports.router import router as report_router
 
 app = FastAPI()
 
@@ -29,6 +30,7 @@ app.include_router(notification_router, prefix="/api")
 app.include_router(application_router, prefix="/api")
 app.include_router(feedback_router, prefix="/api")
 app.include_router(faq_router, prefix="/api")
+app.include_router(report_router, prefix="/api")
 
 @app.get("/")
 def root():

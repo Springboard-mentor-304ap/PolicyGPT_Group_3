@@ -14,3 +14,6 @@ __pycache__/
 .DS_Store
 
 /docs
+
+# Generated report exports
+backend/generated_reports/

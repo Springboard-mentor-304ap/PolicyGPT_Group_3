@@ -1,0 +1,414 @@
+from pathlib import Path
+from xml.sax.saxutils import escape
+
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4, landscape
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.lib.units import mm
+from reportlab.pdfbase.pdfmetrics import stringWidth
+from reportlab.pdfgen import canvas as pdf_canvas
+from reportlab.platypus import (
+    LongTable,
+    PageBreak,
+    Paragraph,
+    SimpleDocTemplate,
+    Spacer,
+    Table,
+    TableStyle,
+)
+
+from backend.app.reports.generators import (
+    format_filters,
+    format_timestamp,
+    report_type_label,
+)
+from backend.app.reports.schemas import (
+    ReportContent,
+    ReportSection,
+    ReportSummaryItem,
+    ReportTable,
+)
+
+PAGE_SIZE = landscape(A4)
+LEFT_MARGIN = 12 * mm
+RIGHT_MARGIN = 12 * mm
+TOP_MARGIN = 14 * mm
+BOTTOM_MARGIN = 18 * mm
+CONTENT_WIDTH = PAGE_SIZE[0] - LEFT_MARGIN - RIGHT_MARGIN
+
+PRIMARY_COLOR = colors.HexColor("#1F4E79")
+BORDER_COLOR = colors.HexColor("#B7C4D4")
+STRIPE_COLOR = colors.HexColor("#F2F6FA")
+MUTED_COLOR = colors.HexColor("#555555")
+
+CELL_FONT_NAME = "Helvetica"
+HEADER_FONT_NAME = "Helvetica-Bold"
+CELL_FONT_SIZE = 7.5
+CELL_PADDING = 3
+MAX_CONTENT_WIDTH = 220
+
+EMPTY_CELL_TEXT = "-"
+EMPTY_TABLE_TEXT = "No data available for the selected filters."
+DOCUMENT_TITLE = "PolicyGPT"
+DOCUMENT_SUBTITLE = "Government Policy & Public Scheme Intelligence Platform"
+
+META_LABEL_WIDTH = 42 * mm
+
+
+def _styles() -> dict[str, ParagraphStyle]:
+    base = getSampleStyleSheet()
+
+    return {
+        "document_title": ParagraphStyle(
+            "ReportDocumentTitle",
+            parent=base["Title"],
+            alignment=0,
+            fontSize=18,
+            leading=22,
+            textColor=PRIMARY_COLOR,
+            spaceAfter=2,
+        ),
+        "report_title": ParagraphStyle(
+            "ReportTitle",
+            parent=base["Heading1"],
+            alignment=0,
+            fontSize=13,
+            leading=17,
+            textColor=colors.black,
+            spaceBefore=0,
+            spaceAfter=8,
+        ),
+        "section": ParagraphStyle(
+            "ReportSection",
+            parent=base["Heading2"],
+            fontSize=12,
+            leading=15,
+            textColor=PRIMARY_COLOR,
+            spaceBefore=8,
+            spaceAfter=6,
+        ),
+        "table_title": ParagraphStyle(
+            "ReportTableTitle",
+            parent=base["Heading3"],
+            fontSize=10,
+            leading=13,
+            textColor=colors.black,
+            spaceBefore=4,
+            spaceAfter=4,
+        ),
+        "cell": ParagraphStyle(
+            "ReportCell",
+            parent=base["Normal"],
+            fontSize=CELL_FONT_SIZE,
+            leading=CELL_FONT_SIZE + 2,
+            fontName=CELL_FONT_NAME,
+        ),
+        "cell_header": ParagraphStyle(
+            "ReportCellHeader",
+            parent=base["Normal"],
+            fontSize=CELL_FONT_SIZE,
+            leading=CELL_FONT_SIZE + 2,
+            fontName=HEADER_FONT_NAME,
+            textColor=colors.white,
+        ),
+        "note": ParagraphStyle(
+            "ReportNote",
+            parent=base["Normal"],
+            fontSize=9,
+            leading=12,
+            textColor=MUTED_COLOR,
+        ),
+    }
+
+
+class _NumberedCanvas(pdf_canvas.Canvas):
+    """Two-pass canvas that adds a footer with "Page X of Y"."""
+
+    def __init__(self, report_title: str, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self._report_title = report_title
+        self._page_states: list[dict] = []
+
+    def showPage(self) -> None:
+        self._page_states.append(dict(self.__dict__))
+        self._startPage()
+
+    def save(self) -> None:
+        total_pages = len(self._page_states)
+
+        for state in self._page_states:
+            self.__dict__.update(state)
+            self._draw_footer(total_pages)
+            super().showPage()
+
+        super().save()
+
+    def _draw_footer(self, total_pages: int) -> None:
+        self.setFont("Helvetica", 7.5)
+        self.setFillColor(MUTED_COLOR)
+        self.drawString(
+            LEFT_MARGIN,
+            10 * mm,
+            f"{DOCUMENT_TITLE} | {self._report_title}",
+        )
+        self.drawRightString(
+            PAGE_SIZE[0] - RIGHT_MARGIN,
+            10 * mm,
+            f"Page {self.getPageNumber()} of {total_pages}",
+        )
+
+
+def _numbered_canvas_maker(report_title: str):
+    def make_canvas(*args, **kwargs) -> _NumberedCanvas:
+        return _NumberedCanvas(report_title, *args, **kwargs)
+
+    return make_canvas
+
+
+def _cell_text(value: str | int | float | None) -> str:
+    if value is None:
+        return EMPTY_CELL_TEXT
+
+    text = str(value).strip()
+
+    return text or EMPTY_CELL_TEXT
+
+
+def _meta_table(
+    content: ReportContent,
+    styles: dict[str, ParagraphStyle],
+) -> Table:
+    rows = [
+        ["Report Type", report_type_label(content.report_type)],
+        ["Generated At", format_timestamp(content.generated_at)],
+        ["Generated By", content.generated_by],
+        ["Applied Filters", format_filters(content.filters)],
+    ]
+
+    table = Table(
+        [
+            [
+                Paragraph(escape(label), styles["cell_header"]),
+                Paragraph(escape(value), styles["cell"]),
+            ]
+            for label, value in rows
+        ],
+        colWidths=[META_LABEL_WIDTH, CONTENT_WIDTH - META_LABEL_WIDTH],
+    )
+    table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (0, -1), PRIMARY_COLOR),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("GRID", (0, 0), (-1, -1), 0.4, BORDER_COLOR),
+                ("LEFTPADDING", (0, 0), (-1, -1), 4),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+                ("TOPPADDING", (0, 0), (-1, -1), 3),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+            ]
+        )
+    )
+
+    return table
+
+
+def _summary_table(
+    summary: list[ReportSummaryItem],
+    styles: dict[str, ParagraphStyle],
+) -> Table:
+    table = Table(
+        [
+            [
+                Paragraph(escape(item.label), styles["cell_header"]),
+                Paragraph(escape(item.value), styles["cell"]),
+            ]
+            for item in summary
+        ],
+        colWidths=[META_LABEL_WIDTH, CONTENT_WIDTH - META_LABEL_WIDTH],
+    )
+    table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (0, -1), PRIMARY_COLOR),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("GRID", (0, 0), (-1, -1), 0.4, BORDER_COLOR),
+                ("ROWBACKGROUNDS", (1, 0), (1, -1), [colors.white, STRIPE_COLOR]),
+                ("LEFTPADDING", (0, 0), (-1, -1), 4),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+                ("TOPPADDING", (0, 0), (-1, -1), 3),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+            ]
+        )
+    )
+
+    return table
+
+
+def _column_widths(table: ReportTable) -> list[float]:
+    """Distribute the available width between the columns of a table.
+
+    Every column first receives enough room for its header (so headers never
+    wrap or get truncated); whatever width is left is then shared out in
+    proportion to how much content each column actually holds.
+    """
+
+    header_widths: list[float] = []
+    content_widths: list[float] = []
+
+    for index, column in enumerate(table.columns):
+        header_width = (
+            stringWidth(str(column), HEADER_FONT_NAME, CELL_FONT_SIZE)
+            + 2 * CELL_PADDING
+        )
+
+        widest_cell = 0.0
+
+        for row in table.rows:
+            if index < len(row):
+                widest_cell = max(
+                    widest_cell,
+                    stringWidth(
+                        _cell_text(row[index]),
+                        CELL_FONT_NAME,
+                        CELL_FONT_SIZE,
+                    ),
+                )
+
+        header_widths.append(header_width)
+        content_widths.append(
+            min(widest_cell, MAX_CONTENT_WIDTH) + 2 * CELL_PADDING
+        )
+
+    total_header_width = sum(header_widths)
+
+    if total_header_width >= CONTENT_WIDTH:
+        # Very wide table: fall back to an even share of the header widths.
+        scale = CONTENT_WIDTH / total_header_width
+
+        return [width * scale for width in header_widths]
+
+    remaining = CONTENT_WIDTH - total_header_width
+    extra_demand = [
+        max(content - header, 0)
+        for content, header in zip(content_widths, header_widths)
+    ]
+    total_extra_demand = sum(extra_demand)
+
+    if total_extra_demand <= 0:
+        even_share = remaining / len(header_widths)
+
+        return [width + even_share for width in header_widths]
+
+    return [
+        header + remaining * (demand / total_extra_demand)
+        for header, demand in zip(header_widths, extra_demand)
+    ]
+
+
+def _table_flowable(
+    table: ReportTable,
+    styles: dict[str, ParagraphStyle],
+) -> LongTable:
+    header = [
+        Paragraph(escape(str(column)), styles["cell_header"])
+        for column in table.columns
+    ]
+    body = [
+        [
+            Paragraph(escape(_cell_text(value)), styles["cell"])
+            for value in row
+        ]
+        for row in table.rows
+    ]
+
+    flowable = LongTable(
+        [header] + body,
+        colWidths=_column_widths(table),
+        repeatRows=1,
+    )
+    flowable.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), PRIMARY_COLOR),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("GRID", (0, 0), (-1, -1), 0.4, BORDER_COLOR),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, STRIPE_COLOR]),
+                ("LEFTPADDING", (0, 0), (-1, -1), 3),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 3),
+                ("TOPPADDING", (0, 0), (-1, -1), 2),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+            ]
+        )
+    )
+
+    return flowable
+
+
+def _section_flowables(
+    section: ReportSection,
+    styles: dict[str, ParagraphStyle],
+) -> list:
+    flowables: list = [
+        Paragraph(escape(section.title), styles["section"]),
+    ]
+
+    for table in section.tables:
+        if table.title:
+            flowables.append(
+                Paragraph(escape(table.title), styles["table_title"])
+            )
+
+        if table.rows:
+            flowables.append(_table_flowable(table, styles))
+        else:
+            flowables.append(
+                Paragraph(EMPTY_TABLE_TEXT, styles["note"])
+            )
+
+    return flowables
+
+
+def generate_pdf_report(content: ReportContent, output_path: Path) -> None:
+    styles = _styles()
+
+    story: list = [
+        Paragraph(escape(DOCUMENT_TITLE), styles["document_title"]),
+        Paragraph(escape(DOCUMENT_SUBTITLE), styles["note"]),
+        Spacer(1, 4 * mm),
+        Paragraph(escape(content.title), styles["report_title"]),
+        _meta_table(content, styles),
+    ]
+
+    if content.summary:
+        story.append(Spacer(1, 4 * mm))
+        story.append(Paragraph("Summary", styles["section"]))
+        story.append(_summary_table(content.summary, styles))
+
+    if not content.sections:
+        story.append(Spacer(1, 4 * mm))
+        story.append(Paragraph(EMPTY_TABLE_TEXT, styles["note"]))
+    else:
+        for index, section in enumerate(content.sections):
+            if index == 0:
+                story.append(Spacer(1, 4 * mm))
+            else:
+                story.append(PageBreak())
+
+            story.extend(_section_flowables(section, styles))
+
+    document = SimpleDocTemplate(
+        str(output_path),
+        pagesize=PAGE_SIZE,
+        leftMargin=LEFT_MARGIN,
+        rightMargin=RIGHT_MARGIN,
+        topMargin=TOP_MARGIN,
+        bottomMargin=BOTTOM_MARGIN,
+        title=content.title,
+        author=DOCUMENT_TITLE,
+        subject=report_type_label(content.report_type),
+    )
+
+    document.build(
+        story,
+        canvasmaker=_numbered_canvas_maker(content.title),
+    )
