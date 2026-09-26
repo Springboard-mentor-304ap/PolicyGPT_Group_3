@@ -1,0 +1,156 @@
+.trend-card {
+  background: var(--color-bg-surface, #ffffff);
+  border: 1px solid var(--color-border-subtle, #e2e8f0);
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+}
+
+.trend-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1.5rem;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.trend-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--color-text-primary, #0f172a);
+  margin: 0;
+}
+
+.trend-subtitle {
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary, #64748b);
+  margin: 0.25rem 0 0 0;
+}
+
+.trend-summary {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.summary-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: var(--color-bg-muted, #f1f5f9);
+  padding: 0.3rem 0.65rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-body, #334155);
+}
+
+.pill-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.pill-dot.blue {
+  background: var(--color-primary-blue, #0062d2);
+}
+
+.pill-dot.green {
+  background: var(--color-success, #10b981);
+}
+
+.empty-chart {
+  padding: 2rem;
+  text-align: center;
+  color: var(--color-text-muted, #94a3b8);
+  font-size: 0.875rem;
+}
+
+.trend-body {
+  height: 180px;
+  display: flex;
+  align-items: flex-end;
+}
+
+.bars-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  width: 100%;
+  height: 100%;
+  padding-top: 1.5rem;
+  gap: 0.5rem;
+}
+
+.trend-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  position: relative;
+  cursor: pointer;
+}
+
+.bar-visual-wrap {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.trend-bar-fill {
+  width: 28px;
+  max-width: 80%;
+  background: linear-gradient(180deg, var(--color-primary-blue, #0062d2), #60a5fa);
+  border-radius: 6px 6px 0 0;
+  transition: height 0.4s ease, filter 0.2s ease;
+  min-height: 8px;
+}
+
+.trend-col:hover .trend-bar-fill,
+.trend-col.active .trend-bar-fill {
+  filter: brightness(1.15) drop-shadow(0 2px 6px rgba(0, 98, 210, 0.35));
+}
+
+.trend-x-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-text-muted, #94a3b8);
+  margin-top: 0.5rem;
+  white-space: nowrap;
+}
+
+.trend-tooltip {
+  position: absolute;
+  top: -45px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--color-primary-navy, #0b2545);
+  color: #ffffff;
+  padding: 0.4rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  z-index: 10;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.tooltip-date {
+  font-weight: 700;
+  color: #93c5fd;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  padding-bottom: 0.15rem;
+  margin-bottom: 0.15rem;
+}
+
+.tooltip-item {
+  font-size: 0.7rem;
+}

@@ -2,39 +2,132 @@ import { Component, inject, signal, computed, OnInit, OnDestroy } from '@angular
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
+import { AnalyticsService } from '../../core/services/analytics.service';
 import { RoleRequestResponse, UserRole } from '../../core/models/auth.models';
+import { DashboardAnalyticsResponse } from '../../core/models/analytics.models';
 import { FloatingCompareDockComponent } from '../comparison/components/floating-compare-dock/floating-compare-dock.component';
-
-interface DashboardData {
-  stats: { label: string; value: string; icon: string; color: string }[];
-  recentItems: { title: string; category: string; date: string; status: string }[];
-  quickActions: { label: string; icon: string }[];
-}
+import { DonutChartComponent } from '../../shared/components/donut-chart/donut-chart.component';
+import { BarChartComponent } from '../../shared/components/bar-chart/bar-chart.component';
+import { TrendChartComponent } from '../../shared/components/trend-chart/trend-chart.component';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterLink, FloatingCompareDockComponent],
+  imports: [
+    CommonModule,
+    RouterLink,
+    FloatingCompareDockComponent,
+    DonutChartComponent,
+    BarChartComponent,
+    TrendChartComponent,
+  ],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.css',
 })
 export class DashboardComponent implements OnInit, OnDestroy {
   readonly authService = inject(AuthService);
+  private readonly analyticsService = inject(AnalyticsService);
   private readonly router = inject(Router);
+
   private pollInterval: ReturnType<typeof setInterval> | null = null;
   private visibilityHandler: (() => void) | null = null;
 
+  readonly analyticsData = signal<DashboardAnalyticsResponse | null>(null);
+  readonly isLoading = signal<boolean>(true);
   readonly pendingRequests = signal<RoleRequestResponse[]>([]);
+
+  readonly sidebarOpen = signal<boolean>(true);
+  readonly activeMenu = signal<string>('overview');
+
+  readonly isGuest = computed(() => !this.authService.isAuthenticated());
+
   readonly isAdmin = computed(() => {
     const role = this.authService.userRole();
     return role === UserRole.ADMINISTRATOR || role === UserRole.SUPER_ADMIN;
   });
 
+  readonly isGovOfficial = computed(() => {
+    return this.authService.userRole() === UserRole.GOVERNMENT_OFFICIAL;
+  });
+
+  readonly isResearcher = computed(() => {
+    return this.authService.userRole() === UserRole.RESEARCHER;
+  });
+
+  readonly isCitizen = computed(() => {
+    const role = this.authService.userRole();
+    return !role || role === UserRole.CITIZEN;
+  });
+
+  // ── Role Permissions for Dashboard Sections ─────────────────────────────
+  readonly canViewTotalUsers = computed(() => this.isAdmin());
+
+  readonly canViewTotalSearches = computed(() => {
+    const role = this.authService.userRole();
+    return (
+      role === UserRole.ADMINISTRATOR ||
+      role === UserRole.SUPER_ADMIN ||
+      role === UserRole.GOVERNMENT_OFFICIAL ||
+      role === UserRole.RESEARCHER
+    );
+  });
+
+  readonly canViewStatusBreakdown = computed(() => {
+    const role = this.authService.userRole();
+    return (
+      role === UserRole.ADMINISTRATOR ||
+      role === UserRole.SUPER_ADMIN ||
+      role === UserRole.GOVERNMENT_OFFICIAL
+    );
+  });
+
+  readonly canViewActivityFeed = computed(() => {
+    const role = this.authService.userRole();
+    return (
+      role === UserRole.ADMINISTRATOR ||
+      role === UserRole.SUPER_ADMIN ||
+      role === UserRole.GOVERNMENT_OFFICIAL
+    );
+  });
+
+  readonly canViewSearchIntelligence = computed(() => {
+    const role = this.authService.userRole();
+    return (
+      role === UserRole.ADMINISTRATOR ||
+      role === UserRole.SUPER_ADMIN ||
+      role === UserRole.RESEARCHER ||
+      role === UserRole.GOVERNMENT_OFFICIAL
+    );
+  });
+
+  readonly canViewUsageOverTime = computed(() => {
+    const role = this.authService.userRole();
+    return (
+      role === UserRole.ADMINISTRATOR ||
+      role === UserRole.SUPER_ADMIN ||
+      role === UserRole.RESEARCHER ||
+      role === UserRole.GOVERNMENT_OFFICIAL
+    );
+  });
+
+  readonly canViewSchemeUsage = computed(() => {
+    const role = this.authService.userRole();
+    return (
+      role === UserRole.ADMINISTRATOR ||
+      role === UserRole.SUPER_ADMIN ||
+      role === UserRole.GOVERNMENT_OFFICIAL ||
+      role === UserRole.RESEARCHER ||
+      role === UserRole.ORGANIZATION
+    );
+  });
+
   ngOnInit(): void {
+    this.loadAnalytics();
+
     if (this.authService.getAccessToken()) {
-      // Fetch user profile, then check if admin and load pending requests
       this.authService.getMe().subscribe({
         next: () => {
+          this.loadAnalytics();
           if (this.isAdmin()) {
             this.loadPendingRequests();
             this.startPolling();
@@ -44,10 +137,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
       });
     }
 
-    // Re-fetch when user switches back to this tab
     this.visibilityHandler = () => {
-      if (document.visibilityState === 'visible' && this.isAdmin()) {
-        this.loadPendingRequests();
+      if (document.visibilityState === 'visible') {
+        this.loadAnalytics();
+        if (this.isAdmin()) {
+          this.loadPendingRequests();
+        }
       }
     };
     document.addEventListener('visibilitychange', this.visibilityHandler);
@@ -60,6 +155,19 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (this.visibilityHandler) {
       document.removeEventListener('visibilitychange', this.visibilityHandler);
     }
+  }
+
+  loadAnalytics(): void {
+    this.isLoading.set(true);
+    this.analyticsService.getDashboardAnalytics().subscribe({
+      next: (data) => {
+        this.analyticsData.set(data);
+        this.isLoading.set(false);
+      },
+      error: () => {
+        this.isLoading.set(false);
+      },
+    });
   }
 
   private startPolling(): void {
@@ -80,16 +188,74 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   approveRequest(requestId: string): void {
     this.authService.approveRoleRequest(requestId).subscribe({
-      next: () => this.loadPendingRequests(),
+      next: () => {
+        this.loadPendingRequests();
+        this.loadAnalytics();
+      },
       error: () => {},
     });
   }
 
   rejectRequest(requestId: string): void {
     this.authService.rejectRoleRequest(requestId).subscribe({
-      next: () => this.loadPendingRequests(),
+      next: () => {
+        this.loadPendingRequests();
+        this.loadAnalytics();
+      },
       error: () => {},
     });
+  }
+
+  toggleSidebar(): void {
+    this.sidebarOpen.set(!this.sidebarOpen());
+  }
+
+  onMenuSelect(menuId: string): void {
+    this.activeMenu.set(menuId);
+    switch (menuId) {
+      case 'policies':
+        this.router.navigate(['/policies']);
+        break;
+      case 'schemes':
+        this.router.navigate(['/schemes']);
+        break;
+      case 'search':
+        this.router.navigate(['/search']);
+        break;
+      case 'eligibility':
+        this.router.navigate(['/eligibility']);
+        break;
+      case 'compare':
+        this.router.navigate(['/compare']);
+        break;
+      case 'overview':
+      default:
+        break;
+    }
+  }
+
+  onQuickAction(label: string): void {
+    const l = label.toLowerCase();
+    if (l.includes('search')) {
+      this.router.navigate(['/search']);
+    } else if (l.includes('eligibility') || l.includes('apply')) {
+      this.router.navigate(['/eligibility']);
+    } else if (l.includes('compare')) {
+      this.router.navigate(['/compare']);
+    } else if (l.includes('policy') || l.includes('publish')) {
+      this.router.navigate(['/policies']);
+    } else if (l.includes('scheme')) {
+      this.router.navigate(['/schemes']);
+    }
+  }
+
+  logout(): void {
+    this.authService.logout();
+    this.router.navigate(['/login']);
+  }
+
+  navigateToProfile(): void {
+    this.router.navigate(['/citizen-profile']);
   }
 
   formatRole(role: string): string {
@@ -98,7 +264,16 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   formatDate(dateStr: string): string {
     return new Date(dateStr).toLocaleDateString('en-US', {
-      month: 'short', day: 'numeric', year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  }
+
+  formatTime(dateStr: string): string {
+    return new Date(dateStr).toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
     });
   }
 
@@ -106,83 +281,24 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return Object.entries(details).slice(0, 4);
   }
 
-  sidebarOpen = signal(true);
-  activeMenu = signal('overview');
+  get userName(): string {
+    return this.authService.currentUser()?.full_name ?? 'User';
+  }
 
-  private readonly roleData: Record<string, DashboardData> = {
-    citizen: {
-      stats: [
-        { label: 'Active Policies', value: '24', icon: 'document', color: 'blue' },
-        { label: 'My Applications', value: '8', icon: 'folder', color: 'green' },
-        { label: 'Notifications', value: '3', icon: 'bell', color: 'amber' },
-        { label: 'Saved Items', value: '12', icon: 'bookmark', color: 'purple' },
-      ],
-      recentItems: [
-        { title: 'Digital India Initiative', category: 'Technology', date: '2026-09-01', status: 'Active' },
-        { title: 'National Education Policy', category: 'Education', date: '2026-08-28', status: 'Active' },
-        { title: 'Healthcare Access Program', category: 'Health', date: '2026-08-20', status: 'Active' },
-      ],
-      quickActions: [
-        { label: 'Search Policies', icon: 'search' },
-        { label: 'Apply for Scheme', icon: 'file-plus' },
-        { label: 'AI Assistant', icon: 'chat' },
-        { label: 'Track Application', icon: 'edit' },
-      ],
-    },
-    researcher: {
-      stats: [
-        { label: 'Policies Analyzed', value: '156', icon: 'document', color: 'blue' },
-        { label: 'Reports Generated', value: '34', icon: 'folder', color: 'green' },
-        { label: 'Data Sources', value: '12', icon: 'database', color: 'amber' },
-        { label: 'Bookmarks', value: '47', icon: 'bookmark', color: 'purple' },
-      ],
-      recentItems: [
-        { title: 'Policy Impact Analysis: Education', category: 'Research Report', date: '2026-09-02', status: 'Published' },
-        { title: 'Healthcare Spending Trends 2025', category: 'Data Analysis', date: '2026-08-30', status: 'Draft' },
-        { title: 'Rural Development Scheme Review', category: 'Review', date: '2026-08-27', status: 'Published' },
-        { title: 'Digital Literacy Program Audit', category: 'Audit', date: '2026-08-22', status: 'In Progress' },
-      ],
-      quickActions: [
-        { label: 'Policy Search', icon: 'search' },
-        { label: 'Generate Report', icon: 'file-plus' },
-        { label: 'AI Analysis', icon: 'chat' },
-        { label: 'Export Data', icon: 'download' },
-      ],
-    },
-    government_official: {
-      stats: [
-        { label: 'Active Policies', value: '42', icon: 'document', color: 'blue' },
-        { label: 'Pending Reviews', value: '15', icon: 'folder', color: 'green' },
-        { label: 'Public Queries', value: '28', icon: 'bell', color: 'amber' },
-        { label: 'Published', value: '89', icon: 'bookmark', color: 'purple' },
-      ],
-      recentItems: [
-        { title: 'New Tax Reform Proposal', category: 'Policy Draft', date: '2026-09-03', status: 'Pending Review' },
-        { title: 'Infrastructure Bill 2026', category: 'Legislation', date: '2026-09-01', status: 'Approved' },
-        { title: 'Public Health Emergency Guidelines', category: 'Guidelines', date: '2026-08-29', status: 'Active' },
-        { title: 'Water Conservation Initiative', category: 'Initiative', date: '2026-08-24', status: 'Under Review' },
-      ],
-      quickActions: [
-        { label: 'Review Policies', icon: 'search' },
-        { label: 'Publish Policy', icon: 'file-plus' },
-        { label: 'AI Copilot', icon: 'chat' },
-        { label: 'Manage Queries', icon: 'edit' },
-      ],
-    },
-  };
+  get userRole(): string {
+    const role = this.authService.userRole();
+    return role ? role.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()) : 'Citizen';
+  }
 
-  readonly isGuest = computed(() => !this.authService.isAuthenticated());
+  get userDepartment(): string | null {
+    return this.analyticsData()?.user_department ?? null;
+  }
 
-  dashboardData = computed<DashboardData>(() => {
-    const role = this.authService.userRole() ?? 'citizen';
-    return this.roleData[role] ?? this.roleData['citizen'];
-  });
+  get userInitial(): string {
+    return this.userName.charAt(0).toUpperCase();
+  }
 
-  stats = computed(() => this.dashboardData().stats);
-  recentItems = computed(() => this.dashboardData().recentItems);
-  quickActions = computed(() => this.dashboardData().quickActions);
-
-  menuItems = computed(() => {
+  readonly menuItems = computed(() => {
     if (this.isGuest()) {
       return [
         { id: 'overview', label: 'Overview', icon: 'home' },
@@ -204,90 +320,22 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (role === 'government_official') {
       return [
         ...base,
-        { id: 'reviews', label: 'Pending Reviews', icon: 'folder' },
-        { id: 'queries', label: 'Public Queries', icon: 'bell' },
-        { id: 'analytics', label: 'Analytics', icon: 'bookmark' },
+        { id: 'policies-create', label: 'Upload Policy', icon: 'file-plus' },
+        { id: 'schemes-create', label: 'Create Scheme', icon: 'gift' },
       ];
     }
 
     if (role === 'researcher') {
       return [
         ...base,
-        { id: 'reports', label: 'My Reports', icon: 'folder' },
-        { id: 'datasets', label: 'Datasets', icon: 'bookmark' },
-        { id: 'analytics', label: 'Analytics', icon: 'bell' },
+        { id: 'search', label: 'Research Analytics', icon: 'search' },
       ];
     }
 
-    // citizen
+    // Citizen
     return [
       ...base,
-      { id: 'applications', label: 'Applications', icon: 'folder' },
-      { id: 'schemes', label: 'Schemes', icon: 'gift' },
-      { id: 'notifications', label: 'Notifications', icon: 'bell' },
+      { id: 'role-upgrade', label: 'Role Upgrade', icon: 'folder' },
     ];
   });
-
-  toggleSidebar(): void {
-    this.sidebarOpen.set(!this.sidebarOpen());
-  }
-
-  onMenuSelect(menuId: string): void {
-    this.activeMenu.set(menuId);
-    // Navigate to dedicated pages for specific menu items
-    switch (menuId) {
-      case 'policies':
-        this.router.navigate(['/policies']);
-        break;
-      case 'schemes':
-        this.router.navigate(['/schemes']);
-        break;
-      case 'search':
-        this.router.navigate(['/search']);
-        break;
-      case 'eligibility':
-        this.router.navigate(['/eligibility']);
-        break;
-      case 'compare':
-        this.router.navigate(['/compare']);
-        break;
-      case 'overview':
-      default:
-        // remain on overview
-        break;
-    }
-  }
-
-  onQuickAction(label: string): void {
-    const l = label.toLowerCase();
-    if (l.includes('search')) {
-      this.router.navigate(['/search']);
-    } else if (l.includes('eligibility') || l.includes('apply')) {
-      this.router.navigate(['/eligibility']);
-    } else if (l.includes('compare')) {
-      this.router.navigate(['/compare']);
-    }
-  }
-
-  logout(): void {
-    this.authService.logout();
-    this.router.navigate(['/login']);
-  }
-
-  navigateToProfile(): void {
-    this.router.navigate(['/citizen-profile']);
-  }
-
-  get userName(): string {
-    return this.authService.currentUser()?.full_name ?? 'User';
-  }
-
-  get userRole(): string {
-    const role = this.authService.userRole();
-    return role ? role.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Citizen';
-  }
-
-  get userInitial(): string {
-    return this.userName.charAt(0).toUpperCase();
-  }
 }

@@ -1,0 +1,65 @@
+<div class="trend-card">
+  <div class="trend-header">
+    <div class="title-wrap">
+      <h3 class="trend-title">{{ title }}</h3>
+      @if (subtitle) {
+        <p class="trend-subtitle">{{ subtitle }}</p>
+      }
+    </div>
+
+    <div class="trend-summary">
+      <div class="summary-pill">
+        <span class="pill-dot blue"></span>
+        <span class="pill-text">{{ totalSearches() }} Searches</span>
+      </div>
+      @if (totalCreations() > 0) {
+        <div class="summary-pill">
+          <span class="pill-dot green"></span>
+          <span class="pill-text">{{ totalCreations() }} New Items</span>
+        </div>
+      }
+    </div>
+  </div>
+
+  @if (points().length === 0) {
+    <div class="empty-chart">
+      <p>No time series activity recorded yet.</p>
+    </div>
+  } @else {
+    <div class="trend-body">
+      <div class="bars-container">
+        @for (pt of points(); track pt.date; let i = $index) {
+          <div
+            class="trend-col"
+            [class.active]="hoveredIndex() === i"
+            (mouseenter)="onHover(i)"
+            (mouseleave)="onHover(null)"
+          >
+            <!-- Tooltip -->
+            @if (hoveredIndex() === i) {
+              <div class="trend-tooltip">
+                <span class="tooltip-date">{{ pt.date }}</span>
+                <span class="tooltip-item">🔍 {{ pt.searches }} searches</span>
+                @if (pt.policies_created > 0) {
+                  <span class="tooltip-item">📜 {{ pt.policies_created }} policies</span>
+                }
+                @if (pt.schemes_created > 0) {
+                  <span class="tooltip-item">🎁 {{ pt.schemes_created }} schemes</span>
+                }
+              </div>
+            }
+
+            <div class="bar-visual-wrap">
+              <div
+                class="trend-bar-fill"
+                [style.height.%]="getBarHeightPct(pt.searches)"
+              ></div>
+            </div>
+
+            <span class="trend-x-label">{{ pt.date }}</span>
+          </div>
+        }
+      </div>
+    </div>
+  }
+</div>

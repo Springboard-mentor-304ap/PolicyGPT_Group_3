@@ -1,0 +1,97 @@
+<div class="chart-card">
+  @if (title) {
+    <div class="chart-header">
+      <div class="title-wrap">
+        <h3 class="chart-title">{{ title }}</h3>
+        @if (subtitle) {
+          <p class="chart-subtitle">{{ subtitle }}</p>
+        }
+      </div>
+      <span class="total-badge">{{ totalCount() }} {{ totalLabel }}</span>
+    </div>
+  }
+
+  @if (totalCount() === 0) {
+    <div class="empty-chart">
+      <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <circle cx="12" cy="12" r="10"></circle>
+        <path d="M8 12h8"></path>
+      </svg>
+      <p>No distribution data available</p>
+    </div>
+  } @else {
+    <div class="chart-body">
+      <!-- SVG Donut Graphic -->
+      <div class="donut-wrapper">
+        <svg viewBox="0 0 42 42" class="donut-svg">
+          <!-- Background track -->
+          <circle
+            class="donut-hole"
+            cx="21"
+            cy="21"
+            r="15.91549430918954"
+            fill="transparent"
+          ></circle>
+          <circle
+            class="donut-ring"
+            cx="21"
+            cy="21"
+            r="15.91549430918954"
+            fill="transparent"
+            stroke="var(--color-border-subtle, #e2e8f0)"
+            stroke-width="4.5"
+          ></circle>
+
+          <!-- Dynamic Segments -->
+          @for (slice of slices(); track slice.label; let i = $index) {
+            <circle
+              class="donut-segment"
+              cx="21"
+              cy="21"
+              r="15.91549430918954"
+              fill="transparent"
+              [attr.stroke]="slice.color"
+              stroke-width="5"
+              [attr.stroke-dasharray]="slice.dashArray"
+              [attr.stroke-dashoffset]="slice.dashOffset"
+              [class.highlighted]="hoveredIndex() === i"
+              (mouseenter)="onSliceHover(i)"
+              (mouseleave)="onSliceHover(null)"
+            ></circle>
+          }
+        </svg>
+
+        <!-- Center dynamic text -->
+        <div class="donut-center-info">
+          @if (activeSlice(); as active) {
+            <span class="center-count" [style.color]="active.color">{{ active.count }}</span>
+            <span class="center-label">{{ active.label }}</span>
+            <span class="center-pct">{{ active.percentage }}%</span>
+          } @else {
+            <span class="center-count">{{ totalCount() }}</span>
+            <span class="center-label">{{ totalLabel }}</span>
+          }
+        </div>
+      </div>
+
+      <!-- Legend items -->
+      <div class="chart-legend">
+        @for (slice of slices(); track slice.label; let i = $index) {
+          <div
+            class="legend-item"
+            [class.active]="hoveredIndex() === i"
+            (mouseenter)="onSliceHover(i)"
+            (mouseleave)="onSliceHover(null)"
+          >
+            <span class="legend-color-dot" [style.background-color]="slice.color"></span>
+            <span class="legend-name" [title]="slice.label">{{ slice.label }}</span>
+            <span class="legend-meta">
+              <strong class="legend-count">{{ slice.count }}</strong>
+              <span class="legend-pct">({{ slice.percentage }}%)</span>
+            </span>
+          </div>
+        }
+      </div>
+    </div>
+  }
+</div>
