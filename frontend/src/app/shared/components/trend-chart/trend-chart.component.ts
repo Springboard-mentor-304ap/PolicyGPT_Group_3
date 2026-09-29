@@ -1,7 +1,14 @@
 import { Component, Input, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { TimeSeriesDataPoint } from '../../../core/models/analytics.models';
+import { TrendPoint } from '../../../core/models/analytics.models';
 
+/**
+ * Generic bar-style time series chart.
+ *
+ * Every canonical analytics time series (`searches_over_time`,
+ * `user_registrations_over_time`, `notifications_over_time`) has the shape
+ * `{ date, count }`, so this component renders a single labelled series.
+ */
 @Component({
   selector: 'app-trend-chart',
   standalone: true,
@@ -10,37 +17,31 @@ import { TimeSeriesDataPoint } from '../../../core/models/analytics.models';
   styleUrl: './trend-chart.component.css',
 })
 export class TrendChartComponent {
-  @Input() title = 'Usage Over Time';
-  @Input() subtitle = 'Activity & Search volume over the past 7 days';
+  @Input() title = 'Activity Over Time';
+  @Input() subtitle = '';
+  @Input() seriesLabel = 'Events';
 
-  private _rawPoints = signal<TimeSeriesDataPoint[]>([]);
+  private _rawPoints = signal<TrendPoint[]>([]);
 
   @Input()
-  set data(points: TimeSeriesDataPoint[] | undefined | null) {
+  set data(points: TrendPoint[] | undefined | null) {
     this._rawPoints.set(points || []);
   }
 
   readonly points = computed(() => this._rawPoints());
   readonly hoveredIndex = signal<number | null>(null);
 
-  readonly maxSearchCount = computed(() => {
-    const vals = this._rawPoints().map((p) => p.searches);
-    return vals.length > 0 ? Math.max(...vals, 5) : 5;
+  readonly maxCount = computed(() => {
+    const values = this._rawPoints().map((point) => point.count);
+    return values.length > 0 ? Math.max(...values, 5) : 5;
   });
 
-  readonly totalSearches = computed(() => {
-    return this._rawPoints().reduce((sum, p) => sum + (p.searches || 0), 0);
-  });
+  readonly totalCount = computed(() =>
+    this._rawPoints().reduce((sum, point) => sum + (point.count || 0), 0)
+  );
 
-  readonly totalCreations = computed(() => {
-    return this._rawPoints().reduce(
-      (sum, p) => sum + (p.policies_created || 0) + (p.schemes_created || 0),
-      0
-    );
-  });
-
-  getBarHeightPct(val: number): number {
-    return Math.max(8, Math.round((val / this.maxSearchCount()) * 100));
+  getBarHeightPct(value: number): number {
+    return Math.max(8, Math.round((value / this.maxCount()) * 100));
   }
 
   onHover(idx: number | null): void {

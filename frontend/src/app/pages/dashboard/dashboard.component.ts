@@ -1,14 +1,27 @@
 import { Component, inject, signal, computed, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
+
 import { AuthService } from '../../core/services/auth.service';
 import { AnalyticsService } from '../../core/services/analytics.service';
+import { NotificationService } from '../../core/services/notification.service';
+import {
+  humanize,
+  toBreakdownItems,
+  toMetricSlices,
+  toSchemeUsage,
+  toTrendPoints,
+} from '../../core/services/analytics.mappers';
 import { RoleRequestResponse, UserRole } from '../../core/models/auth.models';
-import { DashboardAnalyticsResponse } from '../../core/models/analytics.models';
+import { DashboardAnalytics } from '../../core/models/analytics.models';
+import { NotificationItem } from '../../core/models/notification.models';
 import { FloatingCompareDockComponent } from '../comparison/components/floating-compare-dock/floating-compare-dock.component';
 import { DonutChartComponent } from '../../shared/components/donut-chart/donut-chart.component';
 import { BarChartComponent } from '../../shared/components/bar-chart/bar-chart.component';
 import { TrendChartComponent } from '../../shared/components/trend-chart/trend-chart.component';
+import { SkeletonComponent } from '../../shared/components/skeleton/skeleton.component';
+
+export type DashboardLoadState = 'idle' | 'loading' | 'ready' | 'error';
 
 @Component({
   selector: 'app-dashboard',
@@ -20,6 +33,7 @@ import { TrendChartComponent } from '../../shared/components/trend-chart/trend-c
     DonutChartComponent,
     BarChartComponent,
     TrendChartComponent,
+    SkeletonComponent,
   ],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.css',
@@ -27,122 +41,186 @@ import { TrendChartComponent } from '../../shared/components/trend-chart/trend-c
 export class DashboardComponent implements OnInit, OnDestroy {
   readonly authService = inject(AuthService);
   private readonly analyticsService = inject(AnalyticsService);
+  private readonly notificationService = inject(NotificationService);
   private readonly router = inject(Router);
 
   private pollInterval: ReturnType<typeof setInterval> | null = null;
   private visibilityHandler: (() => void) | null = null;
 
-  readonly analyticsData = signal<DashboardAnalyticsResponse | null>(null);
-  readonly isLoading = signal<boolean>(true);
+  /** Role the analytics payload was last requested for (avoids duplicate fetches). */
+  private loadedForRole: string | null = null;
+
+  // ── Analytics state ──────────────────────────────────────────────────────
+  readonly analytics = signal<DashboardAnalytics | null>(null);
+  readonly loadState = signal<DashboardLoadState>('idle');
+  readonly loadError = signal<string | null>(null);
+
+  // ── Notifications ────────────────────────────────────────────────────────
+  readonly notifications = signal<NotificationItem[]>([]);
+  readonly unreadCount = signal<number>(0);
+
+  // ── Role approvals (administrators) ──────────────────────────────────────
   readonly pendingRequests = signal<RoleRequestResponse[]>([]);
 
+  // ── Shell ────────────────────────────────────────────────────────────────
   readonly sidebarOpen = signal<boolean>(true);
   readonly activeMenu = signal<string>('overview');
 
   readonly isGuest = computed(() => !this.authService.isAuthenticated());
+
+  /**
+   * A token exists but `/api/auth/me` has not answered yet, so the role (and
+   * therefore the dashboard variant) is still unknown.
+   */
+  readonly isProfilePending = computed(
+    () => !this.authService.isAuthenticated() && !!this.authService.getAccessToken()
+  );
 
   readonly isAdmin = computed(() => {
     const role = this.authService.userRole();
     return role === UserRole.ADMINISTRATOR || role === UserRole.SUPER_ADMIN;
   });
 
-  readonly isGovOfficial = computed(() => {
-    return this.authService.userRole() === UserRole.GOVERNMENT_OFFICIAL;
-  });
+  readonly isGovOfficial = computed(
+    () => this.authService.userRole() === UserRole.GOVERNMENT_OFFICIAL
+  );
 
-  readonly isResearcher = computed(() => {
-    return this.authService.userRole() === UserRole.RESEARCHER;
-  });
+  readonly isResearcher = computed(
+    () => this.authService.userRole() === UserRole.RESEARCHER
+  );
+
+  readonly isOrganization = computed(
+    () => this.authService.userRole() === UserRole.ORGANIZATION
+  );
 
   readonly isCitizen = computed(() => {
     const role = this.authService.userRole();
     return !role || role === UserRole.CITIZEN;
   });
 
-  // ── Role Permissions for Dashboard Sections ─────────────────────────────
-  readonly canViewTotalUsers = computed(() => this.isAdmin());
+  // ── Capabilities (mirror the backend analytics RBAC) ─────────────────────
+  /** `/api/analytics/*` is reachable by officials, researchers and admins. */
+  readonly canViewAnalytics = computed(() =>
+    AnalyticsService.isAnalyticsRole(this.authService.userRole())
+  );
 
-  readonly canViewTotalSearches = computed(() => {
-    const role = this.authService.userRole();
-    return (
-      role === UserRole.ADMINISTRATOR ||
-      role === UserRole.SUPER_ADMIN ||
-      role === UserRole.GOVERNMENT_OFFICIAL ||
-      role === UserRole.RESEARCHER
-    );
-  });
+  /** `/api/analytics/users` is administrator-only. */
+  readonly canViewUserAnalytics = computed(() =>
+    AnalyticsService.isUserAnalyticsRole(this.authService.userRole())
+  );
 
-  readonly canViewStatusBreakdown = computed(() => {
-    const role = this.authService.userRole();
-    return (
-      role === UserRole.ADMINISTRATOR ||
-      role === UserRole.SUPER_ADMIN ||
-      role === UserRole.GOVERNMENT_OFFICIAL
-    );
-  });
+  /** Policy / scheme lifecycle state is presented to admins and officials. */
+  readonly canViewStatusBreakdown = computed(
+    () => this.isAdmin() || this.isGovOfficial()
+  );
 
-  readonly canViewActivityFeed = computed(() => {
-    const role = this.authService.userRole();
-    return (
-      role === UserRole.ADMINISTRATOR ||
-      role === UserRole.SUPER_ADMIN ||
-      role === UserRole.GOVERNMENT_OFFICIAL
-    );
-  });
+  readonly isLoading = computed(() => this.loadState() === 'loading');
+  readonly hasFailed = computed(() => this.loadState() === 'error');
+  readonly hasData = computed(
+    () => this.loadState() === 'ready' && this.analytics() !== null
+  );
 
-  readonly canViewSearchIntelligence = computed(() => {
-    const role = this.authService.userRole();
-    return (
-      role === UserRole.ADMINISTRATOR ||
-      role === UserRole.SUPER_ADMIN ||
-      role === UserRole.RESEARCHER ||
-      role === UserRole.GOVERNMENT_OFFICIAL
-    );
-  });
+  // ── Overview ─────────────────────────────────────────────────────────────
+  readonly overview = computed(() => this.analytics()?.overview ?? null);
 
-  readonly canViewUsageOverTime = computed(() => {
-    const role = this.authService.userRole();
-    return (
-      role === UserRole.ADMINISTRATOR ||
-      role === UserRole.SUPER_ADMIN ||
-      role === UserRole.RESEARCHER ||
-      role === UserRole.GOVERNMENT_OFFICIAL
-    );
-  });
+  readonly failedPanels = computed(() => this.analytics()?.failedPanels ?? []);
 
-  readonly canViewSchemeUsage = computed(() => {
-    const role = this.authService.userRole();
-    return (
-      role === UserRole.ADMINISTRATOR ||
-      role === UserRole.SUPER_ADMIN ||
-      role === UserRole.GOVERNMENT_OFFICIAL ||
-      role === UserRole.RESEARCHER ||
-      role === UserRole.ORGANIZATION
-    );
-  });
+  // ── Policy statistics (GET /api/analytics/policies) ──────────────────────
+  readonly policyCategorySlices = computed(() =>
+    toMetricSlices(this.analytics()?.policies?.policies_by_category)
+  );
 
+  readonly policyStatusSlices = computed(() =>
+    toMetricSlices(this.analytics()?.policies?.policies_by_status, {
+      sortByStatusOrder: true,
+    })
+  );
+
+  // ── Scheme statistics (GET /api/analytics/schemes) ───────────────────────
+  readonly schemeCategorySlices = computed(() =>
+    toMetricSlices(this.analytics()?.schemes?.schemes_by_category)
+  );
+
+  readonly schemeStatusSlices = computed(() =>
+    toMetricSlices(this.analytics()?.schemes?.schemes_by_status, {
+      sortByStatusOrder: true,
+    })
+  );
+
+  readonly schemeUsage = computed(() =>
+    toSchemeUsage(this.analytics()?.schemes?.scheme_usage)
+  );
+
+  // ── Department statistics (GET /api/analytics/departments) ───────────────
+  readonly policiesByDepartment = computed(() =>
+    toBreakdownItems(this.analytics()?.departments?.policies_by_department)
+  );
+
+  readonly schemesByDepartment = computed(() =>
+    toBreakdownItems(this.analytics()?.departments?.schemes_by_department)
+  );
+
+  // ── User analytics (GET /api/analytics/users, admin only) ────────────────
+  readonly usersByRole = computed(() =>
+    toMetricSlices(this.analytics()?.users?.users_by_role)
+  );
+
+  readonly activeUsers = computed(() => this.analytics()?.users?.active_users ?? 0);
+  readonly inactiveUsers = computed(
+    () => this.analytics()?.users?.inactive_users ?? 0
+  );
+
+  readonly registrationTrend = computed(() =>
+    toTrendPoints(this.analytics()?.users?.user_registrations_over_time)
+  );
+
+  readonly searchTrend = computed(() =>
+    toTrendPoints(this.analytics()?.users?.searches_over_time)
+  );
+
+  // ── Notification analytics (GET /api/analytics/notifications) ────────────
+  readonly notificationsByType = computed(() =>
+    toMetricSlices(this.analytics()?.notifications?.notifications_by_type)
+  );
+
+  readonly notificationsByChannel = computed(() =>
+    toBreakdownItems(this.analytics()?.notifications?.notifications_by_channel)
+  );
+
+  readonly notificationsByReadStatus = computed(() =>
+    toMetricSlices(this.analytics()?.notifications?.notifications_by_read_status, {
+      labels: { true: 'Read', false: 'Unread' },
+    })
+  );
+
+  readonly notificationTrend = computed(() =>
+    toTrendPoints(this.analytics()?.notifications?.notifications_over_time)
+  );
+
+  /** Platform-wide search volume, available to every analytics role. */
+  readonly totalSearches = computed(() => this.overview()?.total_searches ?? 0);
+
+  readonly recentNotifications = computed(() => this.notifications().slice(0, 5));
+
+  // ── Lifecycle ────────────────────────────────────────────────────────────
   ngOnInit(): void {
-    this.loadAnalytics();
+    // The role decides both the dashboard variant and which analytics
+    // endpoints are allowed, so load once with whatever profile is cached and
+    // reload after `/auth/me` refreshes it.
+    this.loadRoleScopedData();
 
     if (this.authService.getAccessToken()) {
       this.authService.getMe().subscribe({
-        next: () => {
-          this.loadAnalytics();
-          if (this.isAdmin()) {
-            this.loadPendingRequests();
-            this.startPolling();
-          }
-        },
+        next: () => this.loadRoleScopedData(),
         error: () => {},
       });
     }
 
     this.visibilityHandler = () => {
-      if (document.visibilityState === 'visible') {
-        this.loadAnalytics();
-        if (this.isAdmin()) {
-          this.loadPendingRequests();
-        }
+      if (document.visibilityState !== 'visible') return;
+      this.loadRoleScopedData();
+      if (this.isAdmin()) {
+        this.loadPendingRequests();
       }
     };
     document.addEventListener('visibilitychange', this.visibilityHandler);
@@ -157,19 +235,83 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
   }
 
+  /** Load everything the current role is entitled to see. */
+  private loadRoleScopedData(force = false): void {
+    if (this.isGuest()) {
+      this.loadedForRole = null;
+      this.analytics.set(null);
+      this.loadState.set('idle');
+      this.loadError.set(null);
+      this.notifications.set([]);
+      this.unreadCount.set(0);
+      return;
+    }
+
+    this.loadUnreadCount();
+    if (this.isAdmin()) {
+      this.loadPendingRequests();
+      this.startPolling();
+    }
+
+    if (!this.canViewAnalytics()) {
+      // Citizens and organizations have no analytics access: never call the
+      // analytics endpoints, show their own notifications instead.
+      this.loadedForRole = null;
+      this.analytics.set(null);
+      this.loadState.set('idle');
+      this.loadError.set(null);
+      this.loadMyNotifications();
+      return;
+    }
+
+    const role = this.authService.userRole();
+    const alreadyRequested =
+      this.loadState() === 'loading' || this.loadState() === 'ready';
+    if (!force && this.loadedForRole === role && alreadyRequested) {
+      return;
+    }
+    this.loadedForRole = role;
+    this.loadAnalytics();
+  }
+
   loadAnalytics(): void {
-    this.isLoading.set(true);
-    this.analyticsService.getDashboardAnalytics().subscribe({
+    this.loadState.set('loading');
+    this.loadError.set(null);
+
+    this.analyticsService.getDashboardAnalytics(this.authService.userRole()).subscribe({
       next: (data) => {
-        this.analyticsData.set(data);
-        this.isLoading.set(false);
+        this.analytics.set(data);
+        this.loadState.set('ready');
       },
-      error: () => {
-        this.isLoading.set(false);
+      error: (error: unknown) => {
+        this.analytics.set(null);
+        this.loadError.set(this.describeError(error));
+        this.loadState.set('error');
       },
     });
   }
 
+  retryAnalytics(): void {
+    this.loadedForRole = null;
+    this.loadAnalytics();
+  }
+
+  // ── Notifications (GET /api/notifications) ───────────────────────────────
+  loadMyNotifications(): void {
+    this.notificationService.list().subscribe({
+      next: (items) => this.notifications.set(items),
+      error: () => this.notifications.set([]),
+    });
+  }
+
+  loadUnreadCount(): void {
+    this.notificationService.unreadCount().subscribe({
+      next: (response) => this.unreadCount.set(response.unread_count),
+      error: () => this.unreadCount.set(0),
+    });
+  }
+
+  // ── Role approvals (administrators) ──────────────────────────────────────
   private startPolling(): void {
     if (this.pollInterval) return;
     this.pollInterval = setInterval(() => {
@@ -206,6 +348,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     });
   }
 
+  // ── Navigation ───────────────────────────────────────────────────────────
   toggleSidebar(): void {
     this.sidebarOpen.set(!this.sidebarOpen());
   }
@@ -228,25 +371,35 @@ export class DashboardComponent implements OnInit, OnDestroy {
       case 'compare':
         this.router.navigate(['/compare']);
         break;
+      case 'policies-create':
+        this.router.navigate(['/policies/create']);
+        break;
+      case 'schemes-create':
+        this.router.navigate(['/schemes/create']);
+        break;
+      case 'role-upgrade':
+        this.router.navigate(['/role-request']);
+        break;
+      case 'approvals':
+        this.scrollToSection('pending-approvals');
+        break;
+      case 'analytics':
+        this.scrollToSection('notification-analytics');
+        break;
+      case 'notifications':
+        this.scrollToSection('your-notifications');
+        break;
       case 'overview':
       default:
+        window.scrollTo({ top: 0, behavior: 'smooth' });
         break;
     }
   }
 
-  onQuickAction(label: string): void {
-    const l = label.toLowerCase();
-    if (l.includes('search')) {
-      this.router.navigate(['/search']);
-    } else if (l.includes('eligibility') || l.includes('apply')) {
-      this.router.navigate(['/eligibility']);
-    } else if (l.includes('compare')) {
-      this.router.navigate(['/compare']);
-    } else if (l.includes('policy') || l.includes('publish')) {
-      this.router.navigate(['/policies']);
-    } else if (l.includes('scheme')) {
-      this.router.navigate(['/schemes']);
-    }
+  private scrollToSection(sectionId: string): void {
+    document
+      .getElementById(sectionId)
+      ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   logout(): void {
@@ -258,8 +411,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.router.navigate(['/citizen-profile']);
   }
 
-  formatRole(role: string): string {
-    return role.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
+  // ── Formatting helpers ───────────────────────────────────────────────────
+  formatRole(value: string): string {
+    return humanize(value);
   }
 
   formatDate(dateStr: string): string {
@@ -287,17 +441,36 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   get userRole(): string {
     const role = this.authService.userRole();
-    return role ? role.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()) : 'Citizen';
-  }
-
-  get userDepartment(): string | null {
-    return this.analyticsData()?.user_department ?? null;
+    return role ? humanize(role) : 'Citizen';
   }
 
   get userInitial(): string {
     return this.userName.charAt(0).toUpperCase();
   }
 
+  /** Turn an HTTP failure into a message the dashboard can render. */
+  private describeError(error: unknown): string {
+    const httpError = error as {
+      status?: number;
+      error?: { detail?: unknown };
+    };
+    const detail = httpError?.error?.detail;
+    if (typeof detail === 'string' && detail.trim().length > 0) {
+      return detail;
+    }
+    if (httpError?.status === 403) {
+      return 'Your account does not have permission to view analytics.';
+    }
+    if (httpError?.status === 401) {
+      return 'Your session has expired. Please sign in again.';
+    }
+    if (httpError?.status === 0) {
+      return 'The analytics service is unreachable. Check your connection and try again.';
+    }
+    return 'Analytics could not be loaded. Please try again.';
+  }
+
+  // ── Sidebar menu (every id is unique and wired to a real destination) ────
   readonly menuItems = computed(() => {
     if (this.isGuest()) {
       return [
@@ -307,7 +480,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
       ];
     }
 
-    const role = this.authService.userRole() ?? 'citizen';
     const base = [
       { id: 'overview', label: 'Overview', icon: 'home' },
       { id: 'policies', label: 'Policies', icon: 'document' },
@@ -317,7 +489,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       { id: 'compare', label: 'Compare Schemes', icon: 'bookmark' },
     ];
 
-    if (role === 'government_official') {
+    if (this.isGovOfficial()) {
       return [
         ...base,
         { id: 'policies-create', label: 'Upload Policy', icon: 'file-plus' },
@@ -325,16 +497,24 @@ export class DashboardComponent implements OnInit, OnDestroy {
       ];
     }
 
-    if (role === 'researcher') {
+    if (this.isAdmin()) {
+      return [...base, { id: 'approvals', label: 'Role Approvals', icon: 'folder' }];
+    }
+
+    if (this.isResearcher()) {
       return [
         ...base,
-        { id: 'search', label: 'Research Analytics', icon: 'search' },
+        { id: 'analytics', label: 'Platform Analytics', icon: 'chart' },
       ];
     }
 
-    // Citizen
+    if (this.isOrganization()) {
+      return [...base, { id: 'notifications', label: 'Notifications', icon: 'bell' }];
+    }
+
     return [
       ...base,
+      { id: 'notifications', label: 'Notifications', icon: 'bell' },
       { id: 'role-upgrade', label: 'Role Upgrade', icon: 'folder' },
     ];
   });

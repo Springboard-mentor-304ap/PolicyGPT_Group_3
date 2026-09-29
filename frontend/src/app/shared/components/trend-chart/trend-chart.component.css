@@ -57,10 +57,6 @@
   background: var(--color-primary-blue, #0062d2);
 }
 
-.pill-dot.green {
-  background: var(--color-success, #10b981);
-}
-
 .empty-chart {
   padding: 2rem;
   text-align: center;

@@ -10,14 +10,8 @@
     <div class="trend-summary">
       <div class="summary-pill">
         <span class="pill-dot blue"></span>
-        <span class="pill-text">{{ totalSearches() }} Searches</span>
+        <span class="pill-text">{{ totalCount() }} {{ seriesLabel }}</span>
       </div>
-      @if (totalCreations() > 0) {
-        <div class="summary-pill">
-          <span class="pill-dot green"></span>
-          <span class="pill-text">{{ totalCreations() }} New Items</span>
-        </div>
-      }
     </div>
   </div>
 
@@ -39,24 +33,18 @@
             @if (hoveredIndex() === i) {
               <div class="trend-tooltip">
                 <span class="tooltip-date">{{ pt.date }}</span>
-                <span class="tooltip-item">🔍 {{ pt.searches }} searches</span>
-                @if (pt.policies_created > 0) {
-                  <span class="tooltip-item">📜 {{ pt.policies_created }} policies</span>
-                }
-                @if (pt.schemes_created > 0) {
-                  <span class="tooltip-item">🎁 {{ pt.schemes_created }} schemes</span>
-                }
+                <span class="tooltip-item">{{ pt.count }} {{ seriesLabel }}</span>
               </div>
             }
 
             <div class="bar-visual-wrap">
               <div
                 class="trend-bar-fill"
-                [style.height.%]="getBarHeightPct(pt.searches)"
+                [style.height.%]="getBarHeightPct(pt.count)"
               ></div>
             </div>
 
-            <span class="trend-x-label">{{ pt.date }}</span>
+            <span class="trend-x-label">{{ pt.label }}</span>
           </div>
         }
       </div>

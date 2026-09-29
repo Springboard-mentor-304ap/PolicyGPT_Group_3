@@ -8,6 +8,24 @@
   flex-direction: column;
   height: 100%;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+  container-type: inline-size;
+}
+
+/**
+ * These cards sit in multi-column dashboard grids, so the legend has to
+ * respond to the card's own width: below ~430px the donut stacks above the
+ * legend instead of squeezing the labels to a few pixels.
+ */
+@container (max-width: 430px) {
+  .chart-body {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .chart-legend {
+    width: 100%;
+    max-height: none;
+  }
 }
 
 .chart-card:hover {
