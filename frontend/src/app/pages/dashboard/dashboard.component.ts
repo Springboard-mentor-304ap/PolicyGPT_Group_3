@@ -2,6 +2,8 @@ import { Component, inject, signal, computed, OnInit, OnDestroy } from '@angular
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
+import { NotificationService } from '../../core/services/notification.service';
+import { Notification } from '../../core/models/notification.models';
 import { RoleRequestResponse, UserRole } from '../../core/models/auth.models';
 import { FloatingCompareDockComponent } from '../comparison/components/floating-compare-dock/floating-compare-dock.component';
 
@@ -21,16 +23,21 @@ interface DashboardData {
 export class DashboardComponent implements OnInit, OnDestroy {
   readonly authService = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly notificationService = inject(NotificationService);
   private pollInterval: ReturnType<typeof setInterval> | null = null;
   private visibilityHandler: (() => void) | null = null;
 
   readonly pendingRequests = signal<RoleRequestResponse[]>([]);
+  readonly unreadNotificationCount = signal(0);
+  readonly showNotifications = signal(false);
+  readonly notifications = signal<Notification[]>([]);
   readonly isAdmin = computed(() => {
     const role = this.authService.userRole();
     return role === UserRole.ADMINISTRATOR || role === UserRole.SUPER_ADMIN;
   });
 
   ngOnInit(): void {
+    this.loadUnreadNotificationCount();
     if (this.authService.getAccessToken()) {
       // Fetch user profile, then check if admin and load pending requests
       this.authService.getMe().subscribe({
@@ -77,6 +84,63 @@ export class DashboardComponent implements OnInit, OnDestroy {
       error: () => this.pendingRequests.set([]),
     });
   }
+  loadUnreadNotificationCount(): void {
+  this.notificationService.getUnreadCount().subscribe({
+    next: (response) => this.unreadNotificationCount.set(response.unread_count),
+    error: () => this.unreadNotificationCount.set(0),
+  });
+}
+loadNotifications(): void {
+  this.notificationService.getNotifications().subscribe({
+    next: (notifications) => this.notifications.set(notifications),
+    error: () => this.notifications.set([]),
+  });
+}
+toggleNotifications(): void {
+  this.showNotifications.update(value => !value);
+
+  if (this.showNotifications()) {
+    this.loadNotifications();
+  }
+}
+markNotificationAsRead(notification: Notification): void {
+  if (notification.is_read) {
+    return;
+  }
+
+  this.notificationService.markAsRead(notification.id).subscribe({
+    next: (updatedNotification) => {
+      this.notifications.update(items =>
+        items.map(item =>
+          item.id === updatedNotification.id
+            ? updatedNotification
+            : item
+        )
+      );
+
+      this.loadUnreadNotificationCount();
+    },
+    error: () => {
+      // Keep the notification unchanged if the API call fails.
+    },
+  });
+}
+  markAllNotificationsAsRead(): void {
+    this.notificationService.markAllAsRead().subscribe({
+      next: () => {
+        this.notifications.update(items =>
+          items.map(item => ({ ...item, is_read: true }))
+        );
+
+        this.loadUnreadNotificationCount();
+      },
+      error: () => {
+        // Keep the notifications unchanged if the API call fails.
+      },
+    });
+  }
+
+
 
   approveRequest(requestId: string): void {
     this.authService.approveRoleRequest(requestId).subscribe({
