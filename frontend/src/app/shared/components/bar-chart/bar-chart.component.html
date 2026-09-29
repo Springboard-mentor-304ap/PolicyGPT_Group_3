@@ -1,0 +1,48 @@
+<div class="chart-card">
+  @if (title) {
+    <div class="chart-header">
+      <div class="title-wrap">
+        <h3 class="chart-title">{{ title }}</h3>
+        @if (subtitle) {
+          <p class="chart-subtitle">{{ subtitle }}</p>
+        }
+      </div>
+      <span class="total-badge">{{ totalCount() }} {{ unitLabel }}</span>
+    </div>
+  }
+
+  @if (items().length === 0) {
+    <div class="empty-chart">
+      <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+        <path d="M3 9h18"></path>
+        <path d="M9 21V9"></path>
+      </svg>
+      <p>No breakdown data available</p>
+    </div>
+  } @else {
+    <div class="bar-list">
+      @for (item of items(); track item.label; let i = $index) {
+        <div
+          class="bar-row"
+          [class.active]="hoveredIndex() === i"
+          (mouseenter)="onHover(i)"
+          (mouseleave)="onHover(null)"
+        >
+          <div class="bar-info">
+            <span class="bar-label" [title]="item.label">{{ item.label }}</span>
+            <span class="bar-count">{{ item.count }}</span>
+          </div>
+
+          <div class="bar-track">
+            <div
+              class="bar-fill"
+              [style.width.%]="getBarPercentage(item.count)"
+              [style.background-color]="item.color || 'var(--color-primary-blue, #0062d2)'"
+            ></div>
+          </div>
+        </div>
+      }
+    </div>
+  }
+</div>

@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from backend.app.models.policy import Policy, PolicyStatus
 from backend.app.models.scheme import Scheme, SchemeStatus
+from backend.app.models.search_history import SearchHistory
 from backend.app.search.schemas import SearchResult, SearchType
 
 def search_policies(
@@ -186,6 +187,27 @@ def search(
         results = policy_results + scheme_results
 
     total = len(results)
+
+    # Log search query to search_history if a query or filter was provided
+    if query or category or department or state:
+        try:
+            filters_dict = {}
+            if category:
+                filters_dict["category"] = category
+            if department:
+                filters_dict["department"] = department
+            if state:
+                filters_dict["state"] = state
+            
+            history_entry = SearchHistory(
+                query_text=query.strip() if query else (category or department or state),
+                filters=filters_dict if filters_dict else None,
+                result_count=total,
+            )
+            db.add(history_entry)
+            db.commit()
+        except Exception:
+            db.rollback()
 
     start = (page - 1) * page_size
     end = start + page_size
