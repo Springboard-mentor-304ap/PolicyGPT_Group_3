@@ -2,7 +2,11 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
-import { NotificationItem, UnreadCountResponse } from '../models/notification.models';
+import {
+  NotificationItem,
+  UnreadCountResponse,
+  MarkAllNotificationsReadResponse,
+} from '../models/notification.models';
 
 @Injectable({
   providedIn: 'root',
@@ -31,5 +35,23 @@ export class NotificationService {
     return this.http.get<UnreadCountResponse>(`${this.baseUrl}/unread-count`, {
       headers: this.getAuthHeaders(),
     });
+  }
+
+  /** Mark a single notification as read (PATCH /api/notifications/{id}/read). */
+  markAsRead(notificationId: string): Observable<NotificationItem> {
+    return this.http.patch<NotificationItem>(
+      `${this.baseUrl}/${notificationId}/read`,
+      {},
+      { headers: this.getAuthHeaders() }
+    );
+  }
+
+  /** Mark every notification as read (PATCH /api/notifications/read-all). */
+  markAllAsRead(): Observable<MarkAllNotificationsReadResponse> {
+    return this.http.patch<MarkAllNotificationsReadResponse>(
+      `${this.baseUrl}/read-all`,
+      {},
+      { headers: this.getAuthHeaders() }
+    );
   }
 }

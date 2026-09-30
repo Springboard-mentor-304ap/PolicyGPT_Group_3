@@ -58,6 +58,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
   // ── Notifications ────────────────────────────────────────────────────────
   readonly notifications = signal<NotificationItem[]>([]);
   readonly unreadCount = signal<number>(0);
+  /** Whether the header notification dropdown is open. */
+  readonly showNotifications = signal(false);
 
   // ── Role approvals (administrators) ──────────────────────────────────────
   readonly pendingRequests = signal<RoleRequestResponse[]>([]);
@@ -308,6 +310,49 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.notificationService.unreadCount().subscribe({
       next: (response) => this.unreadCount.set(response.unread_count),
       error: () => this.unreadCount.set(0),
+    });
+  }
+
+  /** Open/close the header dropdown; refresh count and list on open. */
+  toggleNotifications(): void {
+    this.showNotifications.update((value) => !value);
+    if (this.showNotifications()) {
+      this.loadUnreadCount();
+      this.loadMyNotifications();
+    }
+  }
+
+  markNotificationAsRead(notification: NotificationItem): void {
+    if (notification.is_read) {
+      return;
+    }
+
+    this.notificationService.markAsRead(notification.id).subscribe({
+      next: () => {
+        this.notifications.update((items) =>
+          items.map((item) =>
+            item.id === notification.id ? { ...item, is_read: true } : item
+          )
+        );
+        this.loadUnreadCount();
+      },
+      error: () => {
+        // Keep the notification unchanged if the API call fails.
+      },
+    });
+  }
+
+  markAllNotificationsAsRead(): void {
+    this.notificationService.markAllAsRead().subscribe({
+      next: () => {
+        this.notifications.update((items) =>
+          items.map((item) => ({ ...item, is_read: true }))
+        );
+        this.loadUnreadCount();
+      },
+      error: () => {
+        // Keep the notifications unchanged if the API call fails.
+      },
     });
   }
 

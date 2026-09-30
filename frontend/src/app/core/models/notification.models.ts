@@ -22,3 +22,7 @@ export interface NotificationItem {
 export interface UnreadCountResponse {
   unread_count: number;
 }
+
+export interface MarkAllNotificationsReadResponse {
+  updated_count: number;
+}
