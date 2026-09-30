@@ -175,6 +175,7 @@
 }
 
 .header-right {
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--space-4);
@@ -222,9 +223,9 @@
 /* Notifications */
 .notification-dropdown {
   position: absolute;
-  top: 56px;
-  right: 80px;
-  width: 360px;
+  top: calc(100% + 8px);
+  right: 0;
+  width: min(360px, calc(100vw - 32px));
   max-height: 450px;
   overflow-y: auto;
   background-color: var(--color-bg-surface);
@@ -839,5 +840,13 @@
   .actions-grid {
     grid-template-columns: 1fr 1fr;
     gap: var(--space-3);
+  }
+
+  .notification-dropdown {
+    left: 0;
+    right: auto;
+    /* The header stacks beside the 72px sidebar here, so cap the width to
+       the space actually available to the right of the bell. */
+    width: min(360px, calc(100vw - 72px - var(--space-4) - var(--space-4)));
   }
 }

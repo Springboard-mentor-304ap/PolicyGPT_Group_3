@@ -37,8 +37,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
   });
 
   ngOnInit(): void {
-    this.loadUnreadNotificationCount();
     if (this.authService.getAccessToken()) {
+      // Reuse the dashboard's existing auth gate: only authenticated sessions
+      // may call the notification API, so a logged-out visit to /dashboard
+      // never triggers a notification 401 (which would redirect to /login).
+      this.loadUnreadNotificationCount();
       // Fetch user profile, then check if admin and load pending requests
       this.authService.getMe().subscribe({
         next: () => {
@@ -242,7 +245,13 @@ markNotificationAsRead(notification: Notification): void {
     return this.roleData[role] ?? this.roleData['citizen'];
   });
 
-  stats = computed(() => this.dashboardData().stats);
+  stats = computed(() =>
+    this.dashboardData().stats.map((stat) =>
+      stat.label === 'Notifications'
+        ? { ...stat, value: String(this.unreadNotificationCount()) }
+        : stat
+    )
+  );
   recentItems = computed(() => this.dashboardData().recentItems);
   quickActions = computed(() => this.dashboardData().quickActions);
 
