@@ -1,0 +1,174 @@
+<div class="feedback-page">
+  <a class="back-link" routerLink="/dashboard">← Back to Dashboard</a>
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Feedback &amp; Support</h1>
+      <p class="page-subtitle">
+        Share feedback, report an issue or ask a question — our team reviews
+        every submission.
+      </p>
+    </div>
+    <div class="tabs" role="tablist">
+      @for (tab of tabs; track tab.id) {
+        @if (tab.id !== 'all' || isFeedbackAdmin()) {
+          <button
+            type="button"
+            role="tab"
+            class="tab"
+            [class.active]="activeTab() === tab.id"
+            (click)="selectTab(tab.id)">
+            {{ tab.label }}
+          </button>
+        }
+      }
+    </div>
+  </div>
+
+  <!-- ── Submit ───────────────────────────────────────────────────────── -->
+  @if (activeTab() === 'submit') {
+    <section class="panel">
+      @if (submitSuccess()) {
+        <div class="banner banner-success">
+          Thanks — your feedback has been submitted.
+        </div>
+      }
+      @if (submitError()) {
+        <div class="banner banner-error">{{ submitError() }}</div>
+      }
+
+      <form class="feedback-form" (submit)="$event.preventDefault(); submit()">
+        <div class="field">
+          <label for="fb-type">Type</label>
+          <select id="fb-type" [value]="type()" (change)="type.set($any($event.target).value)">
+            <option value="feedback">Feedback</option>
+            <option value="issue">Issue</option>
+            <option value="query">Query</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="fb-subject">Subject</label>
+          <input
+            id="fb-subject"
+            type="text"
+            maxlength="255"
+            placeholder="Brief summary"
+            [value]="subject()"
+            (input)="subject.set($any($event.target).value)" />
+        </div>
+
+        <div class="field">
+          <label for="fb-message">Message</label>
+          <textarea
+            id="fb-message"
+            rows="5"
+            placeholder="Describe your feedback, issue or question"
+            [value]="message()"
+            (input)="message.set($any($event.target).value)"></textarea>
+        </div>
+
+        <button
+          type="submit"
+          class="primary-btn"
+          [disabled]="submitting()">
+          {{ submitting() ? 'Submitting…' : 'Submit' }}
+        </button>
+      </form>
+    </section>
+  }
+
+  <!-- ── My feedback ──────────────────────────────────────────────────── -->
+  @if (activeTab() === 'mine') {
+    <section class="panel">
+      @if (loadingMine()) {
+        <p class="muted">Loading your feedback…</p>
+      } @else if (myFeedback().length === 0) {
+        <p class="muted">You haven’t sent any feedback yet.</p>
+      } @else {
+        <div class="feedback-list">
+          @for (item of myFeedback(); track item.id) {
+            <article class="feedback-card">
+              <div class="card-top">
+                <span class="type-chip">{{ typeLabel(item.type) }}</span>
+                <span class="status-chip" [attr.data-status]="item.status">
+                  {{ statusLabel(item.status) }}
+                </span>
+                <span class="date">{{ formatDate(item.created_at) }}</span>
+              </div>
+              <h2 class="subject">{{ item.subject }}</h2>
+              <p class="message">{{ item.message }}</p>
+              @if (item.resolution_note) {
+                <p class="resolution">
+                  <strong>Resolution:</strong> {{ item.resolution_note }}
+                </p>
+              }
+            </article>
+          }
+        </div>
+      }
+    </section>
+  }
+
+  <!-- ── All feedback (administrators) ────────────────────────────────── -->
+  @if (activeTab() === 'all' && isFeedbackAdmin()) {
+    <section class="panel">
+      @if (loadingAll()) {
+        <p class="muted">Loading feedback…</p>
+      } @else if (allFeedback().length === 0) {
+        <p class="muted">No feedback has been submitted yet.</p>
+      } @else {
+        <div class="feedback-list">
+          @for (item of allFeedback(); track item.id) {
+            <article class="feedback-card">
+              <div class="card-top">
+                <span class="type-chip">{{ typeLabel(item.type) }}</span>
+                <span class="status-chip" [attr.data-status]="item.status">
+                  {{ statusLabel(item.status) }}
+                </span>
+                <span class="date">{{ formatDate(item.created_at) }}</span>
+              </div>
+              <h2 class="subject">{{ item.subject }}</h2>
+              <p class="message">{{ item.message }}</p>
+
+              @if (editingId() === item.id) {
+                <div class="resolve-form">
+                  <select
+                    [value]="editStatus()"
+                    (change)="editStatus.set($any($event.target).value)">
+                    <option value="open">Open</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="resolved">Resolved</option>
+                  </select>
+                  <input
+                    type="text"
+                    placeholder="Resolution note"
+                    [value]="editNote()"
+                    (input)="editNote.set($any($event.target).value)" />
+                  <button
+                    type="button"
+                    class="primary-btn small"
+                    [disabled]="savingId() === item.id"
+                    (click)="saveResolve(item)">
+                    {{ savingId() === item.id ? 'Saving…' : 'Save' }}
+                  </button>
+                  <button type="button" class="ghost-btn" (click)="cancelResolve()">
+                    Cancel
+                  </button>
+                </div>
+              } @else {
+                @if (item.resolution_note) {
+                  <p class="resolution">
+                    <strong>Resolution:</strong> {{ item.resolution_note }}
+                  </p>
+                }
+                <button type="button" class="ghost-btn" (click)="startResolve(item)">
+                  Update status
+                </button>
+              }
+            </article>
+          }
+        </div>
+      }
+    </section>
+  }
+</div>

@@ -1,0 +1,51 @@
+<div class="applications-page">
+  <a class="back-link" routerLink="/dashboard">← Back to Dashboard</a>
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">My Applications</h1>
+      <p class="page-subtitle">Track the schemes you have applied for</p>
+    </div>
+    <a class="browse-btn" routerLink="/schemes">Browse Schemes</a>
+  </div>
+
+  @if (loading()) {
+    <div class="state-card">Loading your applications…</div>
+  } @else if (loadError()) {
+    <div class="state-card state-error">{{ loadError() }}</div>
+  } @else if (applications().length === 0) {
+    <div class="state-card">
+      <p class="state-text">You haven’t applied to any schemes yet.</p>
+      <a class="browse-btn" routerLink="/schemes">Browse Schemes</a>
+    </div>
+  } @else {
+    <div class="application-list">
+      @for (app of applications(); track app.id) {
+        <article class="application-card" [attr.data-status]="app.status">
+          <div class="card-main">
+            <div class="card-heading">
+              <h2 class="scheme-name">{{ schemeTitle(app.scheme_id) }}</h2>
+              <span class="status-chip" [attr.data-status]="app.status">
+                {{ statusLabel(app.status) }}
+              </span>
+            </div>
+            <p class="meta">
+              Submitted {{ formatDate(app.submitted_at) }} · Updated
+              {{ formatDate(app.updated_at) }}
+            </p>
+            @if (app.remarks) {
+              <p class="note"><strong>Remarks:</strong> {{ app.remarks }}</p>
+            }
+            @if (app.rejection_reason) {
+              <p class="note note-rejection">
+                <strong>Rejection reason:</strong> {{ app.rejection_reason }}
+              </p>
+            }
+          </div>
+          <a class="view-scheme" [routerLink]="['/schemes', app.scheme_id]">
+            View scheme
+          </a>
+        </article>
+      }
+    </div>
+  }
+</div>

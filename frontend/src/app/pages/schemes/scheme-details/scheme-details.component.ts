@@ -1,8 +1,9 @@
 import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router, ActivatedRoute } from '@angular/router';
+import { Router, ActivatedRoute, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { SchemeService } from '../../../core/services/scheme.service';
+import { ApplicationService } from '../../../core/services/application.service';
 import { AuthService } from '../../../core/services/auth.service';
 import {
   Scheme,
@@ -24,12 +25,13 @@ import { BadgeComponent } from '../../../shared/components/badge/badge.component
 @Component({
   selector: 'app-scheme-details',
   standalone: true,
-  imports: [CommonModule, FormsModule, ButtonComponent, BadgeComponent],
+  imports: [CommonModule, FormsModule, RouterLink, ButtonComponent, BadgeComponent],
   templateUrl: './scheme-details.component.html',
   styleUrl: './scheme-details.component.css',
 })
 export class SchemeDetailsComponent implements OnInit {
   private readonly schemeService = inject(SchemeService);
+  private readonly applicationService = inject(ApplicationService);
   readonly authService = inject(AuthService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
@@ -99,6 +101,49 @@ export class SchemeDetailsComponent implements OnInit {
       && this.authService.currentUser()?.id === s.created_by
       && s.status !== SchemeStatus.ARCHIVED;
   });
+
+  // ── Apply for the scheme (citizens / organizations) ─────────────────────
+  readonly applying = signal(false);
+  readonly applySuccess = signal(false);
+  readonly applyError = signal<string | null>(null);
+
+  readonly canApply = computed(() => {
+    const s = this.scheme();
+    if (!s || s.status !== SchemeStatus.ACTIVE) return false;
+    const role = this.authService.userRole();
+    return role === UserRole.CITIZEN || role === UserRole.ORGANIZATION;
+  });
+
+  applyToScheme(): void {
+    const s = this.scheme();
+    if (!s || this.applying()) return;
+
+    this.applying.set(true);
+    this.applyError.set(null);
+    this.applySuccess.set(false);
+
+    this.applicationService.submitApplication(s.id).subscribe({
+      next: () => {
+        this.applying.set(false);
+        this.applySuccess.set(true);
+      },
+      error: (error: unknown) => {
+        this.applying.set(false);
+        const httpError = error as {
+          status?: number;
+          error?: { detail?: unknown };
+        };
+        const detail = httpError?.error?.detail;
+        if (typeof detail === 'string' && detail.trim().length > 0) {
+          this.applyError.set(detail);
+        } else if (httpError?.status === 401) {
+          this.applyError.set('Your session has expired. Please sign in again.');
+        } else {
+          this.applyError.set('Your application could not be submitted. Please try again.');
+        }
+      },
+    });
+  }
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');

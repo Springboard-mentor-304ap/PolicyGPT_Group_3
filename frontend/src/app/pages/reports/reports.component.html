@@ -1,0 +1,151 @@
+<div class="reports-page">
+  <a class="back-link" routerLink="/dashboard">← Back to Dashboard</a>
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Reports</h1>
+      <p class="page-subtitle">
+        Generate downloadable PDF and Excel reports for policies, schemes,
+        departments and user activity
+      </p>
+    </div>
+  </div>
+
+  @if (!canAccessReports()) {
+    <div class="state-card">
+      Reports are available to government officials and administrators. Your
+      account does not have access to this module.
+    </div>
+  } @else {
+    <!-- ── Generate ─────────────────────────────────────────────────── -->
+    <section class="panel">
+      <h2 class="panel-title">Generate a report</h2>
+
+      @if (generateSuccess()) {
+        <div class="banner banner-success">
+          Report generated — it is ready to download below.
+        </div>
+      }
+      @if (generateError()) {
+        <div class="banner banner-error">{{ generateError() }}</div>
+      }
+
+      <div class="form-grid">
+        <div class="field">
+          <label for="rep-type">Report type</label>
+          <select
+            id="rep-type"
+            [value]="reportType()"
+            (change)="reportType.set($any($event.target).value)">
+            <option value="policy">Policies</option>
+            <option value="scheme">Schemes</option>
+            <option value="user_activity">User Activity</option>
+            <option value="department">Departments</option>
+            <option value="analytics">Analytics</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="rep-format">Format</label>
+          <select
+            id="rep-format"
+            [value]="format()"
+            (change)="format.set($any($event.target).value)">
+            <option value="pdf">PDF</option>
+            <option value="excel">Excel</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="rep-category">Category</label>
+          <input
+            id="rep-category"
+            type="text"
+            placeholder="e.g. Education"
+            [value]="category()"
+            (input)="category.set($any($event.target).value)" />
+        </div>
+
+        <div class="field">
+          <label for="rep-status">Status</label>
+          <input
+            id="rep-status"
+            type="text"
+            placeholder="e.g. active"
+            [value]="status()"
+            (input)="status.set($any($event.target).value)" />
+        </div>
+
+        <div class="field">
+          <label for="rep-department">Department</label>
+          <input
+            id="rep-department"
+            type="text"
+            placeholder="e.g. Ministry of Education"
+            [value]="department()"
+            (input)="department.set($any($event.target).value)" />
+        </div>
+
+        <div class="field">
+          <label for="rep-from">From date</label>
+          <input
+            id="rep-from"
+            type="date"
+            [value]="dateFrom()"
+            (input)="dateFrom.set($any($event.target).value)" />
+        </div>
+
+        <div class="field">
+          <label for="rep-to">To date</label>
+          <input
+            id="rep-to"
+            type="date"
+            [value]="dateTo()"
+            (input)="dateTo.set($any($event.target).value)" />
+        </div>
+      </div>
+
+      <button
+        type="button"
+        class="primary-btn"
+        [disabled]="generating()"
+        (click)="generate()">
+        {{ generating() ? 'Generating…' : 'Generate report' }}
+      </button>
+    </section>
+
+    <!-- ── History ──────────────────────────────────────────────────── -->
+    <section class="panel">
+      <h2 class="panel-title">Generated reports</h2>
+
+      @if (loading()) {
+        <p class="muted">Loading reports…</p>
+      } @else if (loadError()) {
+        <div class="banner banner-error">{{ loadError() }}</div>
+      } @else if (reports().length === 0) {
+        <p class="muted">No reports yet — generate your first one above.</p>
+      } @else {
+        <div class="report-list">
+          @for (report of reports(); track report.id) {
+            <div class="report-row">
+              <div class="report-info">
+                <span class="report-type">{{ typeLabel(report.report_type) }}</span>
+                <span class="format-chip">{{ formatLabel(report.format) }}</span>
+              </div>
+              <div class="report-meta">
+                <span class="filters">{{ filterSummary(report) }}</span>
+                <span class="date">{{ formatDate(report.generated_at) }}</span>
+              </div>
+              <button
+                type="button"
+                class="download-btn"
+                [disabled]="downloadId() === report.id"
+                (click)="download(report)">
+                {{ downloadId() === report.id ? 'Downloading…' : 'Download' }}
+              </button>
+            </div>
+          }
+        </div>
+      }
+    </section>
+  }
+</div>

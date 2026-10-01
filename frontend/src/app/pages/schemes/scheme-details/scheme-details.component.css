@@ -357,3 +357,28 @@
 
   .add-rule-form { grid-template-columns: 1fr; }
 }
+
+/* Apply-for-scheme feedback banners */
+.apply-banner {
+  margin-top: var(--space-4, 1rem);
+  padding: var(--space-3, 0.75rem) var(--space-4, 1rem);
+  border-radius: var(--radius-md, 8px);
+  font-size: var(--font-size-sm, 0.875rem);
+}
+
+.apply-banner a {
+  color: inherit;
+  font-weight: 600;
+}
+
+.apply-banner-success {
+  background-color: var(--color-success-subtle);
+  color: var(--color-success-text);
+  border: 1px solid var(--color-success-border);
+}
+
+.apply-banner-error {
+  background-color: var(--color-danger-subtle);
+  color: var(--color-danger-text);
+  border: 1px solid var(--color-danger-border);
+}

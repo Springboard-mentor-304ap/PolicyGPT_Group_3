@@ -118,6 +118,37 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./pages/comparison/comparison.component').then((m) => m.ComparisonComponent),
   },
+  // Backend integration routes — applications, feedback, FAQ, reports
+  {
+    path: 'applications',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./pages/applications/my-applications.component').then(
+        (m) => m.MyApplicationsComponent
+      ),
+  },
+  {
+    path: 'feedback',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./pages/feedback/feedback.component').then(
+        (m) => m.FeedbackComponent
+      ),
+  },
+  {
+    path: 'faq',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./pages/faq/faq.component').then((m) => m.FaqComponent),
+  },
+  {
+    path: 'reports',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./pages/reports/reports.component').then(
+        (m) => m.ReportsComponent
+      ),
+  },
   {
     path: '',
     redirectTo: 'dashboard',

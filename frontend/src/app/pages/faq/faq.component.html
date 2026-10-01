@@ -1,0 +1,149 @@
+<div class="faq-page">
+  <a class="back-link" routerLink="/dashboard">← Back to Dashboard</a>
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Frequently Asked Questions</h1>
+      <p class="page-subtitle">
+        Quick answers about policies, schemes and applications on PolicyGPT
+      </p>
+    </div>
+    @if (isManager()) {
+      <button type="button" class="primary-btn" (click)="openCreateForm()">
+        + New FAQ
+      </button>
+    }
+  </div>
+
+  <div class="filter-row">
+    <input
+      type="search"
+      placeholder="Search questions…"
+      [value]="search()"
+      (input)="search.set($any($event.target).value)"
+      (keyup.enter)="applyFilters()" />
+    <input
+      type="text"
+      placeholder="Category"
+      [value]="category()"
+      (input)="category.set($any($event.target).value)"
+      (keyup.enter)="applyFilters()" />
+    <button type="button" class="secondary-btn" (click)="applyFilters()">
+      Search
+    </button>
+    <button type="button" class="ghost-btn" (click)="clearFilters()">
+      Clear
+    </button>
+  </div>
+
+  @if (showForm() && isManager()) {
+    <section class="panel form-panel">
+      <h2 class="panel-title">
+        {{ editingId() ? 'Edit FAQ' : 'New FAQ' }}
+      </h2>
+      @if (formError()) {
+        <div class="banner banner-error">{{ formError() }}</div>
+      }
+      <div class="field">
+        <label for="faq-question">Question</label>
+        <input
+          id="faq-question"
+          type="text"
+          maxlength="500"
+          placeholder="e.g. How do I apply for a scheme?"
+          [value]="question()"
+          (input)="question.set($any($event.target).value)" />
+      </div>
+      <div class="field">
+        <label for="faq-answer">Answer</label>
+        <textarea
+          id="faq-answer"
+          rows="4"
+          placeholder="Write the answer"
+          [value]="answer()"
+          (input)="answer.set($any($event.target).value)"></textarea>
+      </div>
+      <div class="field">
+        <label for="faq-category">Category (optional)</label>
+        <input
+          id="faq-category"
+          type="text"
+          maxlength="100"
+          placeholder="e.g. Applications"
+          [value]="formCategory()"
+          (input)="formCategory.set($any($event.target).value)" />
+      </div>
+      <div class="form-actions">
+        <button
+          type="button"
+          class="primary-btn"
+          [disabled]="saving()"
+          (click)="saveForm()">
+          {{ saving() ? 'Saving…' : editingId() ? 'Save changes' : 'Create FAQ' }}
+        </button>
+        <button type="button" class="ghost-btn" (click)="closeForm()">
+          Cancel
+        </button>
+      </div>
+    </section>
+  }
+
+  @if (loading()) {
+    <div class="state-card">Loading FAQs…</div>
+  } @else if (loadError()) {
+    <div class="state-card state-error">{{ loadError() }}</div>
+  } @else if (faqs().length === 0) {
+    <div class="state-card">
+      No FAQs match your search
+      @if (search() || category()) {
+        <span> — try different keywords</span>
+      }.
+    </div>
+  } @else {
+    <div class="faq-list">
+      @for (faq of faqs(); track faq.id) {
+        <article class="faq-item" [class.inactive]="!faq.is_active">
+          <button
+            type="button"
+            class="faq-question"
+            [attr.aria-expanded]="expandedId() === faq.id"
+            (click)="toggle(faq)">
+            <span class="question-text">{{ faq.question }}</span>
+            <span class="question-meta">
+              @if (faq.category) {
+                <span class="category-chip">{{ faq.category }}</span>
+              }
+              @if (!faq.is_active && isManager()) {
+                <span class="inactive-chip">Inactive</span>
+              }
+              <span class="chevron" [class.open]="expandedId() === faq.id">
+                ▾
+              </span>
+            </span>
+          </button>
+
+          @if (expandedId() === faq.id) {
+            <div class="faq-answer">
+              <p>{{ faq.answer }}</p>
+              @if (isManager()) {
+                <div class="manager-actions">
+                  <button
+                    type="button"
+                    class="ghost-btn"
+                    (click)="openEditForm(faq); $event.stopPropagation()">
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    class="ghost-btn danger"
+                    (click)="toggleActive(faq); $event.stopPropagation()">
+                    {{ faq.is_active ? 'Deactivate' : 'Reactivate' }}
+                  </button>
+                </div>
+              }
+            </div>
+          }
+        </article>
+      }
+    </div>
+  }
+</div>

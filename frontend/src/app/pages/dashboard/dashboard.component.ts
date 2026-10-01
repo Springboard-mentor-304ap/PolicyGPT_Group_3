@@ -425,6 +425,18 @@ export class DashboardComponent implements OnInit, OnDestroy {
       case 'role-upgrade':
         this.router.navigate(['/role-request']);
         break;
+      case 'applications':
+        this.router.navigate(['/applications']);
+        break;
+      case 'feedback':
+        this.router.navigate(['/feedback']);
+        break;
+      case 'faq':
+        this.router.navigate(['/faq']);
+        break;
+      case 'reports':
+        this.router.navigate(['/reports']);
+        break;
       case 'approvals':
         this.scrollToSection('pending-approvals');
         break;
@@ -532,6 +544,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
       { id: 'search', label: 'Search & Explore', icon: 'search' },
       { id: 'eligibility', label: 'Eligibility Checker', icon: 'check-circle' },
       { id: 'compare', label: 'Compare Schemes', icon: 'bookmark' },
+      { id: 'feedback', label: 'Feedback', icon: 'chat' },
+      { id: 'faq', label: 'FAQ', icon: 'help-circle' },
     ];
 
     if (this.isGovOfficial()) {
@@ -539,11 +553,16 @@ export class DashboardComponent implements OnInit, OnDestroy {
         ...base,
         { id: 'policies-create', label: 'Upload Policy', icon: 'file-plus' },
         { id: 'schemes-create', label: 'Create Scheme', icon: 'gift' },
+        { id: 'reports', label: 'Reports', icon: 'document' },
       ];
     }
 
     if (this.isAdmin()) {
-      return [...base, { id: 'approvals', label: 'Role Approvals', icon: 'folder' }];
+      return [
+        ...base,
+        { id: 'approvals', label: 'Role Approvals', icon: 'folder' },
+        { id: 'reports', label: 'Reports', icon: 'document' },
+      ];
     }
 
     if (this.isResearcher()) {
@@ -554,12 +573,17 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
 
     if (this.isOrganization()) {
-      return [...base, { id: 'notifications', label: 'Notifications', icon: 'bell' }];
+      return [
+        ...base,
+        { id: 'notifications', label: 'Notifications', icon: 'bell' },
+        { id: 'applications', label: 'My Applications', icon: 'folder' },
+      ];
     }
 
     return [
       ...base,
       { id: 'notifications', label: 'Notifications', icon: 'bell' },
+      { id: 'applications', label: 'My Applications', icon: 'folder' },
       { id: 'role-upgrade', label: 'Role Upgrade', icon: 'folder' },
     ];
   });
