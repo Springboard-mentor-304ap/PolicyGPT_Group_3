@@ -1,0 +1,134 @@
+.approvals-card {
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg, 12px);
+  padding: var(--space-4, 1rem) var(--space-5, 1.25rem);
+  margin-bottom: var(--space-4, 1rem);
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3, 0.75rem);
+  flex-wrap: wrap;
+}
+
+.title-wrap {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 0.5rem);
+}
+
+.title-icon {
+  width: 20px;
+  height: 20px;
+  color: var(--color-primary-blue);
+}
+
+.card-title {
+  margin: 0;
+  font-size: var(--font-size-lg, 1.125rem);
+  font-weight: var(--font-weight-semibold, 600);
+  color: var(--color-text-primary);
+}
+
+.pending-badge {
+  font-size: var(--font-size-xs, 0.75rem);
+  font-weight: var(--font-weight-semibold, 600);
+  padding: 0.2rem 0.7rem;
+  border-radius: var(--radius-full, 999px);
+  background-color: var(--color-warning-subtle);
+  color: var(--color-warning-text);
+}
+
+.pending-badge.zero {
+  background-color: var(--color-success-subtle);
+  color: var(--color-success-text);
+}
+
+.state-text {
+  margin: var(--space-3, 0.75rem) 0 0;
+  font-size: var(--font-size-sm, 0.875rem);
+  color: var(--color-text-secondary);
+}
+
+.state-text.error {
+  color: var(--color-danger-text);
+}
+
+.recent-list {
+  list-style: none;
+  margin: var(--space-3, 0.75rem) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 0.5rem);
+}
+
+.recent-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3, 0.75rem);
+  padding: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md, 8px);
+  background-color: var(--color-bg-muted);
+}
+
+.recent-scheme {
+  font-size: var(--font-size-sm, 0.875rem);
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status-chip {
+  flex-shrink: 0;
+  font-size: var(--font-size-xs, 0.75rem);
+  font-weight: var(--font-weight-semibold, 600);
+  padding: 0.15rem 0.6rem;
+  border-radius: var(--radius-full, 999px);
+  background-color: var(--color-bg-muted);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.status-chip[data-status='submitted'] {
+  background-color: var(--color-info-subtle);
+  color: var(--color-info-text);
+}
+.status-chip[data-status='under_review'],
+.status-chip[data-status='additional_information_required'] {
+  background-color: var(--color-warning-subtle);
+  color: var(--color-warning-text);
+}
+.status-chip[data-status='approved'] {
+  background-color: var(--color-success-subtle);
+  color: var(--color-success-text);
+}
+.status-chip[data-status='rejected'] {
+  background-color: var(--color-danger-subtle);
+  color: var(--color-danger-text);
+}
+
+.card-actions {
+  margin-top: var(--space-3, 0.75rem);
+}
+
+.primary-link {
+  display: inline-block;
+  padding: var(--space-2, 0.5rem) var(--space-4, 1rem);
+  border-radius: var(--radius-md, 8px);
+  background-color: var(--color-primary-blue);
+  color: #fff;
+  font-size: var(--font-size-sm, 0.875rem);
+  font-weight: var(--font-weight-medium, 500);
+  text-decoration: none;
+}
+
+.primary-link:hover {
+  background-color: var(--color-primary-hover);
+}

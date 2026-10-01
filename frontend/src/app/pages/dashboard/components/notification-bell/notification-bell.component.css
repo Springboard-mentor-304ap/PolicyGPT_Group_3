@@ -1,0 +1,162 @@
+/* Notification bell + dropdown styles extracted from dashboard.component.css.
+   `display: contents` keeps the bell a direct flex child of the header's
+   .header-right, and the dropdown still anchors to .header-right (the
+   nearest positioned ancestor), exactly as before. */
+:host {
+  display: contents;
+}
+
+.notification-bell {
+  cursor: pointer;
+  position: relative;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  background-color: var(--color-bg-muted);
+  color: var(--color-text-secondary);
+  transition: all var(--transition-fast);
+}
+
+.notification-bell svg {
+  width: 20px;
+  height: 20px;
+}
+
+.notification-badge {
+  position: absolute;
+  top: 2px;
+  right: 0;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: var(--font-weight-bold);
+  background-color: var(--color-danger);
+  color: var(--color-text-inverse);
+  border-radius: var(--radius-full);
+}
+
+/* Notifications */
+.notification-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: min(360px, calc(100vw - 32px));
+  max-height: 450px;
+  overflow-y: auto;
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  z-index: 1000;
+}
+
+.notification-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.notification-header strong {
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+}
+
+.mark-all-read-btn,
+.mark-read-btn {
+  border: none;
+  background: transparent;
+  color: var(--color-primary-blue);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+}
+
+.mark-read-btn {
+  margin-top: var(--space-2);
+}
+
+.mark-all-read-btn:hover,
+.mark-read-btn:hover {
+  text-decoration: underline;
+}
+
+/* Base item card look (shared with the dashboard inbox, duplicated here
+   because component styles are encapsulated per component). */
+.notification-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 8px;
+  background: var(--color-bg-subtle);
+  border-left: 3px solid var(--color-border-subtle);
+}
+
+.notification-item.unread {
+  border-left-color: var(--color-primary-blue);
+  background: var(--color-primary-subtle);
+}
+
+.notification-dropdown .notification-item {
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--color-border-subtle);
+  transition: background-color var(--transition-fast);
+}
+
+.notification-dropdown .notification-item:last-child {
+  border-bottom: none;
+}
+
+.notification-dropdown .notification-item.unread {
+  background-color: var(--color-primary-subtle);
+}
+
+.notification-dropdown .notification-item:hover {
+  background-color: var(--color-bg-muted);
+}
+
+.notification-content strong {
+  display: block;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-1);
+}
+
+.notification-content p {
+  margin: 0 0 var(--space-2);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.notification-content small {
+  display: block;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.notification-empty {
+  padding: var(--space-6);
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+@media (max-width: 768px) {
+  .notification-dropdown {
+    left: 0;
+    right: auto;
+    /* The header stacks beside the 72px sidebar here, so cap the width to
+       the space actually available to the right of the bell. */
+    width: min(360px, calc(100vw - 72px - var(--space-4) - var(--space-4)));
+  }
+}

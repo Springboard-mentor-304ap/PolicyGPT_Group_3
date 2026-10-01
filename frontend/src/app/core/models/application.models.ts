@@ -30,3 +30,15 @@ export interface ApplicationStatusUpdate {
   status: ApplicationStatus;
   remarks?: string | null;
 }
+
+/**
+ * Staff review row — GET /api/applications/review.
+ * Extends the existing Application with applicant/scheme context joined by
+ * the backend (backend/app/applications/schemas.py ApplicationReviewResponse).
+ */
+export interface ApplicationReviewItem extends Application {
+  applicant_name: string | null;
+  scheme_title: string;
+  scheme_department: string | null;
+  policy_ministry: string | null;
+}

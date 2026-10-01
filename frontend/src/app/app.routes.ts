@@ -2,6 +2,8 @@ import { Routes } from '@angular/router';
 import { AuthLayoutComponent } from './layouts/auth-layout/auth-layout.component';
 import { DashboardComponent } from './pages/dashboard/dashboard.component';
 import { authGuard } from './core/guards/auth.guard';
+import { roleGuard } from './core/guards/role.guard';
+import { UserRole } from './core/models/auth.models';
 
 export const routes: Routes = [
   {
@@ -126,6 +128,28 @@ export const routes: Routes = [
       import('./pages/applications/my-applications.component').then(
         (m) => m.MyApplicationsComponent
       ),
+  },
+  // Government-official application status review (staff roles only)
+  {
+    path: 'applications/review',
+    canActivate: [authGuard, roleGuard],
+    data: {
+      roles: [
+        UserRole.GOVERNMENT_OFFICIAL,
+        UserRole.ADMINISTRATOR,
+        UserRole.SUPER_ADMIN,
+      ],
+    },
+    loadComponent: () =>
+      import(
+        './pages/applications/application-review/application-review.component'
+      ).then((m) => m.ApplicationReviewComponent),
+  },
+  // Legacy manual-ID lookup page → replaced by the review page
+  {
+    path: 'applications/status',
+    redirectTo: 'applications/review',
+    pathMatch: 'full',
   },
   {
     path: 'feedback',

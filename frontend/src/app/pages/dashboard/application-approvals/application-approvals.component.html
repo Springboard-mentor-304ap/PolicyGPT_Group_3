@@ -1,0 +1,42 @@
+<section class="approvals-card">
+  <div class="card-header">
+    <div class="title-wrap">
+      <svg class="title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+        <polyline points="14 2 14 8 20 8"></polyline>
+        <polyline points="9 15 11 17 15 13"></polyline>
+      </svg>
+      <h2 class="card-title">Application Approvals</h2>
+    </div>
+    <span class="pending-badge" [class.zero]="pendingCount() === 0">
+      {{ pendingCount() }} Pending
+    </span>
+  </div>
+
+  @if (loading()) {
+    <p class="state-text">Loading applications...</p>
+  } @else if (loadError()) {
+    <p class="state-text error">{{ loadError() }}</p>
+  } @else if (pendingCount() === 0) {
+    <p class="state-text">No applications are currently waiting for review.</p>
+  }
+
+  @if (!loading() && !loadError() && recent().length > 0) {
+    <ul class="recent-list">
+      @for (item of recent(); track item.id) {
+        <li class="recent-row">
+          <span class="recent-scheme" [title]="item.scheme_title">
+            {{ item.scheme_title }}
+          </span>
+          <span class="status-chip" [attr.data-status]="item.status">
+            {{ statusLabel(item.status) }}
+          </span>
+        </li>
+      }
+    </ul>
+  }
+
+  <div class="card-actions">
+    <a class="primary-link" routerLink="/applications/review">View Applications</a>
+  </div>
+</section>

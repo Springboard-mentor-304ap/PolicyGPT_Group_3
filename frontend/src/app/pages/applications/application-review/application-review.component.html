@@ -1,0 +1,264 @@
+<div class="review-page">
+  <a class="back-link" routerLink="/dashboard">← Back to Dashboard</a>
+
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Application Approvals</h1>
+      <p class="page-subtitle">
+        Review scheme applications for your department and update their status.
+      </p>
+    </div>
+  </div>
+
+  <!-- ── Summary ──────────────────────────────────────────────────────── -->
+  <div class="summary-grid">
+    <div class="summary-card" data-kind="pending">
+      <span class="summary-value">{{ pendingCount() }}</span>
+      <span class="summary-label">Pending Review</span>
+    </div>
+    <div class="summary-card" data-kind="approved">
+      <span class="summary-value">{{ approvedCount() }}</span>
+      <span class="summary-label">Approved</span>
+    </div>
+    <div class="summary-card" data-kind="rejected">
+      <span class="summary-value">{{ rejectedCount() }}</span>
+      <span class="summary-label">Rejected</span>
+    </div>
+  </div>
+
+  @if (loadError()) {
+    <div class="banner banner-error">
+      {{ loadError() }}
+      <button type="button" class="retry-btn" (click)="reload()">Retry</button>
+    </div>
+  }
+
+  <!-- ── List view ────────────────────────────────────────────────────── -->
+  @if (!selected()) {
+    <!-- Filters -->
+    @if (!loading() && !loadError()) {
+      <div class="filters">
+        <div class="filter-field">
+          <label for="status-filter">Status</label>
+          <select
+            id="status-filter"
+            [value]="statusFilter()"
+            (change)="setStatusFilter($any($event.target).value)">
+            <option value="all">All statuses</option>
+            <option value="pending">Pending review</option>
+            <option value="submitted">Submitted</option>
+            <option value="under_review">Under Review</option>
+            <option value="additional_information_required">
+              Additional Information Required
+            </option>
+            <option value="approved">Approved</option>
+            <option value="rejected">Rejected</option>
+          </select>
+        </div>
+
+        <div class="filter-field">
+          <label for="scheme-filter">Scheme</label>
+          <select
+            id="scheme-filter"
+            [value]="schemeFilter()"
+            (change)="setSchemeFilter($any($event.target).value)">
+            <option value="all">All schemes</option>
+            @for (scheme of schemeOptions(); track scheme) {
+              <option [value]="scheme">{{ scheme }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="filter-field filter-search">
+          <label for="search">Search</label>
+          <input
+            id="search"
+            type="text"
+            placeholder="Search applicant, scheme or ID"
+            [value]="search()"
+            (input)="search.set($any($event.target).value)" />
+        </div>
+      </div>
+    }
+
+    <!-- Loading -->
+    @if (loading()) {
+      <div class="state-card">Loading applications...</div>
+    }
+
+    <!-- List -->
+    @if (!loading() && !loadError()) {
+      @if (filteredItems().length === 0) {
+        <div class="state-card">
+          @if (items().length === 0) {
+            No applications found.
+          } @else if (pendingCount() === 0 && statusFilter() === 'pending') {
+            No applications are currently waiting for review.
+          } @else {
+            No applications match the current filters.
+          }
+        </div>
+      } @else {
+        <div class="application-list" role="table">
+          <div class="list-head" role="row">
+            <span role="columnheader">Application</span>
+            <span role="columnheader">Applicant</span>
+            <span role="columnheader">Scheme</span>
+            <span role="columnheader">Date</span>
+            <span role="columnheader">Status</span>
+            <span role="columnheader" class="sr-only">Action</span>
+          </div>
+
+          @for (item of filteredItems(); track item.id) {
+            <div
+              class="list-row"
+              role="row"
+              [class.row-pending]="isPending(item)"
+              (click)="select(item)">
+              <span role="cell" class="cell-id">{{ shortId(item.id) }}</span>
+              <span role="cell">{{ applicantLabel(item) }}</span>
+              <span role="cell" class="cell-scheme" [title]="item.scheme_title">
+                {{ item.scheme_title }}
+              </span>
+              <span role="cell">{{ formatDate(item.submitted_at) }}</span>
+              <span role="cell">
+                <span class="status-chip" [attr.data-status]="item.status">
+                  {{ statusLabel(item.status) }}
+                </span>
+              </span>
+              <span role="cell" class="cell-action">
+                <button type="button" class="review-btn" (click)="select(item); $event.stopPropagation()">
+                  Review
+                </button>
+              </span>
+            </div>
+          }
+        </div>
+      }
+    }
+  }
+
+  <!-- ── Detail view ──────────────────────────────────────────────────── -->
+  @if (selected(); as app) {
+    <section class="detail-panel">
+      <div class="detail-header">
+        <button type="button" class="ghost-btn" (click)="cancelSelection()">
+          ← Back to list
+        </button>
+        <h2 class="detail-title">Application Review</h2>
+        <span class="status-chip" [attr.data-status]="app.status">
+          {{ statusLabel(app.status) }}
+        </span>
+      </div>
+
+      @if (successMessage()) {
+        <div class="banner banner-success">{{ successMessage() }}</div>
+      }
+      @if (updateError()) {
+        <div class="banner banner-error">{{ updateError() }}</div>
+      }
+
+      <dl class="details">
+        <div class="detail">
+          <dt>Application ID</dt>
+          <dd>{{ shortId(app.id) }} <span class="mono">{{ app.id }}</span></dd>
+        </div>
+        <div class="detail">
+          <dt>Applicant</dt>
+          <dd>
+            {{ applicantLabel(app) }}
+            <span class="mono">{{ app.user_id }}</span>
+          </dd>
+        </div>
+        <div class="detail">
+          <dt>Scheme</dt>
+          <dd>{{ app.scheme_title }}</dd>
+        </div>
+        <div class="detail">
+          <dt>Department</dt>
+          <dd>{{ departmentLabel(app) }}</dd>
+        </div>
+        <div class="detail">
+          <dt>Submitted On</dt>
+          <dd>{{ formatDate(app.submitted_at) }}</dd>
+        </div>
+        <div class="detail">
+          <dt>Last Updated</dt>
+          <dd>{{ formatDate(app.updated_at) }}</dd>
+        </div>
+        <div class="detail">
+          <dt>Current Status</dt>
+          <dd>{{ statusLabel(app.status) }}</dd>
+        </div>
+        <div class="detail">
+          <dt>Reviewed By</dt>
+          <dd class="mono">{{ app.approved_by ?? '—' }}</dd>
+        </div>
+      </dl>
+
+      @if (app.remarks) {
+        <p class="note"><strong>Remarks:</strong> {{ app.remarks }}</p>
+      }
+      @if (app.rejection_reason) {
+        <p class="note note-rejection">
+          <strong>Rejection reason:</strong> {{ app.rejection_reason }}
+        </p>
+      }
+
+      <a class="view-scheme" [routerLink]="['/schemes', app.scheme_id]">
+        View scheme
+      </a>
+
+      <!-- ── Update form ─────────────────────────────────────────────── -->
+      <div class="update-section">
+        <h3 class="update-title">Update Application Status</h3>
+
+        @if (allowedNextStatuses().length > 0) {
+          <form
+            class="update-form"
+            (submit)="$event.preventDefault(); updateStatus()">
+            <div class="field">
+              <label for="new-status">Status</label>
+              <select
+                id="new-status"
+                [value]="selectedStatus()"
+                (change)="selectStatus($any($event.target).value)">
+                <option value="" disabled>Select a status…</option>
+                @for (status of allowedNextStatuses(); track status) {
+                  <option [value]="status">{{ statusLabel(status) }}</option>
+                }
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="remarks">Remarks (optional)</label>
+              <textarea
+                id="remarks"
+                rows="3"
+                placeholder="Add a note about this decision…"
+                [value]="remarks()"
+                (input)="remarks.set($any($event.target).value)"></textarea>
+            </div>
+
+            <div class="form-actions">
+              <button type="button" class="ghost-btn" (click)="cancelSelection()">
+                Cancel
+              </button>
+              <button
+                type="submit"
+                class="primary-btn"
+                [disabled]="updating() || !selectedStatus()">
+                {{ updating() ? 'Updating…' : 'Update Status' }}
+              </button>
+            </div>
+          </form>
+        } @else {
+          <p class="muted">
+            This application is {{ statusLabel(app.status) }} — no further status
+            changes are allowed.
+          </p>
+        }
+      </div>
+    </section>
+  }
+</div>

@@ -1,0 +1,114 @@
+/* Usage leaderboard styles extracted from dashboard.component.css.
+   `text-align: right` comes from the global .text-right utility in
+   styles/_utilities.css — no component rule is needed for it. */
+:host {
+  display: block;
+}
+
+.usage-leaderboard-card {
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-top: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.card-header-flex {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1.25rem;
+}
+
+.card-header-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.card-header-sub {
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+  margin: 0.25rem 0 0 0;
+}
+
+.leaderboard-tag {
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: #fef3c7;
+  color: #92400e;
+  padding: 0.25rem 0.6rem;
+  border-radius: 20px;
+}
+
+.empty-text {
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  text-align: center;
+  padding: 1rem;
+}
+
+.table-responsive {
+  overflow-x: auto;
+}
+
+.leaderboard-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.875rem;
+}
+
+.leaderboard-table th {
+  padding: 0.75rem 1rem;
+  background: var(--color-bg-muted);
+  color: var(--color-text-secondary);
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.leaderboard-table td {
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--color-border-subtle);
+  color: var(--color-text-body);
+}
+
+.leaderboard-table tbody tr:hover {
+  background: var(--color-bg-subtle);
+}
+
+.scheme-title-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.rank-badge {
+  font-weight: 800;
+  color: var(--color-primary-blue);
+  font-size: 0.8125rem;
+}
+
+.scheme-link {
+  color: var(--color-text-primary);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.scheme-link:hover {
+  color: var(--color-primary-blue);
+  text-decoration: underline;
+}
+
+.view-count-badge {
+  font-weight: 700;
+  color: var(--color-text-primary);
+  background: var(--color-primary-subtle);
+  padding: 0.25rem 0.6rem;
+  border-radius: 6px;
+}

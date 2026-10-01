@@ -1,11 +1,14 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
 import {
   Application,
+  ApplicationReviewItem,
+  ApplicationStatus,
   ApplicationStatusUpdate,
 } from '../models/application.models';
+import { UserRole } from '../models/auth.models';
 
 @Injectable({ providedIn: 'root' })
 export class ApplicationService {
@@ -52,6 +55,38 @@ export class ApplicationService {
       `/api/applications/${applicationId}/status`,
       data,
       { headers: this.getAuthHeaders() }
+    );
+  }
+
+  /**
+   * Staff review list (GET /api/applications/review).
+   * Server-side department-scoped: officials only receive applications in
+   * their own ministry/department; admins receive all.
+   */
+  reviewApplications(
+    status?: ApplicationStatus
+  ): Observable<ApplicationReviewItem[]> {
+    let params = new HttpParams();
+    if (status) {
+      params = params.set('status', status);
+    }
+    return this.http.get<ApplicationReviewItem[]>('/api/applications/review', {
+      headers: this.getAuthHeaders(),
+      params,
+    });
+  }
+
+  /** Mirrors the backend staff-only roles for application review. */
+  static canReviewApplications(
+    role: UserRole | string | null | undefined
+  ): boolean {
+    return (
+      !!role &&
+      [
+        UserRole.GOVERNMENT_OFFICIAL,
+        UserRole.ADMINISTRATOR,
+        UserRole.SUPER_ADMIN,
+      ].includes(role as UserRole)
     );
   }
 }

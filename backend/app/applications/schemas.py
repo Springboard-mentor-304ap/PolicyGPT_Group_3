@@ -25,4 +25,17 @@ class ApplicationStatusUpdate(BaseModel):
     status: ApplicationStatus
     remarks: str | None = None
 
+
+class ApplicationReviewResponse(ApplicationResponse):
+    """Application enriched with review context for the staff list view.
+
+    Extends the existing ApplicationResponse with joined applicant/scheme
+    information already present in the database — no new applicant fields.
+    """
+
+    applicant_name: str | None = None
+    scheme_title: str
+    scheme_department: str | None = None
+    policy_ministry: str | None = None
+
     

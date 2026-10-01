@@ -1,20 +1,23 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
 from backend.app.applications.schemas import (
     ApplicationCreate,
     ApplicationResponse,
+    ApplicationReviewResponse,
     ApplicationStatusUpdate,
 )
 from backend.app.applications.service import (
     create_application,
     get_application,
+    list_applications_for_review,
     list_my_applications,
     update_application_status,
 )
 from backend.app.db.database import get_db
+from backend.app.models.application import ApplicationStatus
 from backend.app.models.user import User
 from backend.app.auth.dependencies import get_current_user
 
@@ -52,6 +55,24 @@ def get_my_applications(
 ):
     return list_my_applications(
         db=db,
+        current_user=current_user,
+    )
+
+
+# Staff review list — must be registered before "/{application_id}" so the
+# literal path is not captured by the UUID parameter route.
+@router.get(
+    "/review",
+    response_model=list[ApplicationReviewResponse],
+)
+def review_applications(
+    application_status: ApplicationStatus | None = Query(default=None, alias="status"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return list_applications_for_review(
+        db=db,
+        status_filter=application_status,
         current_user=current_user,
     )
 

@@ -1,0 +1,149 @@
+/* Sidebar styles extracted from dashboard.component.css (per-component
+   Angular style budget). `display: contents` keeps the fixed-position
+   sidebar out of the dashboard flex layout, exactly as before. */
+:host {
+  display: contents;
+}
+
+.sidebar {
+  width: 260px;
+  background-color: var(--color-primary-navy);
+  color: var(--color-text-inverse);
+  display: flex;
+  flex-direction: column;
+  transition: width var(--transition-normal);
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  z-index: var(--z-sidebar);
+}
+
+.sidebar.collapsed {
+  width: 72px;
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-5) var(--space-4);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.logo svg {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+}
+
+.logo-text {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  white-space: nowrap;
+}
+
+.sidebar-toggle {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  color: rgba(255, 255, 255, 0.6);
+  transition: all var(--transition-fast);
+}
+
+.sidebar-toggle:hover,
+.nav-item:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: var(--color-text-inverse);
+}
+
+.sidebar-toggle svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* Sidebar Navigation */
+.sidebar-nav {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-4) var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  color: rgba(255, 255, 255, 0.7);
+  transition: all var(--transition-fast);
+  width: 100%;
+  text-align: left;
+}
+
+.nav-item.active {
+  background-color: var(--color-primary-blue);
+  color: var(--color-text-inverse);
+}
+
+.nav-item svg {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.nav-label {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+}
+
+/* Sidebar Footer */
+.sidebar-footer {
+  padding: var(--space-4) var(--space-3);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.logout-btn {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.logout-btn:hover {
+  background-color: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+}
+
+.sidebar-footer .nav-item {
+  color: #ffffff;
+  background-color: var(--color-primary-blue);
+  font-weight: var(--font-weight-semibold);
+}
+
+.sidebar-footer .nav-item:hover {
+  background-color: var(--color-primary-hover);
+  color: #ffffff;
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    width: 72px;
+  }
+
+  .sidebar .logo-text,
+  .sidebar .nav-label {
+    display: none;
+  }
+}

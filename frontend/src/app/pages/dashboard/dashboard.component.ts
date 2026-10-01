@@ -4,6 +4,7 @@ import { Router, RouterLink } from '@angular/router';
 
 import { AuthService } from '../../core/services/auth.service';
 import { AnalyticsService } from '../../core/services/analytics.service';
+import { ApplicationService } from '../../core/services/application.service';
 import { NotificationService } from '../../core/services/notification.service';
 import {
   humanize,
@@ -20,6 +21,13 @@ import { DonutChartComponent } from '../../shared/components/donut-chart/donut-c
 import { BarChartComponent } from '../../shared/components/bar-chart/bar-chart.component';
 import { TrendChartComponent } from '../../shared/components/trend-chart/trend-chart.component';
 import { SkeletonComponent } from '../../shared/components/skeleton/skeleton.component';
+import { DashboardSidebarComponent } from './components/dashboard-sidebar/dashboard-sidebar.component';
+import { NotificationBellComponent } from './components/notification-bell/notification-bell.component';
+import { PendingApprovalsComponent } from './components/pending-approvals/pending-approvals.component';
+import { UsageLeaderboardComponent } from './components/usage-leaderboard/usage-leaderboard.component';
+import { QuickActionsComponent } from './components/quick-actions/quick-actions.component';
+import { RoleRequestCardsComponent } from './components/role-request-cards/role-request-cards.component';
+import { ApplicationApprovalsComponent } from './application-approvals/application-approvals.component';
 
 export type DashboardLoadState = 'idle' | 'loading' | 'ready' | 'error';
 
@@ -34,6 +42,13 @@ export type DashboardLoadState = 'idle' | 'loading' | 'ready' | 'error';
     BarChartComponent,
     TrendChartComponent,
     SkeletonComponent,
+    DashboardSidebarComponent,
+    NotificationBellComponent,
+    PendingApprovalsComponent,
+    UsageLeaderboardComponent,
+    QuickActionsComponent,
+    RoleRequestCardsComponent,
+    ApplicationApprovalsComponent,
   ],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.css',
@@ -114,6 +129,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
   /** Policy / scheme lifecycle state is presented to admins and officials. */
   readonly canViewStatusBreakdown = computed(
     () => this.isAdmin() || this.isGovOfficial()
+  );
+
+  /** Application review is staff-only, mirroring the backend RBAC. */
+  readonly canReviewApplications = computed(() =>
+    ApplicationService.canReviewApplications(this.authService.userRole())
   );
 
   readonly isLoading = computed(() => this.loadState() === 'loading');
@@ -428,6 +448,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
       case 'applications':
         this.router.navigate(['/applications']);
         break;
+      case 'applications-review':
+        this.router.navigate(['/applications/review']);
+        break;
       case 'feedback':
         this.router.navigate(['/feedback']);
         break;
@@ -553,6 +576,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         ...base,
         { id: 'policies-create', label: 'Upload Policy', icon: 'file-plus' },
         { id: 'schemes-create', label: 'Create Scheme', icon: 'gift' },
+        { id: 'applications-review', label: 'Application Approvals', icon: 'folder' },
         { id: 'reports', label: 'Reports', icon: 'document' },
       ];
     }
@@ -561,6 +585,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       return [
         ...base,
         { id: 'approvals', label: 'Role Approvals', icon: 'folder' },
+        { id: 'applications-review', label: 'Application Approvals', icon: 'folder' },
         { id: 'reports', label: 'Reports', icon: 'document' },
       ];
     }

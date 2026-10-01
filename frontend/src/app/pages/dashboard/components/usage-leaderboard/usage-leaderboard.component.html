@@ -1,0 +1,37 @@
+<div class="usage-leaderboard-card">
+  <div class="card-header-flex">
+    <div>
+      <h3 class="card-header-title">Scheme Usage (Top Viewed)</h3>
+      <p class="card-header-sub">Public engagement per scheme, ranked by views</p>
+    </div>
+    <span class="leaderboard-tag">Top {{ rows.length }}</span>
+  </div>
+
+  @if (rows.length === 0) {
+    <p class="empty-text">No scheme view data recorded yet.</p>
+  } @else {
+    <div class="table-responsive">
+      <table class="leaderboard-table">
+        <thead>
+          <tr>
+            <th>Scheme Title</th>
+            <th class="text-right">Public Views</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (scheme of rows; track scheme.id; let rank = $index) {
+            <tr>
+              <td class="scheme-title-cell">
+                <span class="rank-badge">#{{ rank + 1 }}</span>
+                <a [routerLink]="['/schemes', scheme.id]" class="scheme-link">{{ scheme.title }}</a>
+              </td>
+              <td class="text-right">
+                <span class="view-count-badge">{{ scheme.view_count }}</span>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>
