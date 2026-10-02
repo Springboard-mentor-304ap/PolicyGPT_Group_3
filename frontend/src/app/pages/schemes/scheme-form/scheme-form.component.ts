@@ -23,11 +23,17 @@ import {
   ELIGIBILITY_OPERATOR_LABELS,
 } from '../../../core/models/scheme.models';
 import { ButtonComponent } from '../../../shared/components/button/button.component';
+import { DepartmentSelectComponent } from '../../../shared/components/department-select/department-select.component';
 
 @Component({
   selector: 'app-scheme-form',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, ButtonComponent],
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    ButtonComponent,
+    DepartmentSelectComponent,
+  ],
   templateUrl: './scheme-form.component.html',
   styleUrl: './scheme-form.component.css',
 })

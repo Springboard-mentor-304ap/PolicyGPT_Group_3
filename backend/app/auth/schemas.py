@@ -137,6 +137,25 @@ class CitizenProfileResponse(BaseModel):
     district: str | None = None
 
 
+class GovernmentOfficialProfileResponse(BaseModel):
+    """Read-only view of a government official's profile.
+
+    The official fields come straight from `government_official_profiles`
+    (populated when a role request is approved) and the identity fields from
+    the linked user account. No field is editable through the API.
+    """
+
+    user_id: UUID
+    full_name: str
+    email: str
+    phone: str | None = None
+    department: str
+    designation: str
+    official_id: str
+    state: str
+    district: str | None = None
+
+
 # ─── Role Request ────────────────────────────────────────────────────────────
 
 class RoleRequestSubmit(BaseModel):

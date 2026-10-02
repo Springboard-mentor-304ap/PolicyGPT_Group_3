@@ -1,0 +1,35 @@
+<div class="department-select">
+  <app-select
+    [id]="id"
+    [name]="name"
+    [label]="label"
+    [required]="required"
+    [disabled]="disabled"
+    [value]="selection()"
+    [options]="options"
+    [placeholder]="placeholder"
+    [error]="displayError"
+    [hint]="hint"
+    (selectionChange)="onSelectChange($event)"
+  ></app-select>
+
+  @if (isOthers) {
+    <app-input
+      [id]="id + '-custom'"
+      [label]="customLabel"
+      [required]="true"
+      [disabled]="disabled"
+      [placeholder]="customPlaceholder"
+      [ngModel]="customValue()"
+      [ngModelOptions]="{ standalone: true }"
+      (ngModelChange)="onCustomInput($event)"
+    ></app-input>
+  }
+
+  @if (optionsFailed()) {
+    <p class="department-note">
+      Existing departments could not be loaded — choose OTHERS to type the
+      department name.
+    </p>
+  }
+</div>

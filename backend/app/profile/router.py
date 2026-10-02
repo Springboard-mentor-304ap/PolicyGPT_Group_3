@@ -7,9 +7,13 @@ from backend.app.auth.dependencies import get_current_user
 from backend.app.auth.schemas import (
     CitizenProfileRequest,
     CitizenProfileResponse,
+    GovernmentOfficialProfileResponse,
     MessageResponse,
 )
 from backend.app.db.database import get_db
+from backend.app.models.government_official_profile import (
+    GovernmentOfficialProfile,
+)
 from backend.app.models.user import User, UserRole
 from backend.app.models.user_profile import UserProfile
 
@@ -62,6 +66,45 @@ def get_citizen_profile(
         social_category=profile.social_category.value if profile.social_category else None,
         disability_status=profile.disability_status,
         education=profile.education,
+        state=profile.state,
+        district=profile.district,
+    )
+
+
+# ─── GET GOVERNMENT OFFICIAL PROFILE ───────────────────────────────────────
+
+@router.get(
+    "/government-official",
+    response_model=GovernmentOfficialProfileResponse,
+)
+def get_government_official_profile(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Read-only official profile (department, designation, official ID...).
+
+    Returns 404 when the account has no government profile yet — the profile
+    is created when an administrator approves a government-official role
+    request, so there is nothing the user could fill in from here.
+    """
+    profile = db.query(GovernmentOfficialProfile).filter(
+        GovernmentOfficialProfile.user_id == current_user.id
+    ).first()
+
+    if not profile:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No government official profile is linked to this account",
+        )
+
+    return GovernmentOfficialProfileResponse(
+        user_id=current_user.id,
+        full_name=current_user.full_name,
+        email=current_user.email,
+        phone=current_user.phone,
+        department=profile.department,
+        designation=profile.designation,
+        official_id=profile.official_id,
         state=profile.state,
         district=profile.district,
     )

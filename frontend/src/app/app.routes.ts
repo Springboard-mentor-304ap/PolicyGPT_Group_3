@@ -165,9 +165,18 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./pages/faq/faq.component').then((m) => m.FaqComponent),
   },
+  // Reports are limited to staff roles (mirrors REPORT_ALLOWED_ROLES); the
+  // API rejects other roles as well, so this only avoids a dead-end page.
   {
     path: 'reports',
-    canActivate: [authGuard],
+    canActivate: [authGuard, roleGuard],
+    data: {
+      roles: [
+        UserRole.GOVERNMENT_OFFICIAL,
+        UserRole.ADMINISTRATOR,
+        UserRole.SUPER_ADMIN,
+      ],
+    },
     loadComponent: () =>
       import('./pages/reports/reports.component').then(
         (m) => m.ReportsComponent

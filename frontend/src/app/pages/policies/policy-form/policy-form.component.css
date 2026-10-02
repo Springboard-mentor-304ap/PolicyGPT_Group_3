@@ -1,6 +1,10 @@
+/* Centered like the other create/edit pages (see .scheme-form-page and
+   .reports-page): the same 800px column, horizontally centered instead of
+   hugging the left edge of the content area. */
 .policy-form-page {
   padding: var(--space-8);
   max-width: 800px;
+  margin: 0 auto;
 }
 
 /* Back Button */

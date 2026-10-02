@@ -1,3 +1,4 @@
+import logging
 import os
 import smtplib
 from email.message import EmailMessage
@@ -6,13 +7,37 @@ from dotenv import load_dotenv
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 from uuid import UUID
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 
 from backend.app.models.notification import Notification, NotificationChannel, NotificationType
-from backend.app.models.user import User
+from backend.app.models.scheme import Scheme, SchemeStatus
+from backend.app.models.user import User, UserRole
 
 load_dotenv()
+
+logger = logging.getLogger(__name__)
+
+# Roles that can actually submit an application for a scheme. Deadline
+# reminders therefore go to the same audience (see create_application).
+DEADLINE_REMINDER_ROLES = (
+    UserRole.CITIZEN,
+    UserRole.ORGANIZATION,
+)
+
+# How close a scheme deadline has to be before reminders are generated.
+DEADLINE_REMINDER_DEFAULT_THRESHOLD_DAYS = 7
+
+def reminder_threshold_days() -> int:
+    raw_value = os.getenv("DEADLINE_REMINDER_THRESHOLD_DAYS")
+
+    if raw_value is None:
+        return DEADLINE_REMINDER_DEFAULT_THRESHOLD_DAYS
+
+    try:
+        return max(1, int(raw_value))
+    except ValueError:
+        return DEADLINE_REMINDER_DEFAULT_THRESHOLD_DAYS
 
 def send_email(
     to_email: str,
@@ -130,54 +155,76 @@ def send_notification(
         )
 
         if channel == NotificationChannel.EMAIL:
-            send_email(
-                to_email=user.email,
-                subject=title,
-                body = message,
-            )
-            notification.sent_at = datetime.now(timezone.utc)
+            # A delivery problem (missing SMTP configuration, provider
+            # outage, bad recipient) must not discard the notification rows
+            # that were created for the other channels, and must not break
+            # batch jobs such as the deadline reminder run.
+            try:
+                send_email(
+                    to_email=user.email,
+                    subject=title,
+                    body = message,
+                )
+            except Exception:
+                logger.warning(
+                    "Email notification %s for %s could not be sent",
+                    notification_type.value,
+                    user.email,
+                    exc_info=True,
+                )
+            else:
+                notification.sent_at = datetime.now(timezone.utc)
 
+        # SMS rows are persisted as records only: no SMS provider is
+        # configured, so `sent_at` stays NULL and the record represents a
+        # pending/simulated SMS rather than a delivered message.
         notifications.append(notification)
 
-    return notifications
+    return notifications# ─── In-app inbox helpers ──────────────────────────────────────────────────
+#
+# EMAIL and SMS rows are delivery records, not inbox entries: one
+# APPLICATION_UPDATE generates an IN_APP and an EMAIL row, and showing both
+# made the bell look like it contained duplicate notifications. The API below
+# therefore exposes IN_APP records only, and read/unread state (which is what
+# the UI and the unread badge reason about) is tracked on those records.
+
+def _in_app_records(db: Session, user_id: UUID):
+    return db.query(Notification).filter(
+        Notification.user_id == user_id,
+        Notification.channel == NotificationChannel.IN_APP,
+    )
+
 
 def list_notifications(
     db: Session,
     current_user: User
 ) -> list[Notification]:
     return (
-        db.query(Notification)
-        .filter(Notification.user_id == current_user.id)
+        _in_app_records(db, current_user.id)
         .order_by(Notification.created_at.desc())
         .all()
     )
+
 
 def get_unread_count(
         db: Session,
         current_user: User
 ) -> int:
     return (
-        db.query(Notification)
-        .filter(
-            Notification.user_id == current_user.id,
-            Notification.is_read.is_(False),
-        )
+        _in_app_records(db, current_user.id)
+        .filter(Notification.is_read.is_(False))
         .count()
     )
+
 
 def mark_notification_as_read(
         db: Session,
         notification_id,
         current_user: User,
 ) -> Notification:
-    notification = (
-        db.query(Notification)
-        .filter(
-            Notification.id == notification_id,
-            Notification.user_id == current_user.id,
-        )
-        .first()
-    )
+    notification = _in_app_records(db, current_user.id).filter(
+        Notification.id == notification_id,
+    ).first()
 
     if not notification:
         raise HTTPException(
@@ -196,11 +243,8 @@ def mark_all_notifications_as_read(
     current_user: User,
 ) -> int:
     updated_count = (
-        db.query(Notification)
-        .filter(
-            Notification.user_id == current_user.id,
-            Notification.is_read.is_(False),
-        )
+        _in_app_records(db, current_user.id)
+        .filter(Notification.is_read.is_(False))
         .update(
             {Notification.is_read: True},
             synchronize_session=False,
@@ -209,4 +253,95 @@ def mark_all_notifications_as_read(
     db.commit()
 
     return updated_count
+
+
+def run_deadline_reminders(
+    db: Session,
+    threshold_days: int | None = None,
+) -> dict:
+    """Create DEADLINE_REMINDER notifications for schemes closing soon.
+
+    Reminders go to the users who can actually apply (active citizens and
+    organizations) for every ACTIVE scheme whose deadline falls inside the
+    reminder window. The run is idempotent: a user is only ever notified once
+    per scheme, so repeated executions (scheduled ticks, manual triggers, or
+    several API workers) cannot duplicate a reminder.
+    """
+
+    if threshold_days is None:
+        threshold_days = reminder_threshold_days()
+
+    today = date.today()
+    window_end = today + timedelta(days=threshold_days)
+
+    schemes = (
+        db.query(Scheme)
+        .filter(
+            Scheme.status == SchemeStatus.ACTIVE,
+            Scheme.deadline_date.is_not(None),
+            Scheme.deadline_date >= today,
+            Scheme.deadline_date <= window_end,
+        )
+        .order_by(Scheme.deadline_date.asc())
+        .all()
+    )
+
+    recipients = (
+        db.query(User)
+        .filter(
+            User.is_active.is_(True),
+            User.role.in_(DEADLINE_REMINDER_ROLES),
+        )
+        .all()
+    )
+
+    created = 0
+    skipped = 0
+
+    for scheme in schemes:
+        days_remaining = (scheme.deadline_date - today).days
+        title = "Deadline Reminder"
+        message = (
+            f'The deadline for "{scheme.title}" is approaching.\n'
+            f"Deadline: {scheme.deadline_date.isoformat()}\n"
+            f"Days remaining: {days_remaining}\n"
+            "Please complete your application before the deadline."
+        )
+
+        for recipient in recipients:
+            already_notified = (
+                db.query(Notification.id)
+                .filter(
+                    Notification.user_id == recipient.id,
+                    Notification.type == NotificationType.DEADLINE_REMINDER,
+                    Notification.related_entity_type == "scheme",
+                    Notification.related_entity_id == scheme.id,
+                )
+                .first()
+            )
+
+            if already_notified:
+                skipped += 1
+                continue
+
+            send_notification(
+                db=db,
+                user_id=recipient.id,
+                notification_type=NotificationType.DEADLINE_REMINDER,
+                title=title,
+                message=message,
+                related_entity_type="scheme",
+                related_entity_id=scheme.id,
+            )
+            created += 1
+
+    db.commit()
+
+    return {
+        "threshold_days": threshold_days,
+        "schemes_considered": len(schemes),
+        "recipients_considered": len(recipients),
+        "reminders_created": created,
+        "reminders_skipped": skipped,
+    }
     

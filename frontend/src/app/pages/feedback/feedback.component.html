@@ -9,17 +9,15 @@
       </p>
     </div>
     <div class="tabs" role="tablist">
-      @for (tab of tabs; track tab.id) {
-        @if (tab.id !== 'all' || isFeedbackAdmin()) {
-          <button
-            type="button"
-            role="tab"
-            class="tab"
-            [class.active]="activeTab() === tab.id"
-            (click)="selectTab(tab.id)">
-            {{ tab.label }}
-          </button>
-        }
+      @for (tab of visibleTabs(); track tab.id) {
+        <button
+          type="button"
+          role="tab"
+          class="tab"
+          [class.active]="activeTab() === tab.id"
+          (click)="selectTab(tab.id)">
+          {{ tab.label }}
+        </button>
       }
     </div>
   </div>

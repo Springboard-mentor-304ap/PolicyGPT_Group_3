@@ -5,7 +5,7 @@
       <h1 class="page-title">Reports</h1>
       <p class="page-subtitle">
         Generate downloadable PDF and Excel reports for policies, schemes,
-        departments and user activity
+        departments and analytics
       </p>
     </div>
   </div>
@@ -35,12 +35,10 @@
           <select
             id="rep-type"
             [value]="reportType()"
-            (change)="reportType.set($any($event.target).value)">
-            <option value="policy">Policies</option>
-            <option value="scheme">Schemes</option>
-            <option value="user_activity">User Activity</option>
-            <option value="department">Departments</option>
-            <option value="analytics">Analytics</option>
+            (change)="selectReportType($any($event.target).value)">
+            @for (type of reportTypes(); track type.value) {
+              <option [value]="type.value">{{ type.label }}</option>
+            }
           </select>
         </div>
 
@@ -55,53 +53,96 @@
           </select>
         </div>
 
-        <div class="field">
-          <label for="rep-category">Category</label>
-          <input
-            id="rep-category"
-            type="text"
-            placeholder="e.g. Education"
-            [value]="category()"
-            (input)="category.set($any($event.target).value)" />
-        </div>
+        <!-- Category and Status come from the existing enums, so the value
+             sent to the API always matches the stored enum value. -->
+        @if (supports('category')) {
+          <div class="field">
+            <label for="rep-category">Category</label>
+            <select
+              id="rep-category"
+              [value]="category()"
+              (change)="category.set($any($event.target).value)">
+              <option value="">All categories</option>
+              @for (option of categoryOptions; track option.value) {
+                <option [value]="option.value">{{ option.label }}</option>
+              }
+            </select>
+          </div>
+        }
 
-        <div class="field">
-          <label for="rep-status">Status</label>
-          <input
-            id="rep-status"
-            type="text"
-            placeholder="e.g. active"
-            [value]="status()"
-            (input)="status.set($any($event.target).value)" />
-        </div>
+        @if (supports('status')) {
+          <div class="field">
+            <label for="rep-status">Status</label>
+            <select
+              id="rep-status"
+              [value]="status()"
+              (change)="status.set($any($event.target).value)">
+              <option value="">All statuses</option>
+              @for (option of statusOptions; track option.value) {
+                <option [value]="option.value">{{ option.label }}</option>
+              }
+            </select>
+          </div>
+        }
 
-        <div class="field">
-          <label for="rep-department">Department</label>
-          <input
-            id="rep-department"
-            type="text"
-            placeholder="e.g. Ministry of Education"
-            [value]="department()"
-            (input)="department.set($any($event.target).value)" />
-        </div>
+        @if (supports('department')) {
+          <div class="field">
+            <label for="rep-department">Department</label>
+            <select
+              id="rep-department"
+              [value]="department()"
+              (change)="department.set($any($event.target).value)">
+              <option value="">
+                {{ isGovernmentOfficial() ? 'My department (enforced)' : 'All departments' }}
+              </option>
+              @for (option of departmentOptions(); track option) {
+                <option [value]="option">{{ option }}</option>
+              }
+            </select>
+            @if (isGovernmentOfficial()) {
+              <span class="field-hint">
+                Reports are limited to your own department scope.
+              </span>
+            }
+          </div>
+        }
 
-        <div class="field">
-          <label for="rep-from">From date</label>
-          <input
-            id="rep-from"
-            type="date"
-            [value]="dateFrom()"
-            (input)="dateFrom.set($any($event.target).value)" />
-        </div>
+        @if (supports('role')) {
+          <div class="field">
+            <label for="rep-role">Role</label>
+            <select
+              id="rep-role"
+              [value]="role()"
+              (change)="role.set($any($event.target).value)">
+              <option value="">All roles</option>
+              @for (option of roleOptions; track option.value) {
+                <option [value]="option.value">{{ option.label }}</option>
+              }
+            </select>
+          </div>
+        }
 
-        <div class="field">
-          <label for="rep-to">To date</label>
-          <input
-            id="rep-to"
-            type="date"
-            [value]="dateTo()"
-            (input)="dateTo.set($any($event.target).value)" />
-        </div>
+        @if (supports('date_from')) {
+          <div class="field">
+            <label for="rep-from">From date</label>
+            <input
+              id="rep-from"
+              type="date"
+              [value]="dateFrom()"
+              (input)="dateFrom.set($any($event.target).value)" />
+          </div>
+        }
+
+        @if (supports('date_to')) {
+          <div class="field">
+            <label for="rep-to">To date</label>
+            <input
+              id="rep-to"
+              type="date"
+              [value]="dateTo()"
+              (input)="dateTo.set($any($event.target).value)" />
+          </div>
+        }
       </div>
 
       <button

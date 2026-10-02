@@ -1,0 +1,12 @@
+.department-select {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+  width: 100%;
+}
+
+.department-note {
+  margin: 0;
+  font-size: var(--font-size-xs, 0.75rem);
+  color: var(--color-text-secondary, #64748b);
+}

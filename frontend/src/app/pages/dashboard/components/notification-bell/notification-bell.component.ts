@@ -1,4 +1,12 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  EventEmitter,
+  HostListener,
+  Input,
+  Output,
+  inject,
+} from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { NotificationItem } from '../../../../core/models/notification.models';
 
@@ -19,11 +27,38 @@ import { NotificationItem } from '../../../../core/models/notification.models';
   styleUrl: './notification-bell.component.css',
 })
 export class NotificationBellComponent {
+  private readonly elementRef = inject(ElementRef<HTMLElement>);
+
   @Input({ required: true }) unreadCount = 0;
   @Input({ required: true }) items: NotificationItem[] = [];
   @Input({ required: true }) open = false;
 
   @Output() toggle = new EventEmitter<void>();
+  @Output() close = new EventEmitter<void>();
   @Output() markRead = new EventEmitter<NotificationItem>();
   @Output() markAllRead = new EventEmitter<void>();
+
+  /**
+   * Close the dropdown when the user clicks anywhere outside the bell.
+   *
+   * The host element wraps both the bell and the dropdown, so a click on
+   * either one is "inside" and never closes it — which also means the click
+   * that opens the dropdown cannot immediately close it again. Mark-as-read
+   * actions stay open as well; only genuinely external clicks (or navigation)
+   * dismiss the panel.
+   */
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    if (!this.open) {
+      return;
+    }
+
+    const target = event.target as Node | null;
+
+    if (target && this.elementRef.nativeElement.contains(target)) {
+      return;
+    }
+
+    this.close.emit();
+  }
 }

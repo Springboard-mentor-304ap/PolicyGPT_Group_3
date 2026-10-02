@@ -141,14 +141,13 @@
       <!-- Department & State (inline) -->
       <div class="form-row">
         <div class="form-group">
-          <label for="department" class="form-label">Department</label>
-          <input
-            id="department"
-            type="text"
+          <app-department-select
             formControlName="department"
-            class="form-input"
-            placeholder="e.g., Ministry of Education"
-          />
+            label="Department"
+            name="department"
+            placeholder="Select department"
+            customLabel="Department name"
+          ></app-department-select>
         </div>
         <div class="form-group">
           <label for="state" class="form-label">State</label>

@@ -86,6 +86,9 @@
           }
         </div>
 
+        <!-- Policy Category is the existing category enum — no free text and
+             no OTHERS option. Department comes from the shared picker, which
+             offers the values already in use plus an OTHERS entry. -->
         <!-- Category & Department Row -->
         <div class="form-row">
           <div class="form-field">
@@ -109,20 +112,15 @@
           </div>
 
           <div class="form-field">
-            <label class="form-label" for="department">
-              Department <span class="required">*</span>
-            </label>
-            <input
-              id="department"
-              type="text"
-              class="form-control"
+            <app-department-select
               formControlName="department"
-              placeholder="e.g. Ministry of Education"
-              [class.has-error]="getFieldError('department')"
-            />
-            @if (getFieldError('department')) {
-              <p class="field-error">{{ getFieldError('department') }}</p>
-            }
+              label="Department"
+              name="department"
+              placeholder="Select department"
+              customLabel="Department name"
+              [required]="true"
+              [error]="getFieldError('department')"
+            ></app-department-select>
           </div>
         </div>
 

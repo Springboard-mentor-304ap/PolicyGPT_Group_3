@@ -9,12 +9,18 @@ import {
   POLICY_CATEGORY_LABELS,
 } from '../../../core/models/policy.models';
 import { ButtonComponent } from '../../../shared/components/button/button.component';
+import { DepartmentSelectComponent } from '../../../shared/components/department-select/department-select.component';
 import { InputComponent } from '../../../shared/components/input/input.component';
 
 @Component({
   selector: 'app-policy-form',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, ButtonComponent],
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    ButtonComponent,
+    DepartmentSelectComponent,
+  ],
   templateUrl: './policy-form.component.html',
   styleUrl: './policy-form.component.css',
 })

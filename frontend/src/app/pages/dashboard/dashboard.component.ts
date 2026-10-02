@@ -342,6 +342,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
   }
 
+  /** Dismiss the dropdown (outside clicks, navigation). */
+  closeNotifications(): void {
+    this.showNotifications.set(false);
+  }
+
   markNotificationAsRead(notification: NotificationItem): void {
     if (notification.is_read) {
       return;
@@ -420,7 +425,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   onMenuSelect(menuId: string): void {
     this.activeMenu.set(menuId);
+    // Leaving the overview (or scrolling within it) must not leave the header
+    // dropdown hanging over the next page.
+    this.closeNotifications();
     switch (menuId) {
+      case 'profile':
+        this.router.navigate(['/citizen-profile']);
+        break;
       case 'policies':
         this.router.navigate(['/policies']);
         break;
@@ -578,6 +589,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         { id: 'schemes-create', label: 'Create Scheme', icon: 'gift' },
         { id: 'applications-review', label: 'Application Approvals', icon: 'folder' },
         { id: 'reports', label: 'Reports', icon: 'document' },
+        { id: 'profile', label: 'Government Profile', icon: 'user' },
       ];
     }
 

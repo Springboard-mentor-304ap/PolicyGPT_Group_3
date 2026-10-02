@@ -16,6 +16,7 @@ import {
   ResendVerificationRequest,
   CitizenProfileRequest,
   CitizenProfileResponse,
+  GovernmentOfficialProfileResponse,
   RoleRequestSubmit,
   RoleRequestResponse,
 } from '../models/auth.models';
@@ -114,6 +115,15 @@ export class AuthService {
     return this.http.put<CitizenProfileResponse>('/api/profile/citizen', data, {
       headers: this.getAuthHeaders()
     });
+  }
+
+  // ─── GOVERNMENT OFFICIAL PROFILE ────────────────────────────────────────
+  /** Read-only official profile (GET /api/profile/government-official). */
+  getGovernmentOfficialProfile(): Observable<GovernmentOfficialProfileResponse> {
+    return this.http.get<GovernmentOfficialProfileResponse>(
+      '/api/profile/government-official',
+      { headers: this.getAuthHeaders() }
+    );
   }
 
   // ─── ROLE REQUESTS ──────────────────────────────────────────────────────

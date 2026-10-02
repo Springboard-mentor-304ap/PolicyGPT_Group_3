@@ -28,3 +28,12 @@ class MarkAllReadResponse(BaseModel):
 
 class MarkReadResponse(NotificationResponse):
     pass
+
+class DeadlineReminderRunResponse(BaseModel):
+    """Result of one deadline-reminder sweep (idempotent per user/scheme)."""
+
+    threshold_days: int
+    schemes_considered: int
+    recipients_considered: int
+    reminders_created: int
+    reminders_skipped: int

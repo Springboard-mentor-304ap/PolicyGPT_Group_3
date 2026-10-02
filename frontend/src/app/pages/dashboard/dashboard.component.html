@@ -35,6 +35,7 @@
             [items]="notifications()"
             [open]="showNotifications()"
             (toggle)="toggleNotifications()"
+            (close)="closeNotifications()"
             (markRead)="markNotificationAsRead($event)"
             (markAllRead)="markAllNotificationsAsRead()">
           </app-notification-bell>
@@ -75,25 +76,6 @@
 
     <!-- 3. SIGNED IN WITHOUT ANALYTICS ACCESS (citizen / organization) -->
     @if (!isGuest() && !canViewAnalytics()) {
-      <section class="content-section">
-        <div class="intel-card">
-          <div class="intel-card-header">
-            <h3 class="intel-title">Analytics access</h3>
-            <span class="intel-badge">Restricted</span>
-          </div>
-          <p class="intel-sub">
-            Analytics dashboards are limited to researchers, government officials,
-            administrators and super admins. Your account
-            ({{ userRole }}) can use policies, schemes, eligibility checks and
-            comparisons.
-          </p>
-          <div class="state-actions">
-            <a class="header-btn header-btn-primary" routerLink="/role-request">Request an upgrade</a>
-            <a class="header-btn" routerLink="/policies">Browse policies</a>
-          </div>
-        </div>
-      </section>
-
       <!-- Quick actions (real destinations) -->
       <app-quick-actions></app-quick-actions>
 

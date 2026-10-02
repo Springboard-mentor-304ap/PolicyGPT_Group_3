@@ -6,7 +6,7 @@ from typing import TypeVar
 from uuid import UUID
 
 from fastapi import HTTPException, status
-from sqlalchemy import func
+from sqlalchemy import Date, DateTime, cast, func
 from sqlalchemy.orm import Session
 
 from backend.app.analytics.service import (
@@ -285,6 +285,25 @@ def _apply_date_range(query, column, start, end):
     return query
 
 
+def _business_date_column(day_column, fallback_column):
+    """UTC timestamp of a record's business date, for date filtering.
+
+    Report date filters used to run against `created_at`, so a policy that was
+    published in 2020 only matched the year it happened to be imported in.
+    The business date (published date for policies, launch date for schemes)
+    is what the report is actually about, so it is used whenever the record
+    has one. Records that are not there yet (for example a policy still
+    waiting for approval) fall back to their creation day instead of becoming
+    invisible to every date range.
+    """
+    day = func.coalesce(
+        day_column,
+        cast(func.timezone(REPORT_TIMEZONE, fallback_column), Date),
+    )
+
+    return func.timezone(REPORT_TIMEZONE, cast(day, DateTime))
+
+
 def _format_date(value: date | None) -> str | None:
     return value.isoformat() if value is not None else None
 
@@ -368,7 +387,12 @@ def _build_policy_report(
     if policy_status is not None:
         query = query.filter(Policy.status == policy_status)
 
-    query = _apply_date_range(query, Policy.created_at, start, end)
+    query = _apply_date_range(
+        query,
+        _business_date_column(Policy.published_date, Policy.created_at),
+        start,
+        end,
+    )
 
     policies = query.order_by(Policy.created_at.desc()).all()
 
@@ -480,7 +504,12 @@ def _build_scheme_report(
     if scheme_status is not None:
         query = query.filter(Scheme.status == scheme_status)
 
-    query = _apply_date_range(query, Scheme.created_at, start, end)
+    query = _apply_date_range(
+        query,
+        _business_date_column(Scheme.launch_date, Scheme.created_at),
+        start,
+        end,
+    )
 
     schemes = query.order_by(Scheme.created_at.desc()).all()
 
@@ -726,12 +755,22 @@ def _build_department_report(
     )
 
     policy_rows = (
-        _apply_date_range(policy_query, Policy.created_at, start, end)
+        _apply_date_range(
+            policy_query,
+            _business_date_column(Policy.published_date, Policy.created_at),
+            start,
+            end,
+        )
         .group_by(Policy.department, Policy.ministry)
         .all()
     )
     scheme_rows = (
-        _apply_date_range(scheme_query, Scheme.created_at, start, end)
+        _apply_date_range(
+            scheme_query,
+            _business_date_column(Scheme.launch_date, Scheme.created_at),
+            start,
+            end,
+        )
         .group_by(Policy.department, Policy.ministry)
         .all()
     )

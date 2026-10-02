@@ -96,6 +96,11 @@
   font-size: var(--font-size-sm, 0.875rem);
 }
 
+.field-hint {
+  font-size: var(--font-size-xs, 0.75rem);
+  color: var(--color-text-muted);
+}
+
 .primary-btn {
   padding: var(--space-2, 0.5rem) var(--space-5, 1.25rem);
   border: none;

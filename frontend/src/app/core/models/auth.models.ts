@@ -125,6 +125,25 @@ export interface CitizenProfileResponse {
   district?: string | null;
 }
 
+// ─── Government Official Profile ────────────────────────────────────────────
+//
+//   GET /api/profile/government-official -> GovernmentOfficialProfileResponse
+//
+// Read-only: the profile is created when an administrator approves a
+// government-official role request, and the API exposes no update route.
+
+export interface GovernmentOfficialProfileResponse {
+  user_id: string;
+  full_name: string;
+  email: string;
+  phone?: string | null;
+  department: string;
+  designation: string;
+  official_id: string;
+  state: string;
+  district?: string | null;
+}
+
 // ─── Role Requests ──────────────────────────────────────────────────────────
 
 export interface RoleRequestSubmit {

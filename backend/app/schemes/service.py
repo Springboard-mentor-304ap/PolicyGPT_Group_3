@@ -9,10 +9,21 @@ from backend.app.models.eligibility_rule import (
     EligibilityParameter,
     EligibilityRule,
 )
+from backend.app.models.notification import NotificationType
 from backend.app.models.policy import Policy, PolicyStatus
 from backend.app.models.scheme import Scheme, SchemeStatus
 from backend.app.models.user import User, UserRole
+from backend.app.notifications.service import send_notification
 from backend.app.schemes.schemas import SchemeCreate, SchemeUpdate
+
+# Audience for SCHEME_UPDATE alerts: the same roles that receive NEW_POLICY
+# alerts when a policy is approved, so citizens/researchers/organizations are
+# informed about scheme changes without widening the existing audience.
+SCHEME_UPDATE_RECIPIENT_ROLES = (
+    UserRole.CITIZEN,
+    UserRole.RESEARCHER,
+    UserRole.ORGANIZATION,
+)
 
 
 def _require_government_official(current_user: User) -> None:
@@ -110,6 +121,42 @@ def list_schemes(
     ).all()
 
 
+def _notify_scheme_update(
+    db: Session,
+    scheme: Scheme,
+    current_user: User,
+) -> None:
+    """Queue SCHEME_UPDATE notifications within the caller's transaction.
+
+    The notifications are added to the same session as the scheme change, so a
+    failed commit leaves neither the edit nor the notifications behind, and a
+    single edit can never generate the same notification twice.
+    """
+    recipients = (
+        db.query(User)
+        .filter(
+            User.is_active.is_(True),
+            User.role.in_(SCHEME_UPDATE_RECIPIENT_ROLES),
+            User.id != current_user.id,
+        )
+        .all()
+    )
+
+    for recipient in recipients:
+        send_notification(
+            db=db,
+            user_id=recipient.id,
+            notification_type=NotificationType.SCHEME_UPDATE,
+            title="Scheme Updated",
+            message=(
+                f'The scheme "{scheme.title}" has been updated. '
+                "Review the latest details before you apply."
+            ),
+            related_entity_type="scheme",
+            related_entity_id=scheme.id,
+        )
+
+
 def update_scheme(
     db: Session,
     scheme_id: UUID,
@@ -153,6 +200,9 @@ def update_scheme(
     else:
         for field, value in update_data.items():
             setattr(scheme, field, value)
+
+    if update_data:
+        _notify_scheme_update(db, scheme, current_user)
 
     db.commit()
     db.refresh(scheme)

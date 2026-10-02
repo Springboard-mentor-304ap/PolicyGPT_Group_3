@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed, OnInit } from '@angular/core';
+import { Component, effect, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 
@@ -29,13 +29,26 @@ export class FeedbackComponent implements OnInit {
     return role === UserRole.ADMINISTRATOR || role === UserRole.SUPER_ADMIN;
   });
 
-  readonly tabs: { id: FeedbackTab; label: string }[] = [
-    { id: 'submit', label: 'Submit' },
-    { id: 'mine', label: 'My Feedback' },
-    { id: 'all', label: 'All Feedback' },
-  ];
-
   readonly activeTab = signal<FeedbackTab>('submit');
+
+  /** Set once the user picks a tab themselves, so the default stops moving. */
+  private tabSelectedByUser = false;
+
+  /** Only the admin tabs are of interest to an administrator's own workflow. */
+  private readonly tabLabels: Record<FeedbackTab, string> = {
+    submit: 'Submit',
+    mine: 'My Feedback',
+    all: 'All Feedback',
+  };
+
+  /** Tabs in the order they are rendered (admins land on their queue). */
+  readonly visibleTabs = computed(() => {
+    const order: FeedbackTab[] = this.isFeedbackAdmin()
+      ? ['all', 'mine', 'submit']
+      : ['submit', 'mine'];
+
+    return order.map((id) => ({ id, label: this.tabLabels[id] }));
+  });
 
   // ── Submit form ─────────────────────────────────────────────────────────
   readonly type = signal<FeedbackType>('feedback');
@@ -50,6 +63,7 @@ export class FeedbackComponent implements OnInit {
   readonly allFeedback = signal<Feedback[]>([]);
   readonly loadingMine = signal(false);
   readonly loadingAll = signal(false);
+  private allFeedbackRequested = false;
 
   // ── Admin resolution editor ─────────────────────────────────────────────
   readonly editingId = signal<string | null>(null);
@@ -57,17 +71,32 @@ export class FeedbackComponent implements OnInit {
   readonly editNote = signal('');
   readonly savingId = signal<string | null>(null);
 
+  constructor() {
+    // `/auth/me` resolves after the first render, so the default tab and the
+    // admin queue are picked up as soon as the role is known. As an
+    // administrator the feedback queue is the primary view — Submit and My
+    // Feedback stay available as tabs.
+    effect(() => {
+      if (!this.tabSelectedByUser) {
+        this.activeTab.set(this.isFeedbackAdmin() ? 'all' : 'submit');
+      }
+
+      if (this.isFeedbackAdmin() && !this.allFeedbackRequested) {
+        this.allFeedbackRequested = true;
+        this.loadAllFeedback();
+      }
+    });
+  }
+
   ngOnInit(): void {
     this.loadMyFeedback();
-    if (this.isFeedbackAdmin()) {
-      this.loadAllFeedback();
-    }
   }
 
   selectTab(tab: FeedbackTab): void {
     if (tab === 'all' && !this.isFeedbackAdmin()) {
       return;
     }
+    this.tabSelectedByUser = true;
     this.activeTab.set(tab);
     if (tab === 'mine' && this.myFeedback().length === 0) {
       this.loadMyFeedback();
