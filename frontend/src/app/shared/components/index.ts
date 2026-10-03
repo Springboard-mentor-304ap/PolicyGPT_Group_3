@@ -7,3 +7,4 @@ export * from './modal/modal.component';
 export * from './skeleton/skeleton.component';
 export * from './password-meter/password-meter.component';
 export * from './compliance-audit/compliance-audit.component';
+export * from './back-to-dashboard/back-to-dashboard.component';

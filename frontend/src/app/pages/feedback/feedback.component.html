@@ -1,5 +1,5 @@
 <div class="feedback-page">
-  <a class="back-link" routerLink="/dashboard">← Back to Dashboard</a>
+  <app-back-to-dashboard></app-back-to-dashboard>
   <div class="page-header">
     <div>
       <h1 class="page-title">Feedback &amp; Support</h1>
@@ -22,7 +22,7 @@
     </div>
   </div>
 
-  <!-- ── Submit ───────────────────────────────────────────────────────── -->
+  <!-- ── Submit (normal users only) ───────────────────────────────────── -->
   @if (activeTab() === 'submit') {
     <section class="panel">
       @if (submitSuccess()) {
@@ -75,7 +75,7 @@
     </section>
   }
 
-  <!-- ── My feedback ──────────────────────────────────────────────────── -->
+  <!-- ── My feedback (normal users only) ──────────────────────────────── -->
   @if (activeTab() === 'mine') {
     <section class="panel">
       @if (loadingMine()) {

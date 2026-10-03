@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import {
   SearchFilters,
   SearchParams,
@@ -15,13 +15,13 @@ import { SkeletonComponent } from '../../shared/components/skeleton/skeleton.com
 import { ButtonComponent } from '../../shared/components/button/button.component';
 import { FloatingCompareDockComponent } from '../comparison/components/floating-compare-dock/floating-compare-dock.component';
 import { EligibilityModalComponent } from '../eligibility/components/eligibility-modal/eligibility-modal.component';
+import { BackToDashboardComponent } from '../../shared/components/back-to-dashboard/back-to-dashboard.component';
 
 @Component({
   selector: 'app-search',
   standalone: true,
   imports: [
     CommonModule,
-    RouterLink,
     SearchBarComponent,
     FilterSidebarComponent,
     PolicyCardComponent,
@@ -29,6 +29,7 @@ import { EligibilityModalComponent } from '../eligibility/components/eligibility
     ButtonComponent,
     FloatingCompareDockComponent,
     EligibilityModalComponent,
+    BackToDashboardComponent,
   ],
   templateUrl: './search.component.html',
   styleUrl: './search.component.css',

@@ -26,7 +26,7 @@ from backend.app.schemes.service import (
     create_scheme,
     delete_eligibility_rule,
     get_eligibility_rules,
-    get_scheme,
+    get_scheme_details,
     list_schemes,
     reject_scheme,
     unarchive_scheme,
@@ -53,6 +53,7 @@ def create_scheme_route(
 @router.get("", response_model=list[SchemeResponse])
 def list_schemes_route(
     include_archived: bool = Query(False),
+    by_me: bool = Query(False),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -60,6 +61,7 @@ def list_schemes_route(
         db=db,
         current_user=current_user,
         include_archived=include_archived,
+        by_me=by_me,
     )
 
 
@@ -69,9 +71,10 @@ def get_scheme_route(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return get_scheme(
+    return get_scheme_details(
         db=db,
         scheme_id=scheme_id,
+        current_user=current_user,
     )
 
 

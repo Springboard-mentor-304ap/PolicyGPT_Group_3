@@ -53,7 +53,13 @@ class TokenResponse(BaseModel):
 
 
 class VerifyEmailRequest(BaseModel):
-    token: str
+    # Address the code was sent to (the code itself is stored hashed).
+    email: EmailStr | None = None
+    # 6-digit code from the verification e-mail (current flow).
+    code: str | None = None
+    # Legacy direct-link token; still accepted so previously issued links keep
+    # working.
+    token: str | None = None
 
 
 class ResendVerificationRequest(BaseModel):

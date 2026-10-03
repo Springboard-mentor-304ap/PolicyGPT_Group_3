@@ -27,6 +27,7 @@ import { PendingApprovalsComponent } from './components/pending-approvals/pendin
 import { UsageLeaderboardComponent } from './components/usage-leaderboard/usage-leaderboard.component';
 import { QuickActionsComponent } from './components/quick-actions/quick-actions.component';
 import { RoleRequestCardsComponent } from './components/role-request-cards/role-request-cards.component';
+import { ProfileCompletionComponent } from './components/profile-completion/profile-completion.component';
 import { ApplicationApprovalsComponent } from './application-approvals/application-approvals.component';
 
 export type DashboardLoadState = 'idle' | 'loading' | 'ready' | 'error';
@@ -48,6 +49,7 @@ export type DashboardLoadState = 'idle' | 'loading' | 'ready' | 'error';
     UsageLeaderboardComponent,
     QuickActionsComponent,
     RoleRequestCardsComponent,
+    ProfileCompletionComponent,
     ApplicationApprovalsComponent,
   ],
   templateUrl: './dashboard.component.html',
@@ -606,6 +608,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       return [
         ...base,
         { id: 'analytics', label: 'Platform Analytics', icon: 'chart' },
+        { id: 'reports', label: 'Reports', icon: 'document' },
       ];
     }
 

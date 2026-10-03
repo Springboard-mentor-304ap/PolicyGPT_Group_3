@@ -1,12 +1,14 @@
 import { Component, computed, effect, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router, RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 import { ReactiveFormsModule, FormBuilder, FormGroup } from '@angular/forms';
 import { AuthService } from '../../core/services/auth.service';
 import { UserRole } from '../../core/models/auth.models';
 import { GovernmentOfficialProfileResponse } from '../../core/models/auth.models';
+import { isCitizenProfileComplete } from '../../core/services/profile-completion';
 import { InputComponent } from '../../shared/components/input/input.component';
 import { ButtonComponent } from '../../shared/components/button/button.component';
+import { BackToDashboardComponent } from '../../shared/components/back-to-dashboard/back-to-dashboard.component';
 
 @Component({
   selector: 'app-citizen-profile',
@@ -14,9 +16,9 @@ import { ButtonComponent } from '../../shared/components/button/button.component
   imports: [
     CommonModule,
     ReactiveFormsModule,
-    RouterLink,
     InputComponent,
     ButtonComponent,
+    BackToDashboardComponent,
   ],
   template: `
     <div class="profile-page">
@@ -24,12 +26,7 @@ import { ButtonComponent } from '../../shared/components/button/button.component
         <!-- Header with back button -->
         <div class="profile-header">
           <div class="header-nav">
-            <a routerLink="/dashboard" class="back-link">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M19 12H5M12 19l-7-7 7-7"/>
-              </svg>
-              Dashboard
-            </a>
+            <app-back-to-dashboard></app-back-to-dashboard>
           </div>
           <h1>{{ isGovernmentOfficial() ? 'Government Profile' : 'Citizen Profile' }}</h1>
           <p>
@@ -315,25 +312,6 @@ import { ButtonComponent } from '../../shared/components/button/button.component
 
     .header-nav {
       margin-bottom: 1rem;
-    }
-
-    .back-link {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.375rem;
-      color: var(--color-primary-blue, #3b82f6);
-      text-decoration: none;
-      font-size: 0.875rem;
-      font-weight: 500;
-    }
-
-    .back-link:hover {
-      text-decoration: underline;
-    }
-
-    .back-link svg {
-      width: 16px;
-      height: 16px;
     }
 
     .profile-header h1 {
@@ -672,14 +650,8 @@ export class CitizenProfileComponent implements OnInit {
           district: profile.district || '',
         });
 
-        // Check if profile has ALL key required fields filled
-        const hasData = !!(
-          profile.gender &&
-          profile.date_of_birth &&
-          profile.occupation &&
-          profile.state
-        );
-        this.profileComplete.set(hasData);
+        // Same completion rule the dashboard card uses.
+        this.profileComplete.set(isCitizenProfileComplete(profile));
       },
       error: (error) => {
         console.error('Failed to load profile:', error);

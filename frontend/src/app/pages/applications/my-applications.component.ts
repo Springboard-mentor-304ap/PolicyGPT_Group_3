@@ -8,11 +8,12 @@ import {
   Application,
   ApplicationStatus,
 } from '../../core/models/application.models';
+import { BackToDashboardComponent } from '../../shared/components/back-to-dashboard/back-to-dashboard.component';
 
 @Component({
   selector: 'app-my-applications',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, BackToDashboardComponent],
   templateUrl: './my-applications.component.html',
   styleUrl: './my-applications.component.css',
 })

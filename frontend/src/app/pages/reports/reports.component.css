@@ -205,15 +205,3 @@
   }
 }
 
-.back-link {
-  display: inline-block;
-  margin-bottom: var(--space-3, 0.75rem);
-  font-size: var(--font-size-sm, 0.875rem);
-  color: var(--color-text-secondary);
-  text-decoration: none;
-}
-
-.back-link:hover {
-  color: var(--color-primary-blue);
-  text-decoration: underline;
-}

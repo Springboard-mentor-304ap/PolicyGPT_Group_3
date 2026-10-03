@@ -1,0 +1,47 @@
+.completion-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border-subtle);
+  border-left: 4px solid var(--color-warning, #f59e0b);
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.completion-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 50%;
+  background: var(--color-warning-subtle, #fef3c7);
+  color: var(--color-warning-text, #b45309);
+  flex-shrink: 0;
+}
+
+.completion-icon svg {
+  width: 1.35rem;
+  height: 1.35rem;
+}
+
+.completion-body {
+  flex: 1;
+  min-width: 220px;
+}
+
+.completion-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text-primary, #0f172a);
+}
+
+.completion-text {
+  margin: 0.25rem 0 0;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary, #64748b);
+}

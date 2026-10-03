@@ -49,14 +49,17 @@ import { ButtonComponent } from '../../../shared/components/button/button.compon
         @if (!verified()) {
           <form [formGroup]="verifyForm" (ngSubmit)="onSubmit()" class="auth-form" novalidate>
             <app-input
-              formControlName="token"
+              formControlName="code"
               type="text"
-              label="Verification Code"
-              placeholder="Enter your verification code"
-              id="verify-token"
-              name="token"
+              inputmode="numeric"
+              autocomplete="one-time-code"
+              maxlength="6"
+              label="6-digit verification code"
+              placeholder="123456"
+              id="verify-code"
+              name="code"
               [required]="true"
-              [error]="token?.invalid && token?.touched ? 'Verification code is required' : null"
+              [error]="codeError()"
             />
 
             <app-button
@@ -204,8 +207,33 @@ export class VerifyEmailComponent implements OnInit {
 
   constructor() {
     this.verifyForm = this.fb.group({
-      token: ['', [Validators.required]],
+      code: [
+        '',
+        [
+          Validators.required,
+          Validators.pattern(/^\d{6}$/),
+        ],
+      ],
     });
+  }
+
+  /** Field-level message for the 6-digit code input. */
+  codeError(): string | null {
+    const control = this.code;
+
+    if (!control || !control.touched || !control.errors) {
+      return null;
+    }
+
+    if (control.errors['required']) {
+      return 'Verification code is required';
+    }
+
+    if (control.errors['pattern']) {
+      return 'Enter the 6-digit code from your email';
+    }
+
+    return null;
   }
 
   ngOnInit(): void {
@@ -224,6 +252,7 @@ export class VerifyEmailComponent implements OnInit {
     });
   }
 
+  /** Direct-link verification kept for older e-mails that carried a token. */
   private verifyWithToken(token: string): void {
     this.loading.set(true);
     this.authService.verifyEmail({ token }).subscribe({
@@ -248,8 +277,39 @@ export class VerifyEmailComponent implements OnInit {
       return;
     }
 
-    const token = this.verifyForm.value.token as string;
-    this.verifyWithToken(token);
+    if (!this.userEmail()) {
+      this.errorMessage.set(
+        'Enter the email address you registered with, then request a new code.'
+      );
+      return;
+    }
+
+    this.verifyWithCode((this.verifyForm.value.code as string).trim());
+  }
+
+  private verifyWithCode(code: string): void {
+    this.loading.set(true);
+    this.errorMessage.set(null);
+    this.successMessage.set(null);
+
+    this.authService.verifyEmail({ email: this.userEmail(), code }).subscribe({
+      next: (response) => {
+        this.loading.set(false);
+        this.verified.set(true);
+        this.successMessage.set(response?.message ?? 'Email verified successfully!');
+        // Refresh user data so the verified state is reflected everywhere.
+        this.authService.getMe().subscribe();
+      },
+      error: (error) => {
+        this.loading.set(false);
+        const detail = error?.error?.detail;
+        this.errorMessage.set(
+          typeof detail === 'string' && detail.trim().length > 0
+            ? detail
+            : 'Invalid or expired verification code'
+        );
+      },
+    });
   }
 
   resendVerification(): void {
@@ -263,13 +323,11 @@ export class VerifyEmailComponent implements OnInit {
     this.successMessage.set(null);
 
     this.authService.resendVerification({ email: this.userEmail() }).subscribe({
-      next: (response) => {
+      next: () => {
         this.resending.set(false);
+        // The code is never returned by the API: it is e-mailed to the user
+        // (and printed to the backend console for local testing).
         this.successMessage.set('Verification code resent! Check your email.');
-        // If the response contains the token (dev mode), show it
-        if (response.verification_token) {
-          this.successMessage.set(`Verification code: ${response.verification_token}`);
-        }
       },
       error: (error) => {
         this.resending.set(false);
@@ -282,7 +340,7 @@ export class VerifyEmailComponent implements OnInit {
     this.router.navigate(['/dashboard']);
   }
 
-  get token() {
-    return this.verifyForm.get('token');
+  get code() {
+    return this.verifyForm.get('code');
   }
 }

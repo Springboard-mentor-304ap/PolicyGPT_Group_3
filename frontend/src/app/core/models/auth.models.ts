@@ -89,7 +89,12 @@ export interface MessageResponse {
 // ─── Email Verification ─────────────────────────────────────────────────────
 
 export interface VerifyEmailRequest {
-  token: string;
+  /** 6-digit code from the verification e-mail (current flow). */
+  code?: string;
+  /** Address the code was sent to. */
+  email?: string;
+  /** Legacy direct-link token, kept for older verification e-mails. */
+  token?: string;
 }
 
 export interface ResendVerificationRequest {

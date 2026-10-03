@@ -1,11 +1,6 @@
 <div class="policy-list-page">
   <!-- Back Button -->
-  <button class="back-btn" (click)="goToDashboard()">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
-      <path d="m15 18-6-6 6-6"></path>
-    </svg>
-    Back to Dashboard
-  </button>
+  <app-back-to-dashboard></app-back-to-dashboard>
 
   <!-- Page Header -->
   <div class="page-header">
@@ -42,6 +37,32 @@
       />
     </div>
     <div class="filter-group">
+      <!-- Scope toggle for government officials: their whole ministry or
+           only the policies they uploaded themselves. -->
+      @if (isGovernmentOfficial()) {
+        <div class="scope-toggle" role="tablist" aria-label="Policy scope">
+          <button
+            type="button"
+            role="tab"
+            class="scope-option"
+            [class.active]="ownerFilter() === 'all'"
+            [attr.aria-selected]="ownerFilter() === 'all'"
+            (click)="setOwnerFilter('all')"
+          >
+            All
+          </button>
+          <button
+            type="button"
+            role="tab"
+            class="scope-option"
+            [class.active]="ownerFilter() === 'mine'"
+            [attr.aria-selected]="ownerFilter() === 'mine'"
+            (click)="setOwnerFilter('mine')"
+          >
+            By Me
+          </button>
+        </div>
+      }
       <select
         class="filter-select"
         [value]="statusFilter()"

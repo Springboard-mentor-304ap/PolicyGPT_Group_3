@@ -16,11 +16,21 @@ import {
 import { UserRole } from '../../../core/models/auth.models';
 import { ButtonComponent } from '../../../shared/components/button/button.component';
 import { BadgeComponent } from '../../../shared/components/badge/badge.component';
+import { BackToDashboardComponent } from '../../../shared/components/back-to-dashboard/back-to-dashboard.component';
+
+/** Listing scope offered to government officials. */
+export type SchemeOwnerFilter = 'all' | 'mine';
 
 @Component({
   selector: 'app-scheme-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, ButtonComponent, BadgeComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    ButtonComponent,
+    BadgeComponent,
+    BackToDashboardComponent,
+  ],
   templateUrl: './scheme-list.component.html',
   styleUrl: './scheme-list.component.css',
 })
@@ -36,6 +46,12 @@ export class SchemeListComponent implements OnInit {
   readonly statusFilter = signal('');
   readonly categoryFilter = signal('');
   readonly includeArchived = signal(false);
+  /**
+   * "All" shows every scheme in the official's department/ministry scope;
+   * "By Me" narrows that scope to the records they created themselves. The
+   * backend applies both filters, so the signal only drives the request.
+   */
+  readonly ownerFilter = signal<SchemeOwnerFilter>('all');
 
   readonly isGovernmentOfficial = computed(() => {
     const role = this.authService.userRole();
@@ -46,6 +62,19 @@ export class SchemeListComponent implements OnInit {
     const role = this.authService.userRole();
     return role === UserRole.ADMINISTRATOR || role === UserRole.SUPER_ADMIN;
   });
+
+  /** Only an official's listing has a "By Me" scope. */
+  readonly isByMe = computed(
+    () => this.isGovernmentOfficial() && this.ownerFilter() === 'mine'
+  );
+
+  /** A record can only be edited/archived by the official who created it. */
+  isOwnScheme(scheme: Scheme): boolean {
+    return (
+      this.isGovernmentOfficial() &&
+      scheme.created_by === this.authService.currentUser()?.id
+    );
+  }
 
   readonly filteredSchemes = computed(() => {
     let result = this.schemes();
@@ -84,20 +113,27 @@ export class SchemeListComponent implements OnInit {
     this.loading.set(true);
     this.error.set(null);
 
-    this.schemeService.listSchemes(this.includeArchived()).subscribe({
-      next: (schemes) => {
-        this.schemes.set(schemes);
-        this.loading.set(false);
-      },
-      error: (err) => {
-        this.error.set(err.error?.detail || 'Failed to load schemes');
-        this.loading.set(false);
-      },
-    });
+    this.schemeService
+      .listSchemes(this.includeArchived(), this.isByMe())
+      .subscribe({
+        next: (schemes) => {
+          this.schemes.set(schemes);
+          this.loading.set(false);
+        },
+        error: (err) => {
+          this.error.set(err.error?.detail || 'Failed to load schemes');
+          this.loading.set(false);
+        },
+      });
   }
 
-  goToDashboard(): void {
-    this.router.navigate(['/dashboard']);
+  setOwnerFilter(filter: SchemeOwnerFilter): void {
+    if (this.ownerFilter() === filter) {
+      return;
+    }
+
+    this.ownerFilter.set(filter);
+    this.loadSchemes();
   }
 
   createScheme(): void {

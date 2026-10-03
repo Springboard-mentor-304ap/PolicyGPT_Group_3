@@ -122,7 +122,13 @@
       }
     }
 
-    <!-- 3b. APPLICATION APPROVALS (government officials, administrators) -->
+    <!-- 3b. PROFILE COMPLETION (any signed-in role with an incomplete
+         profile; renders nothing once the profile is complete) -->
+    @if (!isGuest() && !isProfilePending()) {
+      <app-profile-completion></app-profile-completion>
+    }
+
+    <!-- 3c. APPLICATION APPROVALS (government officials, administrators) -->
     @if (!isGuest() && canReviewApplications()) {
       <app-application-approvals></app-application-approvals>
     }

@@ -1,11 +1,6 @@
 <div class="scheme-list-page">
   <!-- Back Button -->
-  <button class="back-btn" (click)="goToDashboard()">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
-      <path d="m15 18-6-6 6-6"></path>
-    </svg>
-    Back to Dashboard
-  </button>
+  <app-back-to-dashboard></app-back-to-dashboard>
 
   <!-- Page Header -->
   <div class="page-header">
@@ -42,6 +37,32 @@
       />
     </div>
     <div class="filter-group">
+      <!-- Scope toggle for government officials: their whole department or
+           only the schemes they created themselves. -->
+      @if (isGovernmentOfficial()) {
+        <div class="scope-toggle" role="tablist" aria-label="Scheme scope">
+          <button
+            type="button"
+            role="tab"
+            class="scope-option"
+            [class.active]="ownerFilter() === 'all'"
+            [attr.aria-selected]="ownerFilter() === 'all'"
+            (click)="setOwnerFilter('all')"
+          >
+            All
+          </button>
+          <button
+            type="button"
+            role="tab"
+            class="scope-option"
+            [class.active]="ownerFilter() === 'mine'"
+            [attr.aria-selected]="ownerFilter() === 'mine'"
+            (click)="setOwnerFilter('mine')"
+          >
+            By Me
+          </button>
+        </div>
+      }
       <select
         class="filter-select"
         [value]="statusFilter()"
@@ -142,7 +163,9 @@
               </td>
               <td>{{ formatDate(scheme.created_at) }}</td>
               <td class="actions-cell" (click)="$event.stopPropagation()">
-                @if (isGovernmentOfficial() && (scheme.status === 'draft' || scheme.status === 'rejected')) {
+                <!-- The API only lets the creating official edit a scheme, so
+                     the action is hidden for records created by someone else. -->
+                @if (isOwnScheme(scheme) && (scheme.status === 'draft' || scheme.status === 'rejected')) {
                   <app-button variant="secondary" size="sm" (btnClick)="editScheme(scheme.id, $event)">
                     Edit
                   </app-button>

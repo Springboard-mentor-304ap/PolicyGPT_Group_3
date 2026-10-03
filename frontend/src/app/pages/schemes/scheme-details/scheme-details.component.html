@@ -1,11 +1,6 @@
 <div class="scheme-details-page">
   <!-- Back Button -->
-  <button class="back-btn" (click)="goBack()">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
-      <path d="m15 18-6-6 6-6"></path>
-    </svg>
-    Back to Schemes
-  </button>
+  <app-back-to-dashboard link="/schemes" label="Back to Schemes"></app-back-to-dashboard>
 
   <!-- Loading State -->
   @if (loading()) {

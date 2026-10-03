@@ -2,22 +2,6 @@
   padding: var(--space-8);
 }
 
-/* Back Button */
-.back-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text-secondary);
-  margin-bottom: var(--space-6);
-  transition: color var(--transition-fast);
-}
-
-.back-btn:hover {
-  color: var(--color-primary-blue);
-}
-
 /* Page Header */
 .page-header {
   display: flex;
@@ -56,6 +40,34 @@
   box-shadow: var(--shadow-sm);
   margin-bottom: var(--space-6);
   flex-wrap: wrap;
+}
+
+/* [All] [By Me] scope toggle (government officials) */
+.scope-toggle {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px;
+  background-color: var(--color-bg-muted);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+}
+
+.scope-option {
+  padding: var(--space-2) var(--space-4);
+  border: none;
+  background: none;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.scope-option.active {
+  background-color: var(--color-bg-surface);
+  color: var(--color-primary-blue);
+  box-shadow: var(--shadow-sm);
 }
 
 .search-box {

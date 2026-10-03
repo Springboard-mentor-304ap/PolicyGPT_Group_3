@@ -21,11 +21,20 @@ export class PolicyService {
       : new HttpHeaders();
   }
 
-  /** List all policies (optionally include archived) */
-  listPolicies(includeArchived = false): Observable<Policy[]> {
+  /**
+   * List policies the caller may see (optionally include archived).
+   *
+   * `byMe` asks the API for the records the caller uploaded themselves; the
+   * backend always applies the official's ministry scope as well, so the
+   * parameter can never widen what is returned.
+   */
+  listPolicies(includeArchived = false, byMe = false): Observable<Policy[]> {
     let params = new HttpParams();
     if (includeArchived) {
       params = params.set('include_archived', 'true');
+    }
+    if (byMe) {
+      params = params.set('by_me', 'true');
     }
     return this.http.get<Policy[]>('/api/policies', {
       headers: this.getAuthHeaders(),

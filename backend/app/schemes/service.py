@@ -2,6 +2,7 @@ from datetime import date, datetime
 from uuid import UUID
 
 from fastapi import HTTPException, status
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from backend.app.models.eligibility_rule import (
@@ -15,6 +16,10 @@ from backend.app.models.scheme import Scheme, SchemeStatus
 from backend.app.models.user import User, UserRole
 from backend.app.notifications.service import send_notification
 from backend.app.schemes.schemas import SchemeCreate, SchemeUpdate
+# Reuses the existing department-scope rule (profile department, 403 when the
+# profile is missing) the analytics, reports and applications modules already
+# apply to government officials.
+from backend.app.analytics.service import _get_official_ministry
 
 # Audience for SCHEME_UPDATE alerts: the same roles that receive NEW_POLICY
 # alerts when a policy is approved, so citizens/researchers/organizations are
@@ -32,6 +37,70 @@ def _require_government_official(current_user: User) -> None:
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only government officials can manage schemes",
         )
+
+
+def scheme_scope_criteria(scope: str):
+    """Query criteria that keep a scheme inside an official's scope.
+
+    A scheme belongs to the official's department when it carries that
+    department itself, or when it sits under a policy of that ministry. This
+    mirrors the scope rule the application-review module already applies.
+    """
+    return or_(
+        Scheme.department == scope,
+        Scheme.policy_id.in_(
+            select(Policy.id).where(Policy.ministry == scope)
+        ),
+    )
+
+
+def _scheme_is_in_scope(db: Session, scheme: Scheme, scope: str) -> bool:
+    return (
+        db.query(Scheme.id)
+        .filter(Scheme.id == scheme.id, scheme_scope_criteria(scope))
+        .first()
+        is not None
+    )
+
+
+def _enforce_scheme_scope(
+    db: Session,
+    scheme: Scheme,
+    scope: str,
+) -> None:
+    if not _scheme_is_in_scope(db, scheme, scope):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This scheme is outside your department scope",
+        )
+
+
+def _enforce_scope(
+    policy: Policy,
+    scheme_department: str | None,
+    scope: str,
+) -> None:
+    """Reject a scheme outside the official's own department/ministry.
+
+    Used for both creation and for edits that move a scheme's department, so
+    an official can never place (or push) a scheme outside their scope through
+    the API.
+    """
+    if policy.ministry == scope:
+        return
+
+    submitted = (scheme_department or "").strip()
+
+    if submitted and submitted.casefold() == scope.strip().casefold():
+        return
+
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail=(
+            "You can only manage schemes for your own department/ministry "
+            f'("{scope}")'
+        ),
+    )
 
 
 def create_scheme(
@@ -54,6 +123,9 @@ def create_scheme(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Scheme can only be created under an approved policy",
         )
+
+    scope = _get_official_ministry(db, current_user)
+    _enforce_scope(policy, scheme_data.department, scope)
 
     scheme = Scheme(
         policy_id=scheme_data.policy_id,
@@ -93,23 +165,51 @@ def get_scheme(
     return scheme
 
 
+def get_scheme_details(
+    db: Session,
+    scheme_id: UUID,
+    current_user: User,
+) -> Scheme:
+    """Scheme detail for the read endpoint.
+
+    Officials can only open schemes of their own department/ministry;
+    administrators and the public discovery roles stay unrestricted.
+    """
+    scheme = get_scheme(db, scheme_id)
+
+    if current_user.role == UserRole.GOVERNMENT_OFFICIAL:
+        scope = _get_official_ministry(db, current_user)
+        _enforce_scheme_scope(db, scheme, scope)
+
+    return scheme
+
+
 def list_schemes(
     db: Session,
     current_user: User,
     include_archived: bool = False,
+    by_me: bool = False,
 ) -> list[Scheme]:
     query = db.query(Scheme)
 
     if current_user.role in (UserRole.ADMINISTRATOR, UserRole.SUPER_ADMIN):
-        # Admins see all statuses from all users
+        # Admins see all statuses from all users; `by_me` is only offered to
+        # officials, so their behaviour is unchanged.
         if not include_archived:
             query = query.filter(Scheme.status != SchemeStatus.ARCHIVED)
     elif current_user.role == UserRole.GOVERNMENT_OFFICIAL:
-        # Officials see their own records (all statuses) + ACTIVE from others
-        query = query.filter(
-            (Scheme.created_by == current_user.id)
-            | (Scheme.status == SchemeStatus.ACTIVE)
-        )
+        # Officials are locked to their own department/ministry. Inside that
+        # scope they see their own records (all statuses) + ACTIVE records
+        # from others, or only their own records when "By Me" is selected.
+        scope = _get_official_ministry(db, current_user)
+        query = query.filter(scheme_scope_criteria(scope))
+        if by_me:
+            query = query.filter(Scheme.created_by == current_user.id)
+        else:
+            query = query.filter(
+                (Scheme.created_by == current_user.id)
+                | (Scheme.status == SchemeStatus.ACTIVE)
+            )
         if not include_archived:
             query = query.filter(Scheme.status != SchemeStatus.ARCHIVED)
     else:
@@ -187,6 +287,12 @@ def update_scheme(
 
     update_data = scheme_data.model_dump(exclude_unset=True)
 
+    if "department" in update_data:
+        # The department may only be set within the official's own scope.
+        scope = _get_official_ministry(db, current_user)
+        policy = db.get(Policy, scheme.policy_id)
+        _enforce_scope(policy, update_data.get("department"), scope)
+
     if scheme.status == SchemeStatus.ARCHIVED:
         for field, value in update_data.items():
             setattr(scheme, field, value)
@@ -224,6 +330,9 @@ def archive_scheme(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You can only archive schemes you created",
         )
+
+    scope = _get_official_ministry(db, current_user)
+    _enforce_scheme_scope(db, scheme, scope)
 
     if scheme.status == SchemeStatus.ARCHIVED:
         raise HTTPException(

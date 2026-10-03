@@ -16,6 +16,53 @@ from backend.app.policies.schemas import (
     PolicySchemeSummary,
     PolicyUpdate,
 )
+# Reuses the existing department-scope rule (profile department, 403 when the
+# profile is missing) the analytics, reports and applications modules already
+# apply to government officials.
+from backend.app.analytics.service import _get_official_ministry
+
+
+# Government officials may only work on policies of their own ministry: a
+# policy is attributed through `Policy.ministry` — the same field analytics
+# and reports scope official data by. Records without a ministry fall back to
+# their department, which holds the same kind of value in the existing data.
+
+
+def _policy_owner(policy: Policy) -> str | None:
+    return policy.ministry or policy.department
+
+
+def _policy_is_in_scope(policy: Policy, scope: str) -> bool:
+    owner = _policy_owner(policy)
+
+    return bool(owner) and owner.strip().casefold() == scope.strip().casefold()
+
+
+def _enforce_scope(
+    ministry: str | None,
+    department: str | None,
+    scope: str,
+) -> None:
+    """Reject a policy outside the official's own ministry/department.
+
+    A policy is owned by its ministry, so the submitted ministry has to match
+    the official's scope. Records that carry no ministry at all are attributed
+    through their department instead (both fields hold the same kind of value
+    in the existing data). Used for both creation and edits that move the
+    policy, so the API cannot be used to escape the scope.
+    """
+    owner = (ministry or "").strip() or (department or "").strip()
+
+    if owner and owner.casefold() == scope.strip().casefold():
+        return
+
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail=(
+            "You can only manage policies for your own ministry/department "
+            f'("{scope}")'
+        ),
+    )
 
 
 def create_policy(
@@ -28,6 +75,9 @@ def create_policy(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only government officials can create policies",
         )
+
+    scope = _get_official_ministry(db, current_user)
+    _enforce_scope(policy_data.ministry, policy_data.department, scope)
 
     policy = Policy(
         title=policy_data.title,
@@ -71,6 +121,18 @@ def get_policy_details(
     current_user: User,
 ) -> PolicyDetailResponse:
     policy = get_policy(db, policy_id)
+
+    # Officials can only open policies of their own ministry; administrators
+    # and the public discovery roles stay unrestricted.
+    if current_user.role == UserRole.GOVERNMENT_OFFICIAL:
+        scope = _get_official_ministry(db, current_user)
+
+        if not _policy_is_in_scope(policy, scope):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="This policy is outside your department scope",
+            )
+
     query = db.query(Scheme).filter(Scheme.policy_id == policy.id)
 
     if current_user.role in (UserRole.ADMINISTRATOR, UserRole.SUPER_ADMIN):
@@ -95,19 +157,30 @@ def list_policies(
     db: Session,
     current_user: User,
     include_archived: bool = False,
+    by_me: bool = False,
 ) -> list[Policy]:
     query = db.query(Policy)
 
     if current_user.role in (UserRole.ADMINISTRATOR, UserRole.SUPER_ADMIN):
-        # Admins see all statuses from all users
+        # Admins see all statuses from all users; `by_me` is only offered to
+        # officials, so their behaviour is unchanged.
         if not include_archived:
             query = query.filter(Policy.status != PolicyStatus.ARCHIVED)
     elif current_user.role == UserRole.GOVERNMENT_OFFICIAL:
-        # Officials see their own records (all statuses) + APPROVED from others
+        # Officials are locked to their own ministry. Inside that scope they
+        # see their own records (all statuses) + APPROVED records from other
+        # officials, or only their own records when "By Me" is selected.
+        scope = _get_official_ministry(db, current_user)
         query = query.filter(
-            (Policy.uploaded_by == current_user.id)
-            | (Policy.status == PolicyStatus.APPROVED)
+            Policy.ministry == scope
         )
+        if by_me:
+            query = query.filter(Policy.uploaded_by == current_user.id)
+        else:
+            query = query.filter(
+                (Policy.uploaded_by == current_user.id)
+                | (Policy.status == PolicyStatus.APPROVED)
+            )
         if not include_archived:
             query = query.filter(Policy.status != PolicyStatus.ARCHIVED)
     else:
@@ -144,6 +217,24 @@ def update_policy(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Approved policies cannot be updated. Archive the policy first.",
         )
+
+    update_fields = policy_data.model_dump(exclude_unset=True)
+
+    if "ministry" in update_fields or "department" in update_fields:
+        # An edit may not move the policy out of the official's own scope.
+        # Editing other fields of a pre-existing record is untouched.
+        candidate_ministry = update_fields.get("ministry", policy.ministry)
+        candidate_department = update_fields.get("department", policy.department)
+        scope_changed = (
+            (candidate_ministry or "").strip()
+            != (policy.ministry or "").strip()
+            or (candidate_department or "").strip()
+            != (policy.department or "").strip()
+        )
+
+        if scope_changed:
+            scope = _get_official_ministry(db, current_user)
+            _enforce_scope(candidate_ministry, candidate_department, scope)
 
     if policy.status == PolicyStatus.ARCHIVED:
         update_data = policy_data.model_dump(exclude_unset=True)
@@ -211,6 +302,14 @@ def archive_policy(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You can only archive policies you uploaded",
+        )
+
+    scope = _get_official_ministry(db, current_user)
+
+    if not _policy_is_in_scope(policy, scope):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This policy is outside your department scope",
         )
 
     if policy.status == PolicyStatus.ARCHIVED:

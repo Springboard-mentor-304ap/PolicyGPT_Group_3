@@ -7,20 +7,11 @@
   margin: 0 auto;
 }
 
-/* Back Button */
-.back-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
+/* Scope-locked fields for government officials */
+.form-control.scope-locked {
+  background-color: var(--color-bg-muted);
   color: var(--color-text-secondary);
-  margin-bottom: var(--space-6);
-  transition: color var(--transition-fast);
-}
-
-.back-btn:hover {
-  color: var(--color-primary-blue);
+  cursor: not-allowed;
 }
 
 /* Page Header */

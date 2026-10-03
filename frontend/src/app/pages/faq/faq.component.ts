@@ -1,16 +1,16 @@
 import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
 
 import { AuthService } from '../../core/services/auth.service';
 import { FaqService } from '../../core/services/faq.service';
 import { UserRole } from '../../core/models/auth.models';
 import { Faq } from '../../core/models/faq.models';
+import { BackToDashboardComponent } from '../../shared/components/back-to-dashboard/back-to-dashboard.component';
 
 @Component({
   selector: 'app-faq',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, BackToDashboardComponent],
   templateUrl: './faq.component.html',
   styleUrl: './faq.component.css',
 })

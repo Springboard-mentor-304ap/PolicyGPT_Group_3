@@ -1,6 +1,7 @@
 import { Component, effect, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
+
+import { BackToDashboardComponent } from '../../shared/components/back-to-dashboard/back-to-dashboard.component';
 
 import { AuthService } from '../../core/services/auth.service';
 import { DepartmentService } from '../../core/services/department.service';
@@ -53,7 +54,7 @@ const FILTERS_BY_TYPE: Record<ReportType, readonly string[]> = {
 @Component({
   selector: 'app-reports',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, BackToDashboardComponent],
   templateUrl: './reports.component.html',
   styleUrl: './reports.component.css',
 })
@@ -62,11 +63,12 @@ export class ReportsComponent implements OnInit {
   private readonly reportService = inject(ReportService);
   private readonly departmentService = inject(DepartmentService);
 
-  /** Mirrors `REPORT_ALLOWED_ROLES` on the backend. */
+  /** Mirrors `REPORT_ALLOWED_ROLES` on the backend (staff + researchers). */
   readonly canAccessReports = computed(() => {
     const role = this.authService.userRole();
     return (
       role === UserRole.GOVERNMENT_OFFICIAL ||
+      role === UserRole.RESEARCHER ||
       role === UserRole.ADMINISTRATOR ||
       role === UserRole.SUPER_ADMIN
     );

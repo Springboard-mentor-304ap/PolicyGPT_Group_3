@@ -1,6 +1,5 @@
 import { Component, effect, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
 
 import { AuthService } from '../../core/services/auth.service';
 import { FeedbackService } from '../../core/services/feedback.service';
@@ -10,13 +9,14 @@ import {
   FeedbackStatus,
   FeedbackType,
 } from '../../core/models/feedback.models';
+import { BackToDashboardComponent } from '../../shared/components/back-to-dashboard/back-to-dashboard.component';
 
 type FeedbackTab = 'submit' | 'mine' | 'all';
 
 @Component({
   selector: 'app-feedback',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, BackToDashboardComponent],
   templateUrl: './feedback.component.html',
   styleUrl: './feedback.component.css',
 })
@@ -34,17 +34,20 @@ export class FeedbackComponent implements OnInit {
   /** Set once the user picks a tab themselves, so the default stops moving. */
   private tabSelectedByUser = false;
 
-  /** Only the admin tabs are of interest to an administrator's own workflow. */
   private readonly tabLabels: Record<FeedbackTab, string> = {
     submit: 'Submit',
     mine: 'My Feedback',
     all: 'All Feedback',
   };
 
-  /** Tabs in the order they are rendered (admins land on their queue). */
+  /**
+   * Administrators only get the feedback queue: they manage every submission
+   * instead of filing their own, so Submit and My Feedback are not rendered
+   * for them. Normal users keep both of their tabs.
+   */
   readonly visibleTabs = computed(() => {
     const order: FeedbackTab[] = this.isFeedbackAdmin()
-      ? ['all', 'mine', 'submit']
+      ? ['all']
       : ['submit', 'mine'];
 
     return order.map((id) => ({ id, label: this.tabLabels[id] }));
@@ -73,9 +76,8 @@ export class FeedbackComponent implements OnInit {
 
   constructor() {
     // `/auth/me` resolves after the first render, so the default tab and the
-    // admin queue are picked up as soon as the role is known. As an
-    // administrator the feedback queue is the primary view — Submit and My
-    // Feedback stay available as tabs.
+    // admin queue are picked up as soon as the role is known. An administrator
+    // only has the queue; a normal user lands on Submit.
     effect(() => {
       if (!this.tabSelectedByUser) {
         this.activeTab.set(this.isFeedbackAdmin() ? 'all' : 'submit');
@@ -89,13 +91,22 @@ export class FeedbackComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.loadMyFeedback();
+    // Administrators never see their own list, so the request is skipped.
+    if (!this.isFeedbackAdmin()) {
+      this.loadMyFeedback();
+    }
   }
 
   selectTab(tab: FeedbackTab): void {
     if (tab === 'all' && !this.isFeedbackAdmin()) {
       return;
     }
+
+    // The Submit / My Feedback views are not offered to administrators.
+    if (tab !== 'all' && this.isFeedbackAdmin()) {
+      return;
+    }
+
     this.tabSelectedByUser = true;
     this.activeTab.set(tab);
     if (tab === 'mine' && this.myFeedback().length === 0) {

@@ -1,0 +1,26 @@
+:host {
+  display: inline-block;
+  margin-bottom: var(--space-4, 1rem);
+}
+
+.back-nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2, 0.5rem);
+  font-size: var(--font-size-sm, 0.875rem);
+  font-weight: var(--font-weight-medium, 500);
+  color: var(--color-text-secondary, #64748b);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.back-nav-link svg {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+
+.back-nav-link:hover,
+.back-nav-link:focus-visible {
+  color: var(--color-primary-blue, #3b82f6);
+}

@@ -16,11 +16,18 @@ import { UserRole } from '../../../core/models/auth.models';
 import { ButtonComponent } from '../../../shared/components/button/button.component';
 import { BadgeComponent } from '../../../shared/components/badge/badge.component';
 import { CardComponent } from '../../../shared/components/card/card.component';
+import { BackToDashboardComponent } from '../../../shared/components/back-to-dashboard/back-to-dashboard.component';
 
 @Component({
   selector: 'app-policy-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, ButtonComponent, BadgeComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    ButtonComponent,
+    BadgeComponent,
+    BackToDashboardComponent,
+  ],
   templateUrl: './policy-detail.component.html',
   styleUrl: './policy-detail.component.css',
 })

@@ -17,22 +17,9 @@
   font-size: 0.875rem;
 }
 
-.back-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  color: var(--color-primary-blue);
-  text-decoration: none;
-  font-weight: 500;
-}
-
-.back-link:hover {
-  text-decoration: underline;
-}
-
-.back-link svg {
-  width: 16px;
-  height: 16px;
+/* The breadcrumb owns the spacing, so the shared back link adds none. */
+.header-nav app-back-to-dashboard {
+  margin-bottom: 0;
 }
 
 .breadcrumb-separator {
