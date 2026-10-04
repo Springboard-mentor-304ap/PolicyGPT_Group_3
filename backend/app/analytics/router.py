@@ -100,5 +100,10 @@ def department_statistics(
 
 
 @router.get("/notifications")
-def notification_statistics(db: Session = Depends(get_db)):
+def notification_statistics(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_user_analytics_access),
+):
+    # Notification aggregates cover the whole platform, so they follow the
+    # same administrator-only rule as the user usage statistics.
     return get_notification_statistics(db)

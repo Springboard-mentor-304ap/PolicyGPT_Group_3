@@ -1,5 +1,6 @@
 import secrets
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from jose import JWTError, jwt
@@ -21,11 +22,17 @@ from backend.app.auth.schemas import (
 from backend.app.auth.security import (
     ALGORITHM,
     SECRET_KEY,
-    create_password_reset_token,
     create_access_token,
     create_refresh_token,
     hash_password,
     verify_password,
+)
+from backend.app.auth.password_reset import (
+    clear_password_reset_token,
+    create_password_reset_token,
+    password_reset_token_matches,
+    send_password_reset_email,
+    store_password_reset_token,
 )
 from backend.app.auth.email_verification import (
     CODE_LENGTH,
@@ -45,6 +52,26 @@ router = APIRouter(
 )
 
 
+# ─── E-MAIL NORMALIZATION ────────────────────────────────────────────────────
+
+def normalize_email(email: str) -> str:
+    """E-mails are stored and compared in lowercase.
+
+    Addresses are case-insensitive, so `A@x.com` and `a@x.com` must never be
+    two accounts.
+    """
+    return email.strip().lower()
+
+
+def find_user_by_email(db: Session, email: str) -> User | None:
+    """Case-insensitive lookup that also matches legacy mixed-case rows."""
+    return (
+        db.query(User)
+        .filter(func.lower(User.email) == normalize_email(email))
+        .first()
+    )
+
+
 # ─── REGISTER ────────────────────────────────────────────────────────────────
 
 @router.post(
@@ -56,9 +83,11 @@ def register(
     data: RegisterRequest,
     db: Session = Depends(get_db),
 ):
+    normalized_email = normalize_email(data.email)
+
     existing_user = (
         db.query(User)
-        .filter(User.email == data.email)
+        .filter(func.lower(User.email) == normalized_email)
         .first()
     )
 
@@ -72,7 +101,7 @@ def register(
 
     user = User(
         full_name=data.full_name,
-        email=data.email,
+        email=normalized_email,
         password_hash=hash_password(data.password),
         role=UserRole.CITIZEN,
         is_active=True,
@@ -136,7 +165,7 @@ def _verify_email_code(
             detail="Invalid or expired verification code",
         )
 
-    user = db.query(User).filter(User.email == email).first()
+    user = find_user_by_email(db, email)
 
     if not user:
         raise HTTPException(
@@ -193,7 +222,7 @@ def _verify_email_token(
             detail="Invalid or expired verification token",
         )
 
-    user = db.query(User).filter(User.email == email).first()
+    user = find_user_by_email(db, email)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -215,7 +244,7 @@ def resend_verification(
     data: ResendVerificationRequest,
     db: Session = Depends(get_db),
 ):
-    user = db.query(User).filter(User.email == data.email).first()
+    user = find_user_by_email(db, data.email)
     if not user:
         # Don't reveal whether email exists
         return {"message": "If the email is registered, a verification code has been sent"}
@@ -244,11 +273,7 @@ def login(
     data: LoginRequest,
     db: Session = Depends(get_db),
 ):
-    user = (
-        db.query(User)
-        .filter(User.email == data.email)
-        .first()
-    )
+    user = find_user_by_email(db, data.email)
 
     if not user:
         raise HTTPException(
@@ -269,6 +294,18 @@ def login(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="User account is inactive",
+        )
+
+    # Policy: an account can only sign in after its e-mail address has been
+    # verified. The check runs after the password check so it cannot be used
+    # to probe whether an address is registered.
+    if not user.email_verified:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                "Email not verified. Please verify your email address "
+                "before logging in."
+            ),
         )
 
     access_token = create_access_token({
@@ -379,26 +416,23 @@ def forget_password(
     data: ForgetPasswordRequest,
     db: Session = Depends(get_db),
 ):
-    user = (
-        db.query(User)
-        .filter(User.email == data.email)
-        .first()
+    # Always the same response, whether or not the address is registered:
+    # the token is delivered by e-mail and the API must not reveal which
+    # addresses have accounts.
+    generic_message = (
+        "If an account with that email exists, a password reset link has "
+        "been sent."
     )
 
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User Not Found",
-        )
+    user = find_user_by_email(db, data.email)
 
-    reset_token = create_password_reset_token({
-        "sub": str(user.id),
-    })
+    if user:
+        reset_token, jti = create_password_reset_token(user.id)
+        store_password_reset_token(user, jti)
+        db.commit()
+        send_password_reset_email(user.email, reset_token)
 
-    return {
-        "message": "Password reset token generated",
-        "reset_token": reset_token,
-    }
+    return {"message": generic_message}
 
 
 # ─── RESET PASSWORD ─────────────────────────────────────────────────────────
@@ -416,6 +450,7 @@ def reset_password(
         )
 
         user_id = payload.get("sub")
+        jti = payload.get("jti")
         token_type = payload.get("type")
 
         if not user_id or token_type != "password_reset":
@@ -431,13 +466,17 @@ def reset_password(
         )
 
     user = db.get(User, user_id)
-    if not user:
+
+    # The token is single-use: it is only accepted while its hashed jti is
+    # stored and unexpired, and the stored value is cleared below.
+    if not user or not password_reset_token_matches(user, jti):
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User Not Found",
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired password reset token",
         )
 
     user.password_hash = hash_password(data.new_password)
+    clear_password_reset_token(user)
 
     db.commit()
 

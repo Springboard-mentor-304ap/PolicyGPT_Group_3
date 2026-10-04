@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from decimal import Decimal, InvalidOperation
 from uuid import UUID
 
 from fastapi import HTTPException, status
@@ -14,6 +15,7 @@ from backend.app.models.notification import NotificationType
 from backend.app.models.policy import Policy, PolicyStatus
 from backend.app.models.scheme import Scheme, SchemeStatus
 from backend.app.models.user import User, UserRole
+from backend.app.models.user_profile import Gender, SocialCategory
 from backend.app.notifications.service import send_notification
 from backend.app.schemes.schemas import SchemeCreate, SchemeUpdate
 # Reuses the existing department-scope rule (profile department, 403 when the
@@ -29,6 +31,90 @@ SCHEME_UPDATE_RECIPIENT_ROLES = (
     UserRole.RESEARCHER,
     UserRole.ORGANIZATION,
 )
+
+# Values the enumerated parameters accept. Numeric parameters are parsed and
+# the free-text ones only have to be non-empty, so every stored rule value is
+# valid for its parameter and evaluation can never crash on bad input.
+GENDER_RULE_VALUES = {gender.value for gender in Gender}
+SOCIAL_CATEGORY_RULE_VALUES = {
+    category.value for category in SocialCategory
+}
+
+
+def _validate_rule_value(
+    parameter: EligibilityParameter,
+    value: str,
+) -> str:
+    """Validate a rule value against its parameter, returning it stripped.
+
+    Raises 400 with a client-safe message instead of storing a value that
+    would raise when the eligibility rules are evaluated later.
+    """
+    cleaned = value.strip()
+
+    if not cleaned:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Rule value is required for {parameter.value}",
+        )
+
+    if parameter == EligibilityParameter.AGE:
+        try:
+            age = int(cleaned)
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Age rule value must be a whole number of years",
+            )
+
+        if age < 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Age rule value cannot be negative",
+            )
+
+    elif parameter == EligibilityParameter.INCOME:
+        try:
+            amount = Decimal(cleaned)
+        except InvalidOperation:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Income rule value must be a number",
+            )
+
+        if not amount.is_finite() or amount < 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Income rule value must be a non-negative amount",
+            )
+
+    elif parameter == EligibilityParameter.DISABILITY_STATUS:
+        if cleaned.lower() not in {"true", "false"}:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail='Disability rule value must be "true" or "false"',
+            )
+
+    elif parameter == EligibilityParameter.GENDER:
+        if cleaned.lower() not in GENDER_RULE_VALUES:
+            allowed = ", ".join(sorted(GENDER_RULE_VALUES))
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Gender rule value must be one of: {allowed}",
+            )
+
+    elif parameter == EligibilityParameter.SOCIAL_CATEGORY:
+        if cleaned.lower() not in SOCIAL_CATEGORY_RULE_VALUES:
+            allowed = ", ".join(sorted(SOCIAL_CATEGORY_RULE_VALUES))
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    "Social category rule value must be one of: "
+                    f"{allowed}"
+                ),
+            )
+
+    return cleaned
 
 
 def _require_government_official(current_user: User) -> None:
@@ -73,6 +159,43 @@ def _enforce_scheme_scope(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="This scheme is outside your department scope",
         )
+
+
+def _assert_scheme_is_visible(
+    db: Session,
+    scheme: Scheme,
+    current_user: User,
+) -> None:
+    """Reject reads of schemes the caller may not see.
+
+    Mirrors the discovery rules of `list_schemes`:
+
+    * administrators see every status;
+    * the creator (owner) always sees their own record;
+    * everyone else only sees ACTIVE schemes (drafts, pending, rejected and
+      archived records stay hidden).
+
+    Officials are additionally locked to their own department/ministry. A
+    record the caller may not see answers 404 (not 403) so its existence is
+    not revealed; an out-of-scope official keeps the existing 403.
+    """
+    if current_user.role in (UserRole.ADMINISTRATOR, UserRole.SUPER_ADMIN):
+        return
+
+    if current_user.role == UserRole.GOVERNMENT_OFFICIAL:
+        scope = _get_official_ministry(db, current_user)
+        _enforce_scheme_scope(db, scheme, scope)
+
+    if (
+        scheme.created_by == current_user.id
+        or scheme.status == SchemeStatus.ACTIVE
+    ):
+        return
+
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="Scheme not found",
+    )
 
 
 def _enforce_scope(
@@ -172,14 +295,11 @@ def get_scheme_details(
 ) -> Scheme:
     """Scheme detail for the read endpoint.
 
-    Officials can only open schemes of their own department/ministry;
-    administrators and the public discovery roles stay unrestricted.
+    Hidden records (non-ACTIVE schemes the caller does not own) answer 404;
+    officials are additionally locked to their own department/ministry.
     """
     scheme = get_scheme(db, scheme_id)
-
-    if current_user.role == UserRole.GOVERNMENT_OFFICIAL:
-        scope = _get_official_ministry(db, current_user)
-        _enforce_scheme_scope(db, scheme, scope)
+    _assert_scheme_is_visible(db, scheme, current_user)
 
     return scheme
 
@@ -221,16 +341,20 @@ def list_schemes(
     ).all()
 
 
-def _notify_scheme_update(
+def _notify_scheme_published(
     db: Session,
     scheme: Scheme,
     current_user: User,
 ) -> None:
-    """Queue SCHEME_UPDATE notifications within the caller's transaction.
+    """Queue SCHEME_UPDATE notifications when a scheme becomes ACTIVE.
 
-    The notifications are added to the same session as the scheme change, so a
-    failed commit leaves neither the edit nor the notifications behind, and a
-    single edit can never generate the same notification twice.
+    Only approved schemes are public. Edits happen on draft, rejected or
+    archived schemes, which citizens cannot see, so notifying on an edit
+    would alert people about schemes that do not exist for them. The alert is
+    sent on approval instead — the moment the scheme becomes available.
+
+    The notifications are added to the same session as the status change, so
+    a failed commit leaves neither the approval nor the notifications behind.
     """
     recipients = (
         db.query(User)
@@ -247,10 +371,10 @@ def _notify_scheme_update(
             db=db,
             user_id=recipient.id,
             notification_type=NotificationType.SCHEME_UPDATE,
-            title="Scheme Updated",
+            title="Scheme Published",
             message=(
-                f'The scheme "{scheme.title}" has been updated. '
-                "Review the latest details before you apply."
+                f'The scheme "{scheme.title}" is now available. '
+                "Review the details before you apply."
             ),
             related_entity_type="scheme",
             related_entity_id=scheme.id,
@@ -307,8 +431,8 @@ def update_scheme(
         for field, value in update_data.items():
             setattr(scheme, field, value)
 
-    if update_data:
-        _notify_scheme_update(db, scheme, current_user)
+    # No notification here: these edits happen on non-public schemes. The
+    # SCHEME_UPDATE alert is sent when the scheme is approved instead.
 
     db.commit()
     db.refresh(scheme)
@@ -404,6 +528,8 @@ def approve_scheme(
     scheme.approved_by = current_user.id
     scheme.rejection_reason = None
 
+    _notify_scheme_published(db, scheme, current_user)
+
     db.commit()
     db.refresh(scheme)
 
@@ -470,6 +596,8 @@ def create_eligibility_rule(
             detail="Cannot add rules to an archived scheme",
         )
 
+    value = _validate_rule_value(parameter, value)
+
     rule = EligibilityRule(
         scheme_id=scheme_id,
         parameter=parameter,
@@ -487,8 +615,13 @@ def create_eligibility_rule(
 def get_eligibility_rules(
     db: Session,
     scheme_id: UUID,
+    current_user: User,
 ) -> list[EligibilityRule]:
     scheme = get_scheme(db, scheme_id)
+
+    # Eligibility rules describe a scheme, so they follow exactly the same
+    # visibility rules as the scheme itself.
+    _assert_scheme_is_visible(db, scheme, current_user)
 
     return (
         db.query(EligibilityRule)
@@ -529,6 +662,17 @@ def update_eligibility_rule(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot update rules of an archived scheme",
         )
+
+    # The value is validated against the parameter it will end up with: the
+    # one being changed to, or the existing one when only the value changes.
+    # A parameter change also has to keep the stored value valid.
+    if value is not None:
+        effective_parameter = (
+            parameter if parameter is not None else rule.parameter
+        )
+        value = _validate_rule_value(effective_parameter, value)
+    elif parameter is not None:
+        rule.value = _validate_rule_value(parameter, rule.value)
 
     if parameter is not None:
         rule.parameter = parameter

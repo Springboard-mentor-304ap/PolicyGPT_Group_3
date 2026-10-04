@@ -180,6 +180,7 @@ def get_eligibility_rules_route(
     return get_eligibility_rules(
         db=db,
         scheme_id=scheme_id,
+        current_user=current_user,
     )
 
 

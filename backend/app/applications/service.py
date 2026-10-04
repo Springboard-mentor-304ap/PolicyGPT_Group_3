@@ -1,6 +1,7 @@
 from uuid import UUID
 from fastapi import HTTPException, status
 from sqlalchemy import or_
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from backend.app.models.application import Application, ApplicationStatus
@@ -92,7 +93,19 @@ def create_application(
     )
 
     db.add(application)
-    db.commit()
+
+    # The check above is friendly, but two concurrent submissions can both
+    # pass it. The unique constraint on (user_id, scheme_id) is the real
+    # guard; losing that race is reported exactly like the duplicate check.
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You have already applied for this scheme",
+        )
+
     db.refresh(application)
 
     return application
@@ -223,6 +236,18 @@ def get_application(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You are not allowed to view this application",
         )
+
+    # Officials may only open applications in their own department/ministry,
+    # exactly like the review list and the status-update endpoint. Without
+    # this, any official could open any application by UUID.
+    if current_user.role == UserRole.GOVERNMENT_OFFICIAL:
+        department = _get_official_ministry(db, current_user)
+
+        if not _application_matches_department(db, application, department):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="This application is outside your department scope",
+            )
 
     return application
 

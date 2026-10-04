@@ -68,8 +68,8 @@ export interface ForgotPasswordRequest {
 }
 
 export interface ForgotPasswordResponse {
+  /** Always generic: the reset link is emailed, never returned by the API. */
   message: string;
-  reset_token: string;
 }
 
 export interface ResetPasswordRequest {

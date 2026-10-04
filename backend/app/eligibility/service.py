@@ -1,18 +1,37 @@
 from uuid import UUID
 from datetime import date
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
+from dataclasses import dataclass
+from typing import Optional
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from backend.app.models.user import User
 from backend.app.models.user_profile import UserProfile
 from backend.app.models.scheme import Scheme
 from backend.app.models.eligibility_rule import EligibilityRule, EligibilityOperator, EligibilityParameter
+# The eligibility check returns the scheme's rules, so it has to apply the
+# same visibility rules as reading the scheme itself (shared with the
+# scheme detail and eligibility-rules endpoints).
+from backend.app.schemes.service import _assert_scheme_is_visible
 
 from backend.app.eligibility.schemas import (
     EligibilityCheckResponse,
     EligibilityStatus
 )
+
+@dataclass
+class EligibilityProfile:
+    age: Optional[int] = None
+    gender: Optional[str] = None
+    annual_income: Optional[Decimal] = None
+    occupation: Optional[str] = None
+    education: Optional[str] = None
+    state: Optional[str] = None
+    district: Optional[str] = None
+    social_category: Optional[str] = None
+    disability_status: Optional[bool] = None
 
 def calculate_age(date_of_birth: date) -> int:
     today = date.today()
@@ -51,39 +70,32 @@ def compare_values(
     return False
 
 
-def evaluate_age_rule(
-        profile: UserProfile,
-        rule: EligibilityRule,
-) -> tuple[bool, str]:
-    if profile.date_of_birth is None:
-        return False, "Date of birth is required"
+def evaluate_age_rule(profile: EligibilityProfile, rule):
+    if profile.age is None:
+        return False, "Age is required"
 
     expected_age = int(rule.value)
-    actual_age = calculate_age(profile.date_of_birth)
+    actual_age = profile.age
 
-    satisfied = compare_values(
-        actual_age,
-        rule.operator,
-        expected_age,
+    satisfied = compare_values(actual_age, rule.operator, expected_age)
+
+    message = (
+        f"Age must be {rule.operator.value} {expected_age}"
+        if not satisfied
+        else f"Age satisfies {rule.operator.value} {expected_age}"
     )
-
-    if satisfied: 
-        message= f"Age requirement satisfied: {actual_age} {rule.operator.value} {expected_age}"
-
-    else: 
-        message= f"Age requirement not satisfied: {actual_age} {rule.operator.value} {expected_age}"
 
     return satisfied, message
 
 def evaluate_gender_rule(
-        profile: UserProfile,
+        profile: EligibilityProfile,
         rule: EligibilityRule,
 ) -> tuple[bool, str]:
 
     if profile.gender is None:
         return False, "Gender is required"
 
-    actual_gender = profile.gender.value
+    actual_gender = profile.gender.lower()
     expected_gender = rule.value.lower()
 
     satisfied = compare_values(
@@ -106,7 +118,7 @@ def evaluate_gender_rule(
     return satisfied, message
 
 def evaluate_income_rule(
-    profile: UserProfile,
+    profile: EligibilityProfile,
     rule: EligibilityRule,
 ) -> tuple[bool, str]:
 
@@ -136,7 +148,7 @@ def evaluate_income_rule(
     return satisfied, message
 
 def evaluate_occupation_rule(
-    profile: UserProfile,
+    profile: EligibilityProfile,
     rule: EligibilityRule,
 ) -> tuple[bool, str]:
 
@@ -166,7 +178,7 @@ def evaluate_occupation_rule(
     return satisfied, message
 
 def evaluate_education_rule(
-    profile: UserProfile,
+    profile: EligibilityProfile,
     rule: EligibilityRule,
 ) -> tuple[bool, str]:
 
@@ -196,7 +208,7 @@ def evaluate_education_rule(
     return satisfied, message
 
 def evaluate_location_rule(
-    profile: UserProfile,
+    profile: EligibilityProfile,
     rule: EligibilityRule,
 ) -> tuple[bool, str]:
 
@@ -237,14 +249,14 @@ def evaluate_location_rule(
     return satisfied, message
 
 def evaluate_social_category_rule(
-    profile: UserProfile,
+    profile: EligibilityProfile,
     rule: EligibilityRule,
 ) -> tuple[bool, str]:
 
     if profile.social_category is None:
         return False, "Social category is required"
 
-    actual_category = profile.social_category.value
+    actual_category = profile.social_category.lower()
     expected_category = rule.value.lower()
 
     satisfied = compare_values(
@@ -267,7 +279,7 @@ def evaluate_social_category_rule(
     return satisfied, message
 
 def evaluate_disability_rule(
-    profile: UserProfile,
+    profile: EligibilityProfile,
     rule: EligibilityRule,
 ) -> tuple[bool, str]:
 
@@ -294,25 +306,45 @@ def evaluate_disability_rule(
     return satisfied, message
 
 def evaluate_rule(
-        profile: UserProfile,
-        rule: EligibilityRule,
+    profile: EligibilityProfile,
+    rule: EligibilityRule,
+) -> tuple[bool, str, str | None]:
+    """Evaluate one rule, tolerating a legacy value that cannot be parsed.
+
+    Rule values are validated when they are created or updated, but records
+    written before that could still be malformed. Such a rule is reported as
+    unevaluable (treated like missing information) instead of raising and
+    turning the whole eligibility check into a 500.
+    """
+    try:
+        return _evaluate_rule(profile, rule)
+    except (ValueError, InvalidOperation, ArithmeticError, TypeError):
+        return (
+            False,
+            (
+                f"The rule for {rule.parameter.value} could not be "
+                "evaluated because its stored value is invalid"
+            ),
+            None,
+        )
+
+
+def _evaluate_rule(
+    profile: EligibilityProfile,
+    rule: EligibilityRule,
 ) -> tuple[bool, str, str | None]:
 
     if rule.parameter == EligibilityParameter.AGE:
         satisfied, message = evaluate_age_rule(profile, rule)
         actual_value = (
-            str(calculate_age(profile.date_of_birth))
-            if profile.date_of_birth
+            str(profile.age)
+            if profile.age is not None
             else None
         )
 
     elif rule.parameter == EligibilityParameter.GENDER:
         satisfied, message = evaluate_gender_rule(profile, rule)
-        actual_value = (
-            profile.gender.value
-            if profile.gender
-            else None
-        )
+        actual_value = profile.gender
 
     elif rule.parameter == EligibilityParameter.INCOME:
         satisfied, message = evaluate_income_rule(profile, rule)
@@ -343,11 +375,7 @@ def evaluate_rule(
 
     elif rule.parameter == EligibilityParameter.SOCIAL_CATEGORY:
         satisfied, message = evaluate_social_category_rule(profile, rule)
-        actual_value = (
-            profile.social_category.value
-            if profile.social_category
-            else None
-        )
+        actual_value = profile.social_category
 
     elif rule.parameter == EligibilityParameter.DISABILITY_STATUS:
         satisfied, message = evaluate_disability_rule(profile, rule)
@@ -358,22 +386,35 @@ def evaluate_rule(
 
     return satisfied, message, actual_value
 
+def build_eligibility_profile(
+        profile: UserProfile,
+) -> EligibilityProfile:
+    age = None
+
+    if profile.date_of_birth is not None:
+        age = calculate_age(profile.date_of_birth)
+
+    return EligibilityProfile(
+        age=age,
+        gender=profile.gender.value if profile.gender else None,
+        annual_income=profile.annual_income,
+        occupation=profile.occupation,
+        education=profile.education,
+        state=profile.state,
+        district=profile.district,
+        social_category=(
+            profile.social_category.value
+            if profile.social_category
+            else None
+        ),
+        disability_status=profile.disability_status,
+    )
 
 def check_eligibility(
         db: Session,
-        user_id: UUID,
+        current_user: User,
         scheme_id: UUID,
 ) -> EligibilityCheckResponse:
-
-    # Fetch User Profile
-    profile_result = db.execute(
-        select(UserProfile).where(UserProfile.user_id == user_id)
-    )
-
-    profile = profile_result.scalar_one_or_none()
-
-    if profile is None:
-        raise ValueError("User profile not found")
 
     # Fetch scheme
     scheme_result = db.execute(
@@ -384,6 +425,10 @@ def check_eligibility(
     if scheme is None:
         raise ValueError("Scheme not found")
 
+    # A scheme the caller cannot read (draft/pending/rejected/archived or
+    # outside an official's scope) must not reveal its eligibility rules.
+    _assert_scheme_is_visible(db, scheme, current_user)
+
     # Fetch eligibility rules for the scheme
 
     rules_result = db.execute(
@@ -393,13 +438,40 @@ def check_eligibility(
 
     rules = rules_result.scalars().all()
 
+    # Fetch User Profile
+    profile_result = db.execute(
+        select(UserProfile).where(UserProfile.user_id == current_user.id)
+    )
+
+    profile = profile_result.scalar_one_or_none()
+
+    # A missing profile is not "not found": the user simply has not supplied
+    # the data the rules need yet, so the verdict is "more information
+    # required" (every rule parameter is missing) instead of a 404.
+    if profile is None:
+        return EligibilityCheckResponse(
+            scheme_id=scheme.id,
+            scheme_title=scheme.title,
+            status=EligibilityStatus.MORE_INFORMATION_REQUIRED,
+            summary=(
+                "More information is required to determine your eligibility. "
+                "Complete your profile to continue."
+            ),
+            rules=[],
+            missing_information=[
+                rule.parameter.value for rule in rules
+            ],
+        )
+
+    eligibility_profile = build_eligibility_profile(profile)
+
     rule_results = []
     missing_information = []
-    all_rules_satisfied = True
+    has_definite_failure = False
 
     for rule in rules:
         satisfied, message, actual_value = evaluate_rule(
-            profile,
+            eligibility_profile,
             rule,
         )
 
@@ -417,20 +489,23 @@ def check_eligibility(
         if actual_value is None:
             missing_information.append(rule.parameter.value)
         elif not satisfied:
-            all_rules_satisfied = False
+            has_definite_failure = True
 
-
-    if missing_information:
+    # A rule that was checked against real profile data and failed is a
+    # definite verdict: it wins over rules that merely lack data. Otherwise a
+    # user who is clearly ineligible could be told to supply more information
+    # and be denied anyway.
+    if has_definite_failure:
+        status = EligibilityStatus.NOT_ELIGIBLE
+        summary = "You are not eligible for this scheme."
+    elif missing_information:
         status = EligibilityStatus.MORE_INFORMATION_REQUIRED
         summary = (
             "More information is required to determine your eligibility."
         )
-    elif all_rules_satisfied:
+    else:
         status = EligibilityStatus.ELIGIBLE
         summary = "You are eligible for this scheme."
-    else:
-        status = EligibilityStatus.NOT_ELIGIBLE
-        summary = "You are not eligible for this scheme."
 
 
     return EligibilityCheckResponse(

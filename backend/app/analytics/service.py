@@ -42,10 +42,17 @@ def get_analytics_overview(
 ) -> dict:
     ministry = _get_official_ministry(db, current_user)
 
-    total_users = (
-        db.query(func.count(User.id)).scalar()
-        or 0
+    # `total_users` and `total_searches` are platform-wide numbers that cannot
+    # be scoped to a ministry, so they are only exposed to administrators.
+    # Every other analytics role receives None (the API returns null).
+    is_platform_admin = current_user.role in (
+        UserRole.ADMINISTRATOR,
+        UserRole.SUPER_ADMIN,
     )
+
+    total_users = (
+        db.query(func.count(User.id)).scalar() or 0
+    ) if is_platform_admin else None
 
     policy_query = db.query(func.count(Policy.id))
 
@@ -69,9 +76,8 @@ def get_analytics_overview(
     total_schemes = scheme_query.scalar() or 0
 
     total_searches = (
-        db.query(func.count(SearchHistory.id)).scalar()
-        or 0
-    )
+        db.query(func.count(SearchHistory.id)).scalar() or 0
+    ) if is_platform_admin else None
 
     return {
         "total_users": total_users,

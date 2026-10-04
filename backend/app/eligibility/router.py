@@ -27,7 +27,7 @@ def check_scheme_eligibility(
 
         return check_eligibility(
             db=db,
-            user_id=current_user.id,
+            current_user=current_user,
             scheme_id=scheme_id,
         )
     except ValueError as e:

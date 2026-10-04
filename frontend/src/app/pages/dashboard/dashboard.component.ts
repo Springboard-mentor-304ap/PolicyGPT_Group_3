@@ -221,7 +221,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     toTrendPoints(this.analytics()?.notifications?.notifications_over_time)
   );
 
-  /** Platform-wide search volume, available to every analytics role. */
+  /** Platform-wide search volume, administrators only (null otherwise). */
   readonly totalSearches = computed(() => this.overview()?.total_searches ?? 0);
 
   readonly recentNotifications = computed(() => this.notifications().slice(0, 5));

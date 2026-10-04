@@ -11,16 +11,20 @@
  *
  * Access rules mirror `ANALYTICS_ALLOWED_ROLES` (government officials,
  * researchers, administrators, super admins) and `require_user_analytics_access`
- * (administrators, super admins only) in the analytics router.
+ * (administrators, super admins only, also used for `/notifications`).
+ * The platform-wide totals in the overview are null for every role except
+ * administrators.
  */
 
 // ─── Raw response shapes (exactly what the backend returns) ─────────────────
 
 export interface AnalyticsOverviewResponse {
-  total_users: number;
+  /** Platform-wide; null unless the caller is an administrator. */
+  total_users: number | null;
   total_policies: number;
   total_schemes: number;
-  total_searches: number;
+  /** Platform-wide; null unless the caller is an administrator. */
+  total_searches: number | null;
 }
 
 export interface PolicyStatisticsResponse {

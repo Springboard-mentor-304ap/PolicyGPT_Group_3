@@ -9,6 +9,31 @@ from backend.app.models.user_profile import (
     SocialCategory,
 )
 
+# ─── Password policy ─────────────────────────────────────────────────────────
+
+PASSWORD_MIN_LENGTH = 8
+
+
+def validate_password_strength(value: str) -> str:
+    """Shared password policy for register, change and reset.
+
+    Every way a password can be set goes through this check so the policy
+    cannot drift between endpoints.
+    """
+    if len(value) < PASSWORD_MIN_LENGTH:
+        raise ValueError(
+            f"Password must be at least {PASSWORD_MIN_LENGTH} characters long"
+        )
+
+    if not any(character.isalpha() for character in value):
+        raise ValueError("Password must contain at least one letter")
+
+    if not any(character.isdigit() for character in value):
+        raise ValueError("Password must contain at least one digit")
+
+    return value
+
+
 # ─── Auth Schemas ────────────────────────────────────────────────────────────
 
 class RegisterRequest(BaseModel):
@@ -24,6 +49,11 @@ class RegisterRequest(BaseModel):
             raise ValueError("Full name cannot be empty")
         return value
 
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, value):
+        return validate_password_strength(value)
+
 class RegistrationResponse(BaseModel):
     message: str
 
@@ -36,6 +66,11 @@ class ChangePasswordRequest(BaseModel):
     current_password: str
     new_password: str
 
+    @field_validator("new_password")
+    @classmethod
+    def validate_new_password(cls, value):
+        return validate_password_strength(value)
+
 
 class ForgetPasswordRequest(BaseModel):
     email: EmailStr
@@ -44,6 +79,11 @@ class ForgetPasswordRequest(BaseModel):
 class ResetPasswordRequest(BaseModel):
     reset_token: str
     new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_new_password(cls, value):
+        return validate_password_strength(value)
 
 
 class TokenResponse(BaseModel):

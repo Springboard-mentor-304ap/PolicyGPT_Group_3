@@ -71,4 +71,12 @@ class Application(Base):
         Index("ix_applications_user_id", "user_id"),
         Index("ix_applications_scheme_id", "scheme_id"),
         Index("ix_applications_status", "status"),
+        # One application per user and scheme. Enforced by the database so
+        # the check-then-insert in the service cannot race.
+        Index(
+            "uix_applications_user_scheme",
+            "user_id",
+            "scheme_id",
+            unique=True,
+        ),
     )

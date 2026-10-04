@@ -226,19 +226,21 @@
               </div>
             </div>
 
-            <!-- Total Searches — every analytics role receives this metric -->
-            <div class="stat-card" data-color="amber">
-              <div class="stat-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <circle cx="11" cy="11" r="8"></circle>
-                  <path d="m21 21-4.35-4.35"></path>
-                </svg>
+            <!-- Total Searches — platform-wide metric, administrators only -->
+            @if (canViewUserAnalytics()) {
+              <div class="stat-card" data-color="amber">
+                <div class="stat-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <path d="m21 21-4.35-4.35"></path>
+                  </svg>
+                </div>
+                <div class="stat-content">
+                  <span class="stat-value">{{ totalSearches() }}</span>
+                  <span class="stat-label">Total Searches</span>
+                </div>
               </div>
-              <div class="stat-content">
-                <span class="stat-value">{{ totalSearches() }}</span>
-                <span class="stat-label">Total Searches</span>
-              </div>
-            </div>
+            }
           </div>
         </section>
 
@@ -369,7 +371,8 @@
           </div>
         </section>
 
-        <!-- Notification analytics (GET /api/analytics/notifications) -->
+        <!-- Notification analytics (GET /api/analytics/notifications — administrators only) -->
+        @if (canViewUserAnalytics()) {
         <section class="content-section" id="notification-analytics">
           <div class="section-header">
             <div class="section-title-wrap">
@@ -420,6 +423,7 @@
             </div>
           </div>
         </section>
+        }
 
         <!-- User & search analytics (GET /api/analytics/users — administrators only) -->
         @if (canViewUserAnalytics()) {

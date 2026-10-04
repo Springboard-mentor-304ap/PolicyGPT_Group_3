@@ -115,15 +115,26 @@ def get_policy(
     return policy
 
 
-def get_policy_details(
+def _assert_policy_is_visible(
     db: Session,
-    policy_id: UUID,
+    policy: Policy,
     current_user: User,
-) -> PolicyDetailResponse:
-    policy = get_policy(db, policy_id)
+) -> None:
+    """Reject reads of policies the caller may not see.
 
-    # Officials can only open policies of their own ministry; administrators
-    # and the public discovery roles stay unrestricted.
+    Mirrors the discovery rules of `list_policies`:
+
+    * administrators see every status;
+    * the uploader (owner) always sees their own record;
+    * everyone else only sees APPROVED policies.
+
+    Officials are additionally locked to their own ministry/department. A
+    record the caller may not see answers 404 (not 403) so its existence is
+    not revealed; an out-of-scope official keeps the existing 403.
+    """
+    if current_user.role in (UserRole.ADMINISTRATOR, UserRole.SUPER_ADMIN):
+        return
+
     if current_user.role == UserRole.GOVERNMENT_OFFICIAL:
         scope = _get_official_ministry(db, current_user)
 
@@ -132,6 +143,26 @@ def get_policy_details(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="This policy is outside your department scope",
             )
+
+    if (
+        policy.uploaded_by == current_user.id
+        or policy.status == PolicyStatus.APPROVED
+    ):
+        return
+
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="Policy not found",
+    )
+
+
+def get_policy_details(
+    db: Session,
+    policy_id: UUID,
+    current_user: User,
+) -> PolicyDetailResponse:
+    policy = get_policy(db, policy_id)
+    _assert_policy_is_visible(db, policy, current_user)
 
     query = db.query(Scheme).filter(Scheme.policy_id == policy.id)
 
