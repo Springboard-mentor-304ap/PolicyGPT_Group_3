@@ -28,7 +28,7 @@ interface RoleOption {
   ],
   template: `
     <div class="role-request-page">
-      <div class="role-request-container">
+      <div class="role-request-container page-container">
         <div class="page-header">
           <app-back-to-dashboard></app-back-to-dashboard>
           <h1>Request Elevated Role</h1>
@@ -455,28 +455,23 @@ interface RoleOption {
   styles: [`
     .role-request-page {
       min-height: 100vh;
-      background: var(--bg-secondary, #f8fafc);
-      padding: 2rem;
-    }
-
-    .role-request-container {
-      max-width: 900px;
-      margin: 0 auto;
+      background: var(--color-bg-app, #f8fafc);
+      padding-block: var(--space-6);
     }
 
     .page-header {
-      margin-bottom: 2rem;
+      margin-bottom: var(--space-6);
     }
 
     .page-header h1 {
-      font-size: 1.75rem;
-      font-weight: 600;
-      color: var(--text-primary, #1a1a2e);
-      margin: 0 0 0.5rem;
+      font-size: var(--font-size-2xl);
+      font-weight: var(--font-weight-bold);
+      color: var(--color-text-primary, #0f172a);
+      margin: 0 0 var(--space-1);
     }
 
     .page-header p {
-      color: var(--text-secondary, #64748b);
+      color: var(--color-text-secondary, #64748b);
       margin: 0;
     }
 

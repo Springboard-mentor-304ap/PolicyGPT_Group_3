@@ -2,9 +2,7 @@
    .reports-page): the same 800px column, horizontally centered instead of
    hugging the left edge of the content area. */
 .policy-form-page {
-  padding: var(--space-8);
-  max-width: 800px;
-  margin: 0 auto;
+  padding-block: var(--space-6);
 }
 
 /* Scope-locked fields for government officials */

@@ -22,7 +22,7 @@ import { BackToDashboardComponent } from '../../shared/components/back-to-dashbo
   ],
   template: `
     <div class="profile-page">
-      <div class="profile-container">
+      <div class="profile-container page-container page-container--form">
         <!-- Header with back button -->
         <div class="profile-header">
           <div class="header-nav">
@@ -298,31 +298,26 @@ import { BackToDashboardComponent } from '../../shared/components/back-to-dashbo
     .profile-page {
       min-height: 100vh;
       background: var(--color-bg-app, #f8fafc);
-      padding: 2rem;
-    }
-
-    .profile-container {
-      max-width: 800px;
-      margin: 0 auto;
+      padding-block: var(--space-6);
     }
 
     .profile-header {
-      margin-bottom: 1.5rem;
+      margin-bottom: var(--space-6);
     }
 
     .header-nav {
-      margin-bottom: 1rem;
+      margin-bottom: var(--space-2);
     }
 
     .profile-header h1 {
-      font-size: 1.75rem;
-      font-weight: 600;
-      color: var(--color-text-heading, #1a1a2e);
-      margin: 0 0 0.5rem;
+      font-size: var(--font-size-2xl);
+      font-weight: var(--font-weight-bold);
+      color: var(--color-text-primary, #0f172a);
+      margin: 0 0 var(--space-1);
     }
 
     .profile-header p {
-      color: var(--color-text-muted, #64748b);
+      color: var(--color-text-secondary, #64748b);
       margin: 0;
     }
 

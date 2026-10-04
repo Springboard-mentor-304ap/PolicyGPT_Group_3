@@ -1,7 +1,5 @@
 .scheme-form-page {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: var(--space-6, 24px);
+  padding-block: var(--space-6);
 }
 
 /* Page Header */
@@ -10,9 +8,9 @@
 }
 
 .page-title {
-  font-size: var(--font-size-2xl, 24px);
-  font-weight: 600;
-  color: var(--color-text, #1e293b);
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
   margin: 0 0 var(--space-1, 4px);
 }
 

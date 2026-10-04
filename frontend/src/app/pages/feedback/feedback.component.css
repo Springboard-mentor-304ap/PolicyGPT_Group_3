@@ -1,7 +1,5 @@
 .feedback-page {
-  max-width: 960px;
-  margin: 0 auto;
-  padding: var(--space-6, 1.5rem) var(--space-4, 1rem);
+  padding-block: var(--space-6);
 }
 
 .page-header {
@@ -10,7 +8,7 @@
   justify-content: space-between;
   gap: var(--space-4, 1rem);
   flex-wrap: wrap;
-  margin-bottom: var(--space-5, 1.25rem);
+  margin-bottom: var(--space-6);
 }
 
 .page-title {
@@ -101,11 +99,31 @@
 .resolve-form select {
   padding: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
   border: 1px solid var(--color-border-default);
-  border-radius: var(--radius-md, 8px);
+  border-radius: var(--radius-md);
   background-color: var(--color-bg-surface);
   color: var(--color-text-primary);
   font-family: var(--font-family-base);
-  font-size: var(--font-size-sm, 0.875rem);
+  font-size: var(--font-size-sm);
+}
+
+/* Single-line controls match the shared 42px input height. */
+.field input,
+.field select,
+.resolve-form input,
+.resolve-form select {
+  height: 42px;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.field input:focus,
+.field select:focus,
+.field textarea:focus,
+.resolve-form input:focus,
+.resolve-form select:focus {
+  outline: none;
+  border-color: var(--color-primary-blue);
+  box-shadow: var(--shadow-focus-ring);
 }
 
 .field textarea {
@@ -114,14 +132,29 @@
 
 .primary-btn {
   align-self: flex-start;
-  padding: var(--space-2, 0.5rem) var(--space-5, 1.25rem);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 42px;
+  padding: 0 var(--space-5);
   border: none;
-  border-radius: var(--radius-md, 8px);
+  border-radius: var(--radius-md);
   background-color: var(--color-primary-blue);
-  color: #fff;
-  font-size: var(--font-size-sm, 0.875rem);
-  font-weight: var(--font-weight-medium, 500);
+  color: var(--color-text-inverse);
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
   cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.primary-btn:hover:not(:disabled) {
+  background-color: var(--color-primary-hover);
+}
+
+.primary-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus-ring);
 }
 
 .primary-btn:disabled {
@@ -130,7 +163,8 @@
 }
 
 .primary-btn.small {
-  padding: var(--space-1, 0.25rem) var(--space-3, 0.75rem);
+  height: auto;
+  padding: var(--space-1) var(--space-3);
 }
 
 .ghost-btn {
@@ -159,9 +193,10 @@
 
 .feedback-card {
   border: 1px solid var(--color-border-subtle);
-  border-radius: var(--radius-md, 8px);
-  padding: var(--space-4, 1rem);
-  background-color: var(--color-bg-subtle, var(--color-bg-muted));
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  background-color: var(--color-bg-surface);
+  box-shadow: var(--shadow-sm);
 }
 
 .card-top {

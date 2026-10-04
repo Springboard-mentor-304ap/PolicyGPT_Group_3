@@ -1,7 +1,5 @@
 .applications-page {
-  max-width: 960px;
-  margin: 0 auto;
-  padding: var(--space-6, 1.5rem) var(--space-4, 1rem);
+  padding-block: var(--space-6);
 }
 
 .page-header {
@@ -49,6 +47,7 @@
   padding: var(--space-6, 1.5rem);
   text-align: center;
   color: var(--color-text-secondary);
+  box-shadow: var(--shadow-sm);
 }
 
 .state-card .state-text {
@@ -77,6 +76,7 @@
   border-left: 4px solid var(--color-border-strong);
   border-radius: var(--radius-lg, 12px);
   padding: var(--space-4, 1rem) var(--space-5, 1.25rem);
+  box-shadow: var(--shadow-sm);
 }
 
 .application-card[data-status='submitted'] {

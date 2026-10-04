@@ -1,12 +1,10 @@
 .eligibility-page {
-  max-width: 900px;
-  margin: 0 auto;
-  padding: 2rem;
+  padding-block: var(--space-6);
 }
 
 /* Header */
 .page-header {
-  margin-bottom: 2rem;
+  margin-bottom: var(--space-6);
 }
 
 .header-nav {
@@ -31,14 +29,14 @@
 }
 
 .page-title {
-  font-size: 1.75rem;
-  font-weight: 700;
-  color: var(--color-text-heading);
-  margin: 0 0 0.5rem 0;
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  margin: 0 0 var(--space-1);
 }
 
 .page-subtitle {
-  color: var(--color-text-muted);
+  color: var(--color-text-secondary);
   margin: 0;
 }
 
@@ -138,6 +136,7 @@
   border-radius: var(--radius-lg);
   padding: 1.5rem;
   text-align: center;
+  box-shadow: var(--shadow-sm);
 }
 
 .stat-card.eligible {
