@@ -1,8 +1,9 @@
-from backend.app.ai.llm_client import LLMClient
-from backend.app.finder.schemas import ExtractedProfile
 from decimal import Decimal
 
+from backend.app.finder.schemas import ExtractedProfile
+from backend.app.ai.llm_client import LLMClient
 from backend.app.eligibility.service import EligibilityProfile
+
 
 
 

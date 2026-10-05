@@ -10,6 +10,11 @@ from datetime import date, datetime
 from backend.app.db.database import SessionLocal
 from backend.app.models.policy import Policy, PolicyCategory, PolicyStatus
 from backend.app.models.scheme import Scheme, SchemeCategory, SchemeStatus
+from backend.app.models.eligibility_rule import (
+    EligibilityRule,
+    EligibilityParameter,
+    EligibilityOperator,
+)
 from backend.app.models.user import User
 
 # Fixed UUIDs
@@ -406,6 +411,82 @@ for sd in schemes_data:
     db.add(s)
     print(f"  ✓ Scheme: {s.title} ({s.status.value})")
 
+db.flush()
+
+# ── Step 4: Create eligibility rules ──────────────────────────────────────────
+eligibility_rules = {
+    "PM SHRI Schools — Quality Education Initiative": [
+        (EligibilityParameter.AGE, EligibilityOperator.GTE, "6"),
+        (EligibilityParameter.EDUCATION, EligibilityOperator.EQ, "school"),
+    ],
+    "Ayushman Bharat Health Account (ABHA)": [
+        (EligibilityParameter.AGE, EligibilityOperator.GTE, "0"),
+        (EligibilityParameter.INCOME, EligibilityOperator.LTE, "800000"),
+    ],
+    "PM-KISAN Maan Dhan Yojana": [
+        (EligibilityParameter.AGE, EligibilityOperator.GTE, "18"),
+        (EligibilityParameter.AGE, EligibilityOperator.LTE, "40"),
+        (EligibilityParameter.OCCUPATION, EligibilityOperator.EQ, "farmer"),
+    ],
+    "MGNREGA Wage Employment — Current Year": [
+        (EligibilityParameter.AGE, EligibilityOperator.GTE, "18"),
+        (EligibilityParameter.OCCUPATION, EligibilityOperator.EQ, "unskilled_worker"),
+    ],
+    "PM Awas Yojana — Credit Linked Subsidy Scheme (CLSS)": [
+        (EligibilityParameter.INCOME, EligibilityOperator.LTE, "300000"),
+        (EligibilityParameter.STATE, EligibilityOperator.EQ, "Karnataka"),
+    ],
+    "MUDRA Yojana — Micro Units Development & Refinance": [
+        (EligibilityParameter.AGE, EligibilityOperator.GTE, "18"),
+        (EligibilityParameter.OCCUPATION, EligibilityOperator.EQ, "self-employed"),
+    ],
+    "Sukanya Samriddhi Yojana — Girl Child Prosperity": [
+        (EligibilityParameter.AGE, EligibilityOperator.LTE, "10"),
+        (EligibilityParameter.GENDER, EligibilityOperator.EQ, "female"),
+    ],
+    "Green Hydrogen Pilot Projects — Funding Initiative": [
+        (EligibilityParameter.STATE, EligibilityOperator.EQ, "Gujarat"),
+        (EligibilityParameter.OCCUPATION, EligibilityOperator.EQ, "business"),
+    ],
+    "DigiLocker — Digital Document Wallet": [
+        (EligibilityParameter.AGE, EligibilityOperator.GTE, "0"),
+    ],
+    "Expressway Development Programme — Phase I": [
+        (EligibilityParameter.AGE, EligibilityOperator.GTE, "18"),
+        (EligibilityParameter.EDUCATION, EligibilityOperator.EQ, "graduate"),
+    ],
+}
+
+scheme_by_title = {
+    scheme.title: scheme
+    for scheme in db.query(Scheme).all()
+}
+
+rule_count = 0
+
+for scheme_title, rules in eligibility_rules.items():
+    scheme = scheme_by_title.get(scheme_title)
+
+    if not scheme:
+        print(f"  ⚠ Scheme not found for eligibility rules: {scheme_title}")
+        continue
+
+    for parameter, operator, value in rules:
+        rule = EligibilityRule(
+            id=uid(),
+            scheme_id=scheme.id,
+            parameter=parameter,
+            operator=operator,
+            value=value,
+        )
+        db.add(rule)
+        rule_count += 1
+
+    print(f"  ✓ Eligibility rules: {scheme.title} ({len(rules)})")
 db.commit()
-print(f"\n✅ Done! Created {len(policies)} policies and {len(schemes_data)} schemes.")
+
+print(
+    f"\n✅ Done! Created {len(policies)} policies, "
+    f"{len(schemes_data)} schemes, and {rule_count} eligibility rules."
+)
 db.close()

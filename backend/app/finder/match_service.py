@@ -74,7 +74,7 @@ def match_profile_to_schemes(
             scheme_rules,
         )
 
-        match = SchemeMatch.model_validate(result)
+        match = SchemeMatch.model_validate(result.model_dump())
 
         if result.status == EligibilityStatus.ELIGIBLE:
             results["eligible"].append(match)
