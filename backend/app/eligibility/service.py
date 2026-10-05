@@ -328,6 +328,57 @@ def evaluate_rule(
             None,
         )
 
+def evaluate_profile_against_rules(
+    profile: EligibilityProfile,
+    scheme: Scheme,
+    rules: list[EligibilityRule],
+) -> EligibilityCheckResponse:
+    rule_results = []
+    missing_information = []
+    has_definite_failure = False
+
+    for rule in rules:
+        satisfied, message, actual_value = evaluate_rule(
+            profile,
+            rule,
+        )
+
+        rule_results.append(
+            {
+                "parameter": rule.parameter.value,
+                "operator": rule.operator.value,
+                "required_value": rule.value,
+                "actual_value": actual_value,
+                "satisfied": satisfied,
+                "message": message,
+            }
+        )
+
+        if actual_value is None:
+            missing_information.append(rule.parameter.value)
+        elif not satisfied:
+            has_definite_failure = True
+
+    if has_definite_failure:
+        status = EligibilityStatus.NOT_ELIGIBLE
+        summary = "You are not eligible for this scheme."
+    elif missing_information:
+        status = EligibilityStatus.MORE_INFORMATION_REQUIRED
+        summary = (
+            "More information is required to determine your eligibility."
+        )
+    else:
+        status = EligibilityStatus.ELIGIBLE
+        summary = "You are eligible for this scheme."
+
+    return EligibilityCheckResponse(
+        scheme_id=scheme.id,
+        scheme_title=scheme.title,
+        status=status,
+        summary=summary,
+        rules=rule_results,
+        missing_information=missing_information,
+    )
 
 def _evaluate_rule(
     profile: EligibilityProfile,
