@@ -8,6 +8,9 @@ import { ControlValueAccessor, FormsModule, NG_VALUE_ACCESSOR } from '@angular/f
   imports: [CommonModule, FormsModule],
   templateUrl: './input.component.html',
   styleUrl: './input.component.css',
+  // `id` belongs on the inner <input> so the rendered <label for> points at it;
+  // leaving the attribute on the host as well would create duplicate ids.
+  host: { '[attr.id]': 'null' },
   providers: [
     {
       provide: NG_VALUE_ACCESSOR,

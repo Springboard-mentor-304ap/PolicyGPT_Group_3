@@ -120,6 +120,13 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./pages/comparison/comparison.component').then((m) => m.ComparisonComponent),
   },
+  // Natural-language scheme finder. The Finder API endpoints are public
+  // (no auth dependency), so the page stays open to guests as well.
+  {
+    path: 'finder',
+    loadComponent: () =>
+      import('./pages/finder/finder.component').then((m) => m.FinderComponent),
+  },
   // Backend integration routes — applications, feedback, FAQ, reports
   {
     path: 'applications',

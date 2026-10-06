@@ -1,5 +1,14 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, Output, forwardRef } from '@angular/core';
+import {
+  AfterViewInit,
+  Component,
+  ElementRef,
+  EventEmitter,
+  Input,
+  Output,
+  ViewChild,
+  forwardRef,
+} from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 
 export interface SelectOption {
@@ -14,6 +23,9 @@ export interface SelectOption {
   imports: [CommonModule],
   templateUrl: './select.component.html',
   styleUrl: './select.component.css',
+  // `id` belongs on the inner <select> so the rendered <label for> points at it;
+  // leaving the attribute on the host as well would create duplicate ids.
+  host: { '[attr.id]': 'null' },
   providers: [
     {
       provide: NG_VALUE_ACCESSOR,
@@ -22,7 +34,9 @@ export interface SelectOption {
     },
   ],
 })
-export class SelectComponent implements ControlValueAccessor {
+export class SelectComponent implements ControlValueAccessor, AfterViewInit {
+  @ViewChild('selectEl') selectEl?: ElementRef<HTMLSelectElement>;
+
   @Input() label = '';
   @Input() id = '';
   @Input() name = '';
@@ -42,6 +56,17 @@ export class SelectComponent implements ControlValueAccessor {
 
   writeValue(val: string): void {
     this.value = val ?? '';
+  }
+
+  /**
+   * A value set before the first render (e.g. a reactive form filled from an
+   * API response) is written while the options are still being created, so the
+   * browser cannot select it yet. Re-apply it once the view exists.
+   */
+  ngAfterViewInit(): void {
+    if (this.value && this.selectEl) {
+      this.selectEl.nativeElement.value = this.value;
+    }
   }
 
   registerOnChange(fn: (value: string) => void): void {

@@ -86,7 +86,10 @@
             <h2 class="section-title">Your Notifications</h2>
             <p class="section-desc">Inbox updates on policies, schemes and applications</p>
           </div>
-          <span class="pending-badge">{{ unreadCount() }} Unread</span>
+          <span class="pending-badge">
+            <span class="unread-count">{{ unreadCount() }}</span>
+            <span class="unread-label">Unread</span>
+          </span>
         </div>
 
         @if (recentNotifications().length === 0) {
