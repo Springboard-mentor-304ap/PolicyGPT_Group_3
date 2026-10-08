@@ -12,3 +12,4 @@ from backend.app.models.feedback import Feedback
 from backend.app.models.faq import FAQ
 from backend.app.models.report import Report
 from backend.app.models.audit_log import AuditLog
+from backend.app.models.knowledge_chunk import KnowledgeChunk

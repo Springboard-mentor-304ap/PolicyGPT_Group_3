@@ -23,6 +23,7 @@ from backend.app.feedback.router import router as feedback_router
 from backend.app.faq.router import router as faq_router
 from backend.app.reports.router import router as report_router
 from backend.app.finder.router import router as finder_router
+from backend.app.helpdesk.router import router as helpdesk_router
 
 logger = logging.getLogger(__name__)
 
@@ -94,6 +95,10 @@ app.include_router(faq_router, prefix="/api")
 app.include_router(report_router, prefix="/api")
 app.include_router(department_router, prefix="/api")
 app.include_router(finder_router, prefix="/api")
+app.include_router(helpdesk_router, prefix="/api")
+
+
+
 
 @app.get("/")
 def root():

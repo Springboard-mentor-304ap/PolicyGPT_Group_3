@@ -67,7 +67,7 @@ class Scheme(Base):
     )
 
     category: Mapped[SchemeCategory] = mapped_column(
-        SQLEnum(SchemeCategory, name="scheme_category"),
+        SQLEnum(SchemeCategory, name="scheme_category", values_callable=lambda enum: [member.value for member in enum],),
         nullable=False,
     )
 
@@ -92,7 +92,7 @@ class Scheme(Base):
     )
 
     status: Mapped[SchemeStatus] = mapped_column(
-        SQLEnum(SchemeStatus, name="scheme_status"),
+        SQLEnum(SchemeStatus, name="scheme_status",),
         nullable=False,
     )
 

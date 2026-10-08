@@ -71,3 +71,24 @@ class LLMClient:
             raise RuntimeError("LLM returned an empty response")
 
         return response_model.model_validate_json(content)
+
+    def generate_text(
+        self,
+        *,
+        system_prompt: str,
+        user_prompt: str,        
+    ) -> str: 
+        response = self.client.chat.completions.create(
+            model=self.model,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+        )
+
+        content = response.choices[0].message.content
+
+        if not content:
+            raise RuntimeError("LLM returned an empty response")
+
+        return content.strip()
