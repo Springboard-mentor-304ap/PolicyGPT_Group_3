@@ -127,6 +127,17 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./pages/finder/finder.component').then((m) => m.FinderComponent),
   },
+  // AI Helpdesk. Answers come from the PolicyGPT knowledge base and the
+  // endpoint is protected by get_current_user, so the page is guarded like the
+  // other signed-in features; guests never reach the API from here.
+  {
+    path: 'helpdesk',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./pages/helpdesk/helpdesk.component').then(
+        (m) => m.HelpdeskComponent
+      ),
+  },
   // Backend integration routes — applications, feedback, FAQ, reports
   {
     path: 'applications',

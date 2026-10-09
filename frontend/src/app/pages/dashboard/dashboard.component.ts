@@ -449,6 +449,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
       case 'finder':
         this.router.navigate(['/finder']);
         break;
+      case 'helpdesk':
+        this.router.navigate(['/helpdesk']);
+        break;
       case 'compare':
         this.router.navigate(['/compare']);
         break;
@@ -584,6 +587,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       { id: 'search', label: 'Search & Explore', icon: 'search' },
       { id: 'eligibility', label: 'Eligibility Checker', icon: 'check-circle' },
       { id: 'finder', label: 'Scheme Finder', icon: 'compass' },
+      { id: 'helpdesk', label: 'AI Helpdesk', icon: 'helpdesk' },
       { id: 'compare', label: 'Compare Schemes', icon: 'bookmark' },
       { id: 'feedback', label: 'Feedback', icon: 'chat' },
       { id: 'faq', label: 'FAQ', icon: 'help-circle' },
