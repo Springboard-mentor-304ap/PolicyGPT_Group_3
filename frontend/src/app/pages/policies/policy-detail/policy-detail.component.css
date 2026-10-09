@@ -1,6 +1,5 @@
 .policy-detail-page {
-  padding: var(--space-8);
-  max-width: 1200px;
+  padding-block: var(--space-6);
 }
 
 /* Back Button */
@@ -264,6 +263,7 @@
 
 .info-card {
   margin-bottom: 0;
+  box-shadow: var(--shadow-sm);
 }
 
 .info-grid {

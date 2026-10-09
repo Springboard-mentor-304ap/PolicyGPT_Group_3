@@ -25,7 +25,8 @@ const ANALYTICS_ALLOWED_ROLES: string[] = [
 ];
 
 /**
- * Roles allowed to reach `/api/analytics/users`.
+ * Roles allowed to reach the platform-wide analytics endpoints
+ * (`/api/analytics/users` and `/api/analytics/notifications`).
  * Mirrors `require_user_analytics_access` in `backend/app/analytics/router.py`.
  */
 const USER_ANALYTICS_ALLOWED_ROLES: string[] = [
@@ -98,15 +99,17 @@ export class AnalyticsService {
    * Compose the dashboard from the canonical endpoints.
    *
    * Only endpoints the caller's role can actually reach are requested:
-   * `/users` is admin-only, and non-analytics roles never trigger a request
-   * at all (see `DashboardComponent`). Secondary panels degrade to `null`
-   * instead of blanking the whole dashboard, and are reported in
-   * `failedPanels` so the UI can surface a partial-load notice.
+   * `/users` and `/notifications` are administrator-only, and non-analytics
+   * roles never trigger a request at all (see `DashboardComponent`).
+   * Secondary panels degrade to `null` instead of blanking the whole
+   * dashboard, and are reported in `failedPanels` so the UI can surface a
+   * partial-load notice.
    */
   getDashboardAnalytics(
     role: UserRole | string | null | undefined
   ): Observable<DashboardAnalytics> {
     const failedPanels: string[] = [];
+    const platformAdmin = AnalyticsService.isUserAnalyticsRole(role);
 
     const optional = <T>(
       panel: string,
@@ -123,11 +126,15 @@ export class AnalyticsService {
       overview: this.getOverview(),
       policies: optional('Policies', this.getPolicyStatistics()),
       schemes: optional('Schemes', this.getSchemeStatistics()),
-      users: AnalyticsService.isUserAnalyticsRole(role)
+      users: platformAdmin
         ? optional('Users', this.getUserUsageStatistics())
         : of(null),
       departments: optional('Departments', this.getDepartmentStatistics()),
-      notifications: optional('Notifications', this.getNotificationStatistics()),
+      // Notification aggregates are platform-wide, so only administrators
+      // request them; other roles would be rejected by the backend.
+      notifications: platformAdmin
+        ? optional('Notifications', this.getNotificationStatistics())
+        : of(null),
     }).pipe(
       map((result) => ({ ...result, failedPanels } as DashboardAnalytics))
     );

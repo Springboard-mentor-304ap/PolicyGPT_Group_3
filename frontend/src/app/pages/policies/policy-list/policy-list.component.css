@@ -1,21 +1,5 @@
 .policy-list-page {
-  padding: var(--space-8);
-}
-
-/* Back Button */
-.back-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text-secondary);
-  margin-bottom: var(--space-6);
-  transition: color var(--transition-fast);
-}
-
-.back-btn:hover {
-  color: var(--color-primary-blue);
+  padding-block: var(--space-6);
 }
 
 /* Page Header */
@@ -56,6 +40,34 @@
   box-shadow: var(--shadow-sm);
   margin-bottom: var(--space-6);
   flex-wrap: wrap;
+}
+
+/* [All] [By Me] scope toggle (government officials) */
+.scope-toggle {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px;
+  background-color: var(--color-bg-muted);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+}
+
+.scope-option {
+  padding: var(--space-2) var(--space-4);
+  border: none;
+  background: none;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.scope-option.active {
+  background-color: var(--color-bg-surface);
+  color: var(--color-primary-blue);
+  box-shadow: var(--shadow-sm);
 }
 
 .search-box {
@@ -103,7 +115,7 @@
 }
 
 .filter-select {
-  height: 40px;
+  height: 42px;
   padding: 0 var(--space-3);
   font-size: var(--font-size-sm);
   color: var(--color-text-primary);
@@ -325,20 +337,18 @@
 }
 
 @media (max-width: 768px) {
-  .policy-list-page {
-    padding: var(--space-4);
-  }
-
   .page-header {
     flex-direction: column;
     align-items: flex-start;
     gap: var(--space-3);
   }
 
-  .policy-table th:nth-child(4),
-  .policy-table td:nth-child(4),
-  .policy-table th:nth-child(7),
-  .policy-table td:nth-child(7) {
-    display: none;
+  /* Keep every column visible; scroll the table instead of hiding data. */
+  .table-container {
+    overflow-x: auto;
+  }
+
+  .policy-table {
+    min-width: 780px;
   }
 }

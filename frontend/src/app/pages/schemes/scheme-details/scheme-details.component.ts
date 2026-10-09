@@ -21,11 +21,19 @@ import {
 import { UserRole } from '../../../core/models/auth.models';
 import { ButtonComponent } from '../../../shared/components/button/button.component';
 import { BadgeComponent } from '../../../shared/components/badge/badge.component';
+import { BackToDashboardComponent } from '../../../shared/components/back-to-dashboard/back-to-dashboard.component';
 
 @Component({
   selector: 'app-scheme-details',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, ButtonComponent, BadgeComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    RouterLink,
+    ButtonComponent,
+    BadgeComponent,
+    BackToDashboardComponent,
+  ],
   templateUrl: './scheme-details.component.html',
   styleUrl: './scheme-details.component.css',
 })
@@ -64,21 +72,30 @@ export class SchemeDetailsComponent implements OnInit {
     return role === UserRole.ADMINISTRATOR || role === UserRole.SUPER_ADMIN;
   });
 
+  /**
+   * The API only lets the official who created a scheme update or archive it,
+   * so the lifecycle actions stay hidden on records created by someone else.
+   */
+  readonly isOwner = computed(() => {
+    const s = this.scheme();
+    return !!s && this.authService.currentUser()?.id === s.created_by;
+  });
+
   readonly canEdit = computed(() => {
     const s = this.scheme();
-    if (!s || !this.isGovernmentOfficial()) return false;
+    if (!s || !this.isGovernmentOfficial() || !this.isOwner()) return false;
     return s.status === SchemeStatus.DRAFT || s.status === SchemeStatus.REJECTED || s.status === SchemeStatus.ARCHIVED;
   });
 
   readonly canArchive = computed(() => {
     const s = this.scheme();
-    if (!s || !this.isGovernmentOfficial()) return false;
+    if (!s || !this.isGovernmentOfficial() || !this.isOwner()) return false;
     return s.status === SchemeStatus.ACTIVE;
   });
 
   readonly canUnarchive = computed(() => {
     const s = this.scheme();
-    if (!s || !this.isGovernmentOfficial()) return false;
+    if (!s || !this.isGovernmentOfficial() || !this.isOwner()) return false;
     return s.status === SchemeStatus.ARCHIVED;
   });
 
@@ -98,7 +115,7 @@ export class SchemeDetailsComponent implements OnInit {
     const s = this.scheme();
     return !!s
       && this.isGovernmentOfficial()
-      && this.authService.currentUser()?.id === s.created_by
+      && this.isOwner()
       && s.status !== SchemeStatus.ARCHIVED;
   });
 

@@ -2,7 +2,8 @@ from pydantic import BaseModel
 
 
 class AnalyticsOverview(BaseModel):
-    total_users: int
+    # Platform-wide totals are null for every role except administrators.
+    total_users: int | None
     total_policies: int
     total_schemes: int
-    total_searches: int
+    total_searches: int | None

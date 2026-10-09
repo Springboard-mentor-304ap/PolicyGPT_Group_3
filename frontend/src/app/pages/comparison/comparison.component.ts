@@ -9,6 +9,7 @@ import { ButtonComponent } from '../../shared/components/button/button.component
 import { BadgeComponent } from '../../shared/components/badge/badge.component';
 import { SkeletonComponent } from '../../shared/components/skeleton/skeleton.component';
 import { EligibilityModalComponent } from '../eligibility/components/eligibility-modal/eligibility-modal.component';
+import { BackToDashboardComponent } from '../../shared/components/back-to-dashboard/back-to-dashboard.component';
 
 @Component({
   selector: 'app-comparison',
@@ -20,6 +21,7 @@ import { EligibilityModalComponent } from '../eligibility/components/eligibility
     BadgeComponent,
     SkeletonComponent,
     EligibilityModalComponent,
+    BackToDashboardComponent,
   ],
   templateUrl: './comparison.component.html',
   styleUrl: './comparison.component.css',

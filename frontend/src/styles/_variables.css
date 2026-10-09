@@ -95,6 +95,49 @@
   --letter-spacing-widest: 0.1em;
 
   /* ==========================================================================
+     2b. PAGE CONTAINERS (shared layout system)
+     ==========================================================================
+     All application pages center their content on one of these widths so
+     left/right edges line up across routes. Full-bleed backgrounds may span
+     the viewport, but inner content stays inside the container.
+
+     - default: normal content pages (lists, dashboards, detail, FAQ, forms
+       of record) - matches the schemes page reference width
+     - wide: genuinely wide content (side-by-side comparison table)
+     - form: narrow forms and profile editing
+  */
+  --content-max-width: 1200px;
+  --content-max-width-wide: 1400px;
+  --content-max-width-form: 800px;
+  --page-padding-x: var(--space-6);   /* 24px desktop */
+  --page-padding-x-sm: var(--space-4); /* 16px mobile */
+
+  /* ==========================================================================
+     2c. LEGACY TOKEN ALIASES
+     ==========================================================================
+     Older page styles reference these names. Aliasing them to the canonical
+     tokens keeps every page on the same palette and kills drifting inline
+     fallbacks (e.g. radius fallbacks of 6px/8px where the token is 8px/12px).
+  */
+  --primary-color: var(--color-primary-blue);
+  --color-primary: var(--color-primary-blue);
+  --color-bg-card: var(--color-bg-surface);
+  --color-bg-hover: var(--color-bg-subtle);
+  --color-border: var(--color-border-subtle);
+  --color-border-light: var(--color-border-subtle);
+  --color-border-hover: var(--color-border-default);
+  --border-color: var(--color-border-subtle);
+  --color-text: var(--color-text-primary);
+  --color-text-heading: var(--color-text-primary);
+  --color-text-tertiary: var(--color-text-muted);
+  --text-primary: var(--color-text-primary);
+  --text-secondary: var(--color-text-secondary);
+  --color-error: var(--color-danger);
+  --color-error-bg: var(--color-danger-subtle);
+  --color-error-border: var(--color-danger-border);
+  --color-success-bg: var(--color-success-subtle);
+
+  /* ==========================================================================
      3. SPACING SCALE (4px Base Unit)
      ========================================================================== */
   

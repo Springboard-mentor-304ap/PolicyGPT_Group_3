@@ -4,7 +4,25 @@ from sqlalchemy.orm import Session
 from backend.app.models.policy import Policy, PolicyStatus
 from backend.app.models.scheme import Scheme, SchemeStatus
 from backend.app.models.search_history import SearchHistory
+from backend.app.models.user import User, UserRole
 from backend.app.search.schemas import SearchResult, SearchType
+# Reuses the existing department-scope rule the rest of the platform applies
+# to government officials (profile department, 403 when it is missing).
+from backend.app.analytics.service import _get_official_ministry
+
+
+def _search_scope(db: Session, current_user: User | None) -> str | None:
+    """Department/ministry a government official is limited to.
+
+    Guests, citizens and researchers are unrestricted: search is the public
+    discovery surface and approved policies / active schemes are public. An
+    official only ever searches inside their own scope.
+    """
+    if current_user is None or current_user.role != UserRole.GOVERNMENT_OFFICIAL:
+        return None
+
+    return _get_official_ministry(db, current_user)
+
 
 def search_policies(
         db: Session,
@@ -13,11 +31,15 @@ def search_policies(
         department: str | None = None,
         ministry: str | None = None,
         state: str | None = None,
+        scope: str | None = None,
 ) -> list[SearchResult]:
 
     statement = db.query(Policy).filter(
         Policy.status == PolicyStatus.APPROVED
     )
+
+    if scope:
+        statement = statement.filter(Policy.ministry == scope)
 
     if query:
         search_term = f"%{query}%"
@@ -77,11 +99,22 @@ def search_schemes(
         category: str | None = None,
         department: str | None = None,
         state: str | None = None,
+        scope: str | None = None,
 ) -> list[SearchResult]:
 
     statement = db.query(Scheme).filter(
         Scheme.status == SchemeStatus.ACTIVE
     )
+
+    if scope:
+        statement = statement.filter(
+            or_(
+                Scheme.department == scope,
+                Scheme.policy_id.in_(
+                    db.query(Policy.id).filter(Policy.ministry == scope)
+                ),
+            )
+        )
 
     if query: 
         search_term = f"%{query}%"
@@ -140,12 +173,15 @@ def search(
         state: str | None = None,
         page: int = 1,
         page_size: int = 10,
+        current_user: User | None = None,
 ):
     if page < 1:
         page = 1
 
     if page_size < 1:
         page_size = 10
+
+    scope = _search_scope(db, current_user)
 
     if search_type == SearchType.POLICY:
         results = search_policies(
@@ -154,7 +190,8 @@ def search(
             category=category,
             department=department,
             ministry=ministry,
-            state=state
+            state=state,
+            scope=scope,
         )
 
     elif search_type == SearchType.SCHEME:
@@ -164,6 +201,7 @@ def search(
             category=category,
             department=department,
             state=state,
+            scope=scope,
         )
 
     else: 
@@ -174,6 +212,7 @@ def search(
             department=department,
             ministry=ministry,
             state=state,
+            scope=scope,
         )
 
         scheme_results = search_schemes(
@@ -181,7 +220,8 @@ def search(
             query=query,
             category=category,
             department=department,
-            state=state
+            state=state,
+            scope=scope,
         )
 
         results = policy_results + scheme_results

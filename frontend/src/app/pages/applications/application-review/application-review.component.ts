@@ -7,6 +7,7 @@ import {
   ApplicationReviewItem,
   ApplicationStatus,
 } from '../../../core/models/application.models';
+import { BackToDashboardComponent } from '../../../shared/components/back-to-dashboard/back-to-dashboard.component';
 
 /**
  * Government Official "Application Approvals" review page.
@@ -40,7 +41,7 @@ const UUID_PATTERN =
 @Component({
   selector: 'app-application-review',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, BackToDashboardComponent],
   templateUrl: './application-review.component.html',
   styleUrl: './application-review.component.css',
 })

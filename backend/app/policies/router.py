@@ -54,6 +54,7 @@ def create_policy_route(
 )
 def list_policies_route(
     include_archived: bool = Query(False),
+    by_me: bool = Query(False),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -61,6 +62,7 @@ def list_policies_route(
         db=db,
         current_user=current_user,
         include_archived=include_archived,
+        by_me=by_me,
     )
 
 

@@ -13,6 +13,11 @@ from backend.app.models.user import User
 
 security = HTTPBearer()
 
+# Same scheme, but a missing or unreadable Authorization header yields an
+# anonymous caller instead of a 401. Used by public endpoints that also have
+# to know whether the caller is a government official.
+optional_security = HTTPBearer(auto_error=False)
+
 
 def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
@@ -67,3 +72,25 @@ def get_current_user(
         )
 
     return user
+
+
+def get_current_user_optional(
+    credentials: HTTPAuthorizationCredentials | None = Depends(
+        optional_security
+    ),
+    db: Session = Depends(get_db),
+) -> User | None:
+    """The authenticated user when a valid bearer token was sent, else None.
+
+    Public endpoints keep working for guests and for citizens/researchers;
+    the returned user only narrows what a government official may see.
+    """
+    if credentials is None:
+        return None
+
+    try:
+        return get_current_user(credentials=credentials, db=db)
+    except HTTPException:
+        # An expired or unreadable token is treated as an anonymous caller,
+        # exactly like a missing header.
+        return None

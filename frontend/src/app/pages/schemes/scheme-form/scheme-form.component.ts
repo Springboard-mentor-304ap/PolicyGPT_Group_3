@@ -1,4 +1,4 @@
-import { Component, inject, signal, OnInit } from '@angular/core';
+import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, ActivatedRoute } from '@angular/router';
 import {
@@ -11,7 +11,9 @@ import {
 import { forkJoin } from 'rxjs';
 import { SchemeService } from '../../../core/services/scheme.service';
 import { PolicyService } from '../../../core/services/policy.service';
+import { AuthService } from '../../../core/services/auth.service';
 import { Policy, PolicyStatus } from '../../../core/models/policy.models';
+import { UserRole } from '../../../core/models/auth.models';
 import {
   SchemeCategory,
   SCHEME_CATEGORY_LABELS,
@@ -24,6 +26,7 @@ import {
 } from '../../../core/models/scheme.models';
 import { ButtonComponent } from '../../../shared/components/button/button.component';
 import { DepartmentSelectComponent } from '../../../shared/components/department-select/department-select.component';
+import { BackToDashboardComponent } from '../../../shared/components/back-to-dashboard/back-to-dashboard.component';
 
 @Component({
   selector: 'app-scheme-form',
@@ -33,6 +36,7 @@ import { DepartmentSelectComponent } from '../../../shared/components/department
     ReactiveFormsModule,
     ButtonComponent,
     DepartmentSelectComponent,
+    BackToDashboardComponent,
   ],
   templateUrl: './scheme-form.component.html',
   styleUrl: './scheme-form.component.css',
@@ -40,9 +44,20 @@ import { DepartmentSelectComponent } from '../../../shared/components/department
 export class SchemeFormComponent implements OnInit {
   private readonly schemeService = inject(SchemeService);
   private readonly policyService = inject(PolicyService);
+  private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly fb = inject(FormBuilder);
+
+  /**
+   * Department/ministry a government official is limited to. The API rejects
+   * a scheme outside this scope, so the form pre-fills and locks it instead
+   * of letting the user fill in something that cannot be saved.
+   */
+  readonly officialScope = signal<string | null>(null);
+  readonly isGovernmentOfficial = computed(
+    () => this.authService.userRole() === UserRole.GOVERNMENT_OFFICIAL
+  );
 
   readonly isEditMode = signal(false);
   readonly loading = signal(false);
@@ -109,6 +124,49 @@ export class SchemeFormComponent implements OnInit {
       this.isEditMode.set(true);
       this.loadScheme(id);
     }
+
+    this.loadOfficialScope();
+  }
+
+  /**
+   * New schemes are created inside the official's own department, so the form
+   * pre-fills the scope. Editing keeps the record's stored value.
+   */
+  private loadOfficialScope(): void {
+    if (!this.isGovernmentOfficial()) {
+      return;
+    }
+
+    this.authService.getGovernmentOfficialProfile().subscribe({
+      next: (profile) => {
+        this.officialScope.set(profile.department);
+
+        if (!this.isEditMode()) {
+          this.schemeForm.patchValue({ department: profile.department });
+        }
+      },
+      error: (error) => {
+        this.officialScope.set(null);
+
+        if (!this.isEditMode()) {
+          this.error.set(
+            error?.error?.detail ||
+              'Your department could not be loaded, so a scheme cannot be created right now.'
+          );
+        }
+      },
+    });
+  }
+
+  /** Officials always file inside their scope, so the field is locked. */
+  isOfficialScopeLocked(): boolean {
+    return this.isGovernmentOfficial() && !!this.officialScope();
+  }
+
+  get scopeHint(): string {
+    const scope = this.officialScope();
+
+    return scope ? `Locked to your department/ministry: ${scope}` : '';
   }
 
   loadApprovedPolicies(): void {
@@ -252,4 +310,5 @@ export class SchemeFormComponent implements OnInit {
   goBack(): void {
     this.router.navigate(['/schemes']);
   }
+
 }

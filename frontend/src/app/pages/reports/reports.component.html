@@ -1,5 +1,5 @@
-<div class="reports-page">
-  <a class="back-link" routerLink="/dashboard">← Back to Dashboard</a>
+<div class="reports-page page-container">
+  <app-back-to-dashboard></app-back-to-dashboard>
   <div class="page-header">
     <div>
       <h1 class="page-title">Reports</h1>
@@ -12,8 +12,8 @@
 
   @if (!canAccessReports()) {
     <div class="state-card">
-      Reports are available to government officials and administrators. Your
-      account does not have access to this module.
+      Reports are available to government officials, researchers and
+      administrators. Your account does not have access to this module.
     </div>
   } @else {
     <!-- ── Generate ─────────────────────────────────────────────────── -->

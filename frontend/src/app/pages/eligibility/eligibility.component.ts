@@ -8,6 +8,7 @@ import { ButtonComponent } from '../../shared/components/button/button.component
 import { BadgeComponent } from '../../shared/components/badge/badge.component';
 import { SkeletonComponent } from '../../shared/components/skeleton/skeleton.component';
 import { EligibilityResultComponent } from './components/eligibility-result/eligibility-result.component';
+import { BackToDashboardComponent } from '../../shared/components/back-to-dashboard/back-to-dashboard.component';
 
 @Component({
   selector: 'app-eligibility',
@@ -19,6 +20,7 @@ import { EligibilityResultComponent } from './components/eligibility-result/elig
     BadgeComponent,
     SkeletonComponent,
     EligibilityResultComponent,
+    BackToDashboardComponent,
   ],
   templateUrl: './eligibility.component.html',
   styleUrl: './eligibility.component.css',

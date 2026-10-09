@@ -1,12 +1,13 @@
 import { Component, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router, RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { AuthService } from '../../core/services/auth.service';
 import { RoleRequestResponse } from '../../core/models/auth.models';
 import { CardComponent } from '../../shared/components/card/card.component';
 import { InputComponent } from '../../shared/components/input/input.component';
 import { ButtonComponent } from '../../shared/components/button/button.component';
+import { BackToDashboardComponent } from '../../shared/components/back-to-dashboard/back-to-dashboard.component';
 
 interface RoleOption {
   id: string;
@@ -21,20 +22,15 @@ interface RoleOption {
   imports: [
     CommonModule,
     ReactiveFormsModule,
-    RouterLink,
     InputComponent,
     ButtonComponent,
+    BackToDashboardComponent,
   ],
   template: `
     <div class="role-request-page">
-      <div class="role-request-container">
+      <div class="role-request-container page-container">
         <div class="page-header">
-          <a routerLink="/dashboard" class="back-link">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M19 12H5M12 19l-7-7 7-7"></path>
-            </svg>
-            Back to Dashboard
-          </a>
+          <app-back-to-dashboard></app-back-to-dashboard>
           <h1>Request Elevated Role</h1>
           <p>Select the role you'd like to apply for</p>
         </div>
@@ -459,47 +455,23 @@ interface RoleOption {
   styles: [`
     .role-request-page {
       min-height: 100vh;
-      background: var(--bg-secondary, #f8fafc);
-      padding: 2rem;
-    }
-
-    .role-request-container {
-      max-width: 900px;
-      margin: 0 auto;
+      background: var(--color-bg-app, #f8fafc);
+      padding-block: var(--space-6);
     }
 
     .page-header {
-      margin-bottom: 2rem;
-    }
-
-    .back-link {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      color: var(--text-secondary, #64748b);
-      text-decoration: none;
-      font-size: 0.875rem;
-      margin-bottom: 1rem;
-    }
-
-    .back-link:hover {
-      color: var(--primary-color, #3b82f6);
-    }
-
-    .back-link svg {
-      width: 1rem;
-      height: 1rem;
+      margin-bottom: var(--space-6);
     }
 
     .page-header h1 {
-      font-size: 1.75rem;
-      font-weight: 600;
-      color: var(--text-primary, #1a1a2e);
-      margin: 0 0 0.5rem;
+      font-size: var(--font-size-2xl);
+      font-weight: var(--font-weight-bold);
+      color: var(--color-text-primary, #0f172a);
+      margin: 0 0 var(--space-1);
     }
 
     .page-header p {
-      color: var(--text-secondary, #64748b);
+      color: var(--color-text-secondary, #64748b);
       margin: 0;
     }
 

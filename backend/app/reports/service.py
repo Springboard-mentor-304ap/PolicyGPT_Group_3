@@ -39,9 +39,12 @@ from backend.app.reports.schemas import (
 
 EnumMember = TypeVar("EnumMember", bound=Enum)
 
-# Roles allowed to use the Reports module at all
+# Roles allowed to use the Reports module at all. Researchers analyse policy
+# and scheme data, so they can generate the department-visible reports; the
+# platform-wide ones stay administrator-only (see REPORT_PLATFORM_ROLES).
 REPORT_ALLOWED_ROLES = (
     UserRole.GOVERNMENT_OFFICIAL,
+    UserRole.RESEARCHER,
     UserRole.ADMINISTRATOR,
     UserRole.SUPER_ADMIN,
 )
@@ -138,12 +141,13 @@ def _get_department_scope(
 ) -> str | None:
     """Return the department an official is restricted to.
 
-    Administrators get ``None``, which means platform-wide access. The
+    Only government officials are department bound, so every other allowed
+    role (researchers and the platform administrators) gets ``None``. The
     department is read from the authenticated user's official profile so a
     value supplied by the client can never widen the scope.
     """
 
-    if current_user.role in REPORT_PLATFORM_ROLES:
+    if current_user.role != UserRole.GOVERNMENT_OFFICIAL:
         return None
 
     scope = (
@@ -594,9 +598,12 @@ def _build_scheme_report(
 def _build_user_activity_report(
     db: Session,
     filters: ReportFilters,
-    scope: str | None,
+    current_user: User,
 ) -> tuple[list[ReportSummaryItem], list[ReportSection]]:
-    if scope is not None:
+    # User activity is platform-wide data, so it is restricted by role rather
+    # than by the department scope: officials and researchers are rejected
+    # even though their scope is not a department.
+    if current_user.role not in REPORT_PLATFORM_ROLES:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=(
@@ -954,6 +961,8 @@ def _build_analytics_report(
 ) -> tuple[list[ReportSummaryItem], list[ReportSection]]:
     # Reuse the existing analytics service instead of re-deriving statistics.
     # These helpers already apply the official's own department scope.
+    # Researchers are not department bound but they are not administrators
+    # either, so the platform-wide sections stay hidden for them.
     platform_scope = current_user.role in REPORT_PLATFORM_ROLES
 
     overview = get_analytics_overview(db, current_user)
@@ -1179,7 +1188,7 @@ def _build_report_body(
         return _build_scheme_report(db, filters, scope)
 
     if report_type == ReportType.USER_ACTIVITY:
-        return _build_user_activity_report(db, filters, scope)
+        return _build_user_activity_report(db, filters, current_user)
 
     if report_type == ReportType.DEPARTMENT:
         return _build_department_report(db, filters, scope)

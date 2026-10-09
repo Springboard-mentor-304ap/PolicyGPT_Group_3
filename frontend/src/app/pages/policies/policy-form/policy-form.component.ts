@@ -3,14 +3,16 @@ import { CommonModule } from '@angular/common';
 import { Router, ActivatedRoute } from '@angular/router';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { PolicyService } from '../../../core/services/policy.service';
+import { AuthService } from '../../../core/services/auth.service';
 import {
   PolicyCategory,
   PolicyStatus,
   POLICY_CATEGORY_LABELS,
 } from '../../../core/models/policy.models';
+import { UserRole } from '../../../core/models/auth.models';
 import { ButtonComponent } from '../../../shared/components/button/button.component';
 import { DepartmentSelectComponent } from '../../../shared/components/department-select/department-select.component';
-import { InputComponent } from '../../../shared/components/input/input.component';
+import { BackToDashboardComponent } from '../../../shared/components/back-to-dashboard/back-to-dashboard.component';
 
 @Component({
   selector: 'app-policy-form',
@@ -20,12 +22,14 @@ import { InputComponent } from '../../../shared/components/input/input.component
     ReactiveFormsModule,
     ButtonComponent,
     DepartmentSelectComponent,
+    BackToDashboardComponent,
   ],
   templateUrl: './policy-form.component.html',
   styleUrl: './policy-form.component.css',
 })
 export class PolicyFormComponent implements OnInit {
   private readonly policyService = inject(PolicyService);
+  private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly fb = inject(FormBuilder);
@@ -36,6 +40,18 @@ export class PolicyFormComponent implements OnInit {
   readonly error = signal<string | null>(null);
   readonly successMessage = signal<string | null>(null);
   readonly policyId = signal<string>('');
+
+  /**
+   * Ministry/department a government official is limited to. The API rejects
+   * a policy outside this scope, so the form pre-fills and locks both fields
+   * instead of letting the user fill in something that cannot be saved.
+   */
+  readonly officialScope = signal<string | null>(null);
+  readonly isGovernmentOfficial = computed(
+    () => this.authService.userRole() === UserRole.GOVERNMENT_OFFICIAL
+  );
+  /** The scope only locks the form once it is known (or when none exists). */
+  readonly scopeResolved = signal(false);
 
   readonly form: FormGroup = this.fb.group({
     title: ['', [Validators.required, Validators.minLength(1), Validators.maxLength(255)]],
@@ -63,6 +79,44 @@ export class PolicyFormComponent implements OnInit {
       this.policyId.set(id);
       this.loadPolicy(id);
     }
+
+    this.loadOfficialScope();
+  }
+
+  /**
+   * New policies are created inside the official's own ministry, so the form
+   * pre-fills the scope. Editing keeps the record's stored values.
+   */
+  private loadOfficialScope(): void {
+    if (!this.isGovernmentOfficial()) {
+      this.scopeResolved.set(true);
+      return;
+    }
+
+    this.authService.getGovernmentOfficialProfile().subscribe({
+      next: (profile) => {
+        this.officialScope.set(profile.department);
+        this.scopeResolved.set(true);
+
+        if (!this.isEditMode()) {
+          this.form.patchValue({
+            ministry: profile.department,
+            department: profile.department,
+          });
+        }
+      },
+      error: (error) => {
+        this.scopeResolved.set(true);
+        this.officialScope.set(null);
+
+        if (!this.isEditMode()) {
+          this.error.set(
+            error?.error?.detail ||
+              'Your ministry could not be loaded, so a policy cannot be created right now.'
+          );
+        }
+      },
+    });
   }
 
   loadPolicy(id: string): void {
@@ -160,6 +214,19 @@ export class PolicyFormComponent implements OnInit {
     } else {
       this.router.navigate(['/policies']);
     }
+  }
+
+  /** Officials always file inside their scope, so both fields are locked. */
+  isOfficialScopeLocked(): boolean {
+    return this.isGovernmentOfficial() && !!this.officialScope();
+  }
+
+  get scopeHint(): string {
+    const scope = this.officialScope();
+
+    return scope
+      ? `Locked to your ministry/department: ${scope}`
+      : '';
   }
 
   getFieldError(field: string): string | null {

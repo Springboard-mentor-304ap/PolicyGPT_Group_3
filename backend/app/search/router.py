@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
+from backend.app.auth.dependencies import get_current_user_optional
 from backend.app.db.database import get_db
+from backend.app.models.user import User
 from backend.app.search.schemas import SearchResponse, SearchType
 from backend.app.search.service import  search
 
@@ -18,6 +20,8 @@ def search_items(
     page: int = Query(default = 1, ge=1),
     page_size: int = Query(default=10, ge=1, le=100),
     db: Session = Depends(get_db),
+    # Public endpoint: the optional user only narrows an official's results.
+    current_user: User | None = Depends(get_current_user_optional),
 ):
     return search(
         db=db,
@@ -29,4 +33,5 @@ def search_items(
         state=state,
         page=page,
         page_size=page_size,
+        current_user=current_user,
     )

@@ -63,6 +63,14 @@ class User(Base):
         String(500),
     )
 
+    # Single-use password reset token: stores `<sha256(jti)>:<unix-expiry>`.
+    # The plaintext token (a JWT carrying the jti) is only ever sent by
+    # e-mail; it is cleared as soon as it is used. Mirrors the
+    # email_verification_token storage convention.
+    password_reset_token: Mapped[str | None] = mapped_column(
+        String(500),
+    )
+
     profile: Mapped["UserProfile"] = relationship(
         back_populates="user",
         uselist=False,
@@ -99,3 +107,12 @@ class User(Base):
     __table_args__ = (
         Index("ix_users_email", "email", unique=True),
     )
+
+
+# E-mails are case-insensitive by definition, so the database enforces the
+# same uniqueness the API applies through lowercase normalization.
+Index(
+    "uix_users_email_lower",
+    func.lower(User.email),
+    unique=True,
+)

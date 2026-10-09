@@ -1,6 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router, RouterLink } from '@angular/router';
+import { RouterLink } from '@angular/router';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { AuthService } from '../../../core/services/auth.service';
 import { CardComponent } from '../../../shared/components/card/card.component';
@@ -24,13 +24,11 @@ import { ButtonComponent } from '../../../shared/components/button/button.compon
 export class ForgotPasswordComponent {
   private readonly fb = inject(FormBuilder);
   private readonly authService = inject(AuthService);
-  private readonly router = inject(Router);
 
   forgotForm: FormGroup;
   loading = signal(false);
   errorMessage = signal<string | null>(null);
   successMessage = signal<string | null>(null);
-  resetToken = signal<string | null>(null);
 
   constructor() {
     this.forgotForm = this.fb.group({
@@ -53,24 +51,15 @@ export class ForgotPasswordComponent {
     this.authService.forgotPassword({ email }).subscribe({
       next: (response) => {
         this.loading.set(false);
+        // The response is intentionally generic: the reset link is emailed,
+        // so there is no token for the client to carry to the next step.
         this.successMessage.set(response.message);
-        // Store the reset token for the next step
-        this.resetToken.set(response.reset_token);
       },
       error: (error) => {
         this.loading.set(false);
         this.handleApiError(error);
       },
     });
-  }
-
-  goToResetPassword(): void {
-    const token = this.resetToken();
-    if (token) {
-      this.router.navigate(['/reset-password'], {
-        queryParams: { token },
-      });
-    }
   }
 
   private handleApiError(error: any): void {

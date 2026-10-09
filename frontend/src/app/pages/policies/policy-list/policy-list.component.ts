@@ -16,11 +16,21 @@ import {
 import { UserRole } from '../../../core/models/auth.models';
 import { ButtonComponent } from '../../../shared/components/button/button.component';
 import { BadgeComponent } from '../../../shared/components/badge/badge.component';
+import { BackToDashboardComponent } from '../../../shared/components/back-to-dashboard/back-to-dashboard.component';
+
+/** Listing scope offered to government officials. */
+export type PolicyOwnerFilter = 'all' | 'mine';
 
 @Component({
   selector: 'app-policy-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, ButtonComponent, BadgeComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    ButtonComponent,
+    BadgeComponent,
+    BackToDashboardComponent,
+  ],
   templateUrl: './policy-list.component.html',
   styleUrl: './policy-list.component.css',
 })
@@ -36,6 +46,12 @@ export class PolicyListComponent implements OnInit {
   readonly statusFilter = signal<string>('');
   readonly categoryFilter = signal<string>('');
   readonly includeArchived = signal(false);
+  /**
+   * "All" shows every policy in the official's ministry/department scope;
+   * "By Me" narrows that scope to the records they uploaded themselves. The
+   * backend applies both filters, so the signal only drives the request.
+   */
+  readonly ownerFilter = signal<PolicyOwnerFilter>('all');
 
   readonly isGovernmentOfficial = computed(() => {
     const role = this.authService.userRole();
@@ -80,16 +96,32 @@ export class PolicyListComponent implements OnInit {
   loadPolicies(): void {
     this.loading.set(true);
     this.error.set(null);
-    this.policyService.listPolicies(this.includeArchived()).subscribe({
-      next: (policies) => {
-        this.policies.set(policies);
-        this.loading.set(false);
-      },
-      error: (err) => {
-        this.error.set(err?.error?.detail || 'Failed to load policies');
-        this.loading.set(false);
-      },
-    });
+    this.policyService
+      .listPolicies(this.includeArchived(), this.isByMe())
+      .subscribe({
+        next: (policies) => {
+          this.policies.set(policies);
+          this.loading.set(false);
+        },
+        error: (err) => {
+          this.error.set(err?.error?.detail || 'Failed to load policies');
+          this.loading.set(false);
+        },
+      });
+  }
+
+  /** Only an official's listing has a "By Me" scope. */
+  readonly isByMe = computed(
+    () => this.isGovernmentOfficial() && this.ownerFilter() === 'mine'
+  );
+
+  setOwnerFilter(filter: PolicyOwnerFilter): void {
+    if (this.ownerFilter() === filter) {
+      return;
+    }
+
+    this.ownerFilter.set(filter);
+    this.loadPolicies();
   }
 
   onSearch(event: Event): void {
@@ -115,10 +147,6 @@ export class PolicyListComponent implements OnInit {
 
   createPolicy(): void {
     this.router.navigate(['/policies/create']);
-  }
-
-  goToDashboard(): void {
-    this.router.navigate(['/dashboard']);
   }
 
   formatCategory(category: PolicyCategory): string {

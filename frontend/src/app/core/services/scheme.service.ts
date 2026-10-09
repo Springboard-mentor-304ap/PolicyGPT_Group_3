@@ -23,11 +23,20 @@ export class SchemeService {
       : new HttpHeaders();
   }
 
-  /** List all schemes (optionally include archived) */
-  listSchemes(includeArchived = false): Observable<Scheme[]> {
+  /**
+   * List schemes the caller may see (optionally include archived).
+   *
+   * `byMe` asks the API for the records the caller created themselves; the
+   * backend always applies the official's department/ministry scope as well,
+   * so the parameter can never widen what is returned.
+   */
+  listSchemes(includeArchived = false, byMe = false): Observable<Scheme[]> {
     let params = new HttpParams();
     if (includeArchived) {
       params = params.set('include_archived', 'true');
+    }
+    if (byMe) {
+      params = params.set('by_me', 'true');
     }
     return this.http.get<Scheme[]>('/api/schemes', {
       headers: this.getAuthHeaders(),

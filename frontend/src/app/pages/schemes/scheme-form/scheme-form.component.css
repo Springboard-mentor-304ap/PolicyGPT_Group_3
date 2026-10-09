@@ -1,29 +1,5 @@
 .scheme-form-page {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: var(--space-6, 24px);
-}
-
-/* Back Button */
-.back-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2, 8px);
-  padding: var(--space-2, 8px) var(--space-3, 12px);
-  background: none;
-  border: 1px solid var(--color-border, #e2e8f0);
-  border-radius: var(--radius-md, 6px);
-  color: var(--color-text-secondary, #64748b);
-  font-size: var(--font-size-sm, 14px);
-  cursor: pointer;
-  transition: all 0.15s ease;
-  margin-bottom: var(--space-4, 16px);
-}
-
-.back-btn:hover {
-  background: var(--color-bg-hover, #f8fafc);
-  color: var(--color-text, #1e293b);
-  border-color: var(--color-border-hover, #cbd5e1);
+  padding-block: var(--space-6);
 }
 
 /* Page Header */
@@ -32,9 +8,9 @@
 }
 
 .page-title {
-  font-size: var(--font-size-2xl, 24px);
-  font-weight: 600;
-  color: var(--color-text, #1e293b);
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
   margin: 0 0 var(--space-1, 4px);
 }
 

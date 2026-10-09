@@ -1,15 +1,9 @@
 <div class="search-page-layout">
   <!-- Top Navigation / Search Header -->
   <header class="search-header">
-    <div class="header-container">
+    <div class="header-container page-container">
       <div class="breadcrumb">
-        <a routerLink="/dashboard" class="back-link">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="19" y1="12" x2="5" y2="12"></line>
-            <polyline points="12 19 5 12 12 5"></polyline>
-          </svg>
-          <span>Dashboard</span>
-        </a>
+        <app-back-to-dashboard></app-back-to-dashboard>
         <span class="breadcrumb-separator">/</span>
         <span class="breadcrumb-current">Search & Discovery</span>
       </div>
@@ -35,7 +29,7 @@
   </header>
 
   <!-- Main Content Area -->
-  <div class="search-content-container">
+  <div class="search-content-container page-container">
     <!-- Desktop Left Filter Sidebar -->
     <aside class="desktop-filter-sidebar">
       <app-filter-sidebar
