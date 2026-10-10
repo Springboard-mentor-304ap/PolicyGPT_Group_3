@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime
 
 from pgvector.sqlalchemy import Vector
@@ -13,6 +14,7 @@ class KnowledgeChunk(Base):
     id: Mapped[UUID] = mapped_column(
         UUID(as_uuid=True),
         primary_key=True,
+        default=uuid.uuid4,
         server_default=text("gen_random_uuid()"),
     )
 

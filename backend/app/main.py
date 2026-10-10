@@ -22,6 +22,7 @@ from backend.app.applications.router import router as application_router
 from backend.app.feedback.router import router as feedback_router
 from backend.app.faq.router import router as faq_router
 from backend.app.reports.router import router as report_router
+from backend.app.ai.sync_service import shutdown_sync_executor
 from backend.app.finder.router import router as finder_router
 from backend.app.helpdesk.router import router as helpdesk_router
 
@@ -75,6 +76,8 @@ async def lifespan(app: FastAPI):
             await task
         except asyncio.CancelledError:
             pass
+
+        shutdown_sync_executor()
 
 
 app = FastAPI(lifespan=lifespan)

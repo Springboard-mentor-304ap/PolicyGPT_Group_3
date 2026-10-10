@@ -1,3 +1,4 @@
+import logging
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 from uuid import UUID
@@ -21,7 +22,10 @@ from backend.app.schemes.schemas import SchemeCreate, SchemeUpdate
 # Reuses the existing department-scope rule (profile department, 403 when the
 # profile is missing) the analytics, reports and applications modules already
 # apply to government officials.
+from backend.app.ai.sync_service import schedule_scheme_sync
 from backend.app.analytics.service import _get_official_ministry
+
+logger = logging.getLogger(__name__)
 
 # Audience for SCHEME_UPDATE alerts: the same roles that receive NEW_POLICY
 # alerts when a policy is approved, so citizens/researchers/organizations are
@@ -270,6 +274,17 @@ def create_scheme(
     db.commit()
     db.refresh(scheme)
 
+    try:
+        schedule_scheme_sync(scheme.id, expected_updated_at=scheme.updated_at)
+    except Exception as exc:
+        # The authoritative transaction already committed; scheduling must not
+        # fail the request, but the miss is never silent.
+        logger.warning(
+            "Knowledge sync scheduling failed for scheme %s: %s",
+            scheme.id,
+            exc,
+        )
+
     return scheme
 
 
@@ -437,6 +452,17 @@ def update_scheme(
     db.commit()
     db.refresh(scheme)
 
+    try:
+        schedule_scheme_sync(scheme.id, expected_updated_at=scheme.updated_at)
+    except Exception as exc:
+        # The authoritative transaction already committed; scheduling must not
+        # fail the request, but the miss is never silent.
+        logger.warning(
+            "Knowledge sync scheduling failed for scheme %s: %s",
+            scheme.id,
+            exc,
+        )
+
     return scheme
 
 
@@ -470,6 +496,17 @@ def archive_scheme(
     db.commit()
     db.refresh(scheme)
 
+    try:
+        schedule_scheme_sync(scheme.id, expected_updated_at=scheme.updated_at)
+    except Exception as exc:
+        # The authoritative transaction already committed; scheduling must not
+        # fail the request, but the miss is never silent.
+        logger.warning(
+            "Knowledge sync scheduling failed for scheme %s: %s",
+            scheme.id,
+            exc,
+        )
+
     return scheme
 
 
@@ -502,6 +539,17 @@ def unarchive_scheme(
     db.commit()
     db.refresh(scheme)
 
+    try:
+        schedule_scheme_sync(scheme.id, expected_updated_at=scheme.updated_at)
+    except Exception as exc:
+        # The authoritative transaction already committed; scheduling must not
+        # fail the request, but the miss is never silent.
+        logger.warning(
+            "Knowledge sync scheduling failed for scheme %s: %s",
+            scheme.id,
+            exc,
+        )
+
     return scheme
 
 
@@ -532,6 +580,17 @@ def approve_scheme(
 
     db.commit()
     db.refresh(scheme)
+
+    try:
+        schedule_scheme_sync(scheme.id, expected_updated_at=scheme.updated_at)
+    except Exception as exc:
+        # The authoritative transaction already committed; scheduling must not
+        # fail the request, but the miss is never silent.
+        logger.warning(
+            "Knowledge sync scheduling failed for scheme %s: %s",
+            scheme.id,
+            exc,
+        )
 
     return scheme
 
@@ -568,6 +627,17 @@ def reject_scheme(
 
     db.commit()
     db.refresh(scheme)
+
+    try:
+        schedule_scheme_sync(scheme.id, expected_updated_at=scheme.updated_at)
+    except Exception as exc:
+        # The authoritative transaction already committed; scheduling must not
+        # fail the request, but the miss is never silent.
+        logger.warning(
+            "Knowledge sync scheduling failed for scheme %s: %s",
+            scheme.id,
+            exc,
+        )
 
     return scheme
 
@@ -608,6 +678,11 @@ def create_eligibility_rule(
     db.add(rule)
     db.commit()
     db.refresh(rule)
+
+    try:
+        schedule_scheme_sync(scheme_id)
+    except Exception as exc:
+        logger.warning("Knowledge sync scheduling failed for scheme %s: %s", scheme_id, exc)
 
     return rule
 
@@ -686,6 +761,15 @@ def update_eligibility_rule(
     db.commit()
     db.refresh(rule)
 
+    try:
+        schedule_scheme_sync(rule.scheme_id)
+    except Exception as exc:
+        logger.warning(
+            "Knowledge sync scheduling failed for scheme %s: %s",
+            rule.scheme_id,
+            exc,
+        )
+
     return rule
 
 
@@ -718,5 +802,15 @@ def delete_eligibility_rule(
             detail="Cannot delete rules from an archived scheme",
         )
 
+    target_scheme_id = rule.scheme_id
     db.delete(rule)
     db.commit()
+
+    try:
+        schedule_scheme_sync(target_scheme_id)
+    except Exception as exc:
+        logger.warning(
+            "Knowledge sync scheduling failed for scheme %s: %s",
+            target_scheme_id,
+            exc,
+        )

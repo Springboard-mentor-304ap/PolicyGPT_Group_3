@@ -1,3 +1,4 @@
+import logging
 from datetime import date, datetime
 from uuid import UUID
 
@@ -19,7 +20,10 @@ from backend.app.policies.schemas import (
 # Reuses the existing department-scope rule (profile department, 403 when the
 # profile is missing) the analytics, reports and applications modules already
 # apply to government officials.
+from backend.app.ai.sync_service import schedule_policy_sync
 from backend.app.analytics.service import _get_official_ministry
+
+logger = logging.getLogger(__name__)
 
 
 # Government officials may only work on policies of their own ministry: a
@@ -96,6 +100,17 @@ def create_policy(
     db.add(policy)
     db.commit()
     db.refresh(policy)
+
+    try:
+        schedule_policy_sync(policy.id, expected_updated_at=policy.updated_at)
+    except Exception as exc:
+        # The authoritative transaction already committed; scheduling must not
+        # fail the request, but the miss is never silent.
+        logger.warning(
+            "Knowledge sync scheduling failed for policy %s: %s",
+            policy.id,
+            exc,
+        )
 
     return policy
 
@@ -276,6 +291,17 @@ def update_policy(
         db.commit()
         db.refresh(policy)
 
+        try:
+            schedule_policy_sync(policy.id, expected_updated_at=policy.updated_at)
+        except Exception as exc:
+            # The authoritative transaction already committed; scheduling must
+            # not fail the request, but the miss is never silent.
+            logger.warning(
+                "Knowledge sync scheduling failed for policy %s: %s",
+                policy.id,
+                exc,
+            )
+
         return policy
 
     if policy.status == PolicyStatus.PENDING_APPROVAL:
@@ -297,6 +323,17 @@ def update_policy(
         db.commit()
         db.refresh(policy)
 
+        try:
+            schedule_policy_sync(policy.id, expected_updated_at=policy.updated_at)
+        except Exception as exc:
+            # The authoritative transaction already committed; scheduling must
+            # not fail the request, but the miss is never silent.
+            logger.warning(
+                "Knowledge sync scheduling failed for policy %s: %s",
+                policy.id,
+                exc,
+            )
+
         return policy
 
     if policy.status == PolicyStatus.DRAFT:
@@ -307,6 +344,17 @@ def update_policy(
 
         db.commit()
         db.refresh(policy)
+
+        try:
+            schedule_policy_sync(policy.id, expected_updated_at=policy.updated_at)
+        except Exception as exc:
+            # The authoritative transaction already committed; scheduling must
+            # not fail the request, but the miss is never silent.
+            logger.warning(
+                "Knowledge sync scheduling failed for policy %s: %s",
+                policy.id,
+                exc,
+            )
 
         return policy
 
@@ -355,6 +403,17 @@ def archive_policy(
     db.commit()
     db.refresh(policy)
 
+    try:
+        schedule_policy_sync(policy.id, expected_updated_at=policy.updated_at)
+    except Exception as exc:
+        # The authoritative transaction already committed; scheduling must not
+        # fail the request, but the miss is never silent.
+        logger.warning(
+            "Knowledge sync scheduling failed for policy %s: %s",
+            policy.id,
+            exc,
+        )
+
     return policy
 
 
@@ -390,6 +449,17 @@ def unarchive_policy(
 
     db.commit()
     db.refresh(policy)
+
+    try:
+        schedule_policy_sync(policy.id, expected_updated_at=policy.updated_at)
+    except Exception as exc:
+        # The authoritative transaction already committed; scheduling must not
+        # fail the request, but the miss is never silent.
+        logger.warning(
+            "Knowledge sync scheduling failed for policy %s: %s",
+            policy.id,
+            exc,
+        )
 
     return policy
 
@@ -457,6 +527,17 @@ def approve_policy(
     db.commit()
     db.refresh(policy)
 
+    try:
+        schedule_policy_sync(policy.id, expected_updated_at=policy.updated_at)
+    except Exception as exc:
+        # The authoritative transaction already committed; scheduling must not
+        # fail the request, but the miss is never silent.
+        logger.warning(
+            "Knowledge sync scheduling failed for policy %s: %s",
+            policy.id,
+            exc,
+        )
+
     return policy
 
 
@@ -492,5 +573,16 @@ def reject_policy(
 
     db.commit()
     db.refresh(policy)
+
+    try:
+        schedule_policy_sync(policy.id, expected_updated_at=policy.updated_at)
+    except Exception as exc:
+        # The authoritative transaction already committed; scheduling must not
+        # fail the request, but the miss is never silent.
+        logger.warning(
+            "Knowledge sync scheduling failed for policy %s: %s",
+            policy.id,
+            exc,
+        )
 
     return policy
