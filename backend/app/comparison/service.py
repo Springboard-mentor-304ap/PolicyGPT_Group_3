@@ -10,10 +10,15 @@ def compare_items(
         request: ComparisonRequest,
 ) -> list[ComparisonItem]:
 
-    if request.type == ComparisonType.POLICY:
-        return compare_policies(db, request.ids)
+    # Deduplicate first (keeping the requested order): the not-found check
+    # below compares the returned rows against this list, so a repeated id
+    # used to make it fail with a 404 even though every item existed.
+    unique_ids = list(dict.fromkeys(request.ids))
 
-    return compare_schemes(db, request.ids)
+    if request.type == ComparisonType.POLICY:
+        return compare_policies(db, unique_ids)
+
+    return compare_schemes(db, unique_ids)
 
 def compare_policies(
         db: Session,

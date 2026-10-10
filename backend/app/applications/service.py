@@ -1,3 +1,4 @@
+from datetime import date
 from uuid import UUID
 from fastapi import HTTPException, status
 from sqlalchemy import or_
@@ -29,6 +30,17 @@ ALLOWED_STATUS_TRANSITIONS = {
     },
     ApplicationStatus.APPROVED: set(),
     ApplicationStatus.REJECTED: set(),
+    # WITHDRAWN is terminal and only reachable through the applicant-facing
+    # `withdraw_application` below — staff status updates cannot set it.
+    ApplicationStatus.WITHDRAWN: set(),
+}
+
+# Statuses the applicant may still pull back themselves. Decided
+# applications (APPROVED / REJECTED) and staff-driven review states are not
+# withdrawable: WITHDRAWN is reached only from these two.
+WITHDRAWABLE_STATUSES = {
+    ApplicationStatus.SUBMITTED,
+    ApplicationStatus.ADDITIONAL_INFORMATION_REQUIRED,
 }
 
 # Staff roles allowed to view/update application status (mirrors the
@@ -69,6 +81,17 @@ def create_application(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Application can only be submitted for active schemes",
+        )
+
+    # A scheme may still be ACTIVE after its application window closed — the
+    # deadline is the authoritative cutoff for submissions.
+    if (
+        scheme.deadline_date is not None
+        and scheme.deadline_date < date.today()
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="The application deadline for this scheme has passed",
         )
 
     existing_application = (
@@ -308,6 +331,17 @@ def update_application_status(
             ),
         )
 
+    # A rejection without remarks stores a null reason, which leaves the
+    # applicant with no explanation and no way to fix the application.
+    if (
+        new_status == ApplicationStatus.REJECTED
+        and (remarks is None or not remarks.strip())
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Remarks are required when rejecting an application",
+        )
+
     application.status = new_status
 
     if remarks is not None:
@@ -336,6 +370,55 @@ def update_application_status(
         related_entity_type="application",
         related_entity_id=application.id,
     )
+
+    db.commit()
+    db.refresh(application)
+
+    return application
+
+
+def withdraw_application(
+    db: Session,
+    application_id: UUID,
+    current_user: User,
+) -> Application:
+    """Withdraw the caller's own in-progress application.
+
+    Only statuses the workflow can still leave (SUBMITTED and
+    ADDITIONAL_INFORMATION_REQUIRED) may be withdrawn; APPROVED and REJECTED
+    stay final, and the unique (user, scheme) constraint still prevents a
+    fresh application afterwards. Per product decision, no notification is
+    sent for a withdrawal.
+    """
+    application = (
+        db.query(Application)
+        .filter(Application.id == application_id)
+        .first()
+    )
+
+    if not application:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Application not found",
+        )
+
+    if application.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only withdraw your own applications",
+        )
+
+    if application.status not in WITHDRAWABLE_STATUSES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                f"Cannot change application status from "
+                f"{application.status.value} to "
+                f"{ApplicationStatus.WITHDRAWN.value}"
+            ),
+        )
+
+    application.status = ApplicationStatus.WITHDRAWN
 
     db.commit()
     db.refresh(application)

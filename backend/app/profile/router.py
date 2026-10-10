@@ -62,7 +62,11 @@ def get_citizen_profile(
         date_of_birth=profile.date_of_birth.isoformat() if profile.date_of_birth else None,
         gender=profile.gender.value if profile.gender else None,
         occupation=profile.occupation,
-        annual_income=float(profile.annual_income) if profile.annual_income else None,
+        annual_income=(
+            float(profile.annual_income)
+            if profile.annual_income is not None
+            else None
+        ),
         social_category=profile.social_category.value if profile.social_category else None,
         disability_status=profile.disability_status,
         education=profile.education,
@@ -139,8 +143,7 @@ def update_citizen_profile(
         profile.date_of_birth = _parse_date(data.date_of_birth)
 
     if data.gender is not None:
-        from backend.app.models.user_profile import Gender
-        profile.gender = Gender(data.gender)
+        profile.gender = data.gender
 
     if data.occupation is not None:
         profile.occupation = data.occupation
@@ -150,10 +153,12 @@ def update_citizen_profile(
         profile.annual_income = Decimal(str(data.annual_income))
 
     if data.social_category is not None:
-        from backend.app.models.user_profile import SocialCategory
-        profile.social_category = SocialCategory(data.social_category)
+        profile.social_category = data.social_category
 
-    profile.disability_status = data.disability_status
+    # None means "not sent": an omitted (or explicitly null) value must not
+    # overwrite the stored flag.
+    if data.disability_status is not None:
+        profile.disability_status = data.disability_status
 
     if data.education is not None:
         profile.education = data.education
@@ -174,7 +179,11 @@ def update_citizen_profile(
         date_of_birth=profile.date_of_birth.isoformat() if profile.date_of_birth else None,
         gender=profile.gender.value if profile.gender else None,
         occupation=profile.occupation,
-        annual_income=float(profile.annual_income) if profile.annual_income else None,
+        annual_income=(
+            float(profile.annual_income)
+            if profile.annual_income is not None
+            else None
+        ),
         social_category=profile.social_category.value if profile.social_category else None,
         disability_status=profile.disability_status,
         education=profile.education,

@@ -157,11 +157,15 @@ class UserDetailsResponse(BaseModel):
 class CitizenProfileRequest(BaseModel):
     phone: str | None = None
     date_of_birth: str | None = None  # ISO date string
-    gender: str | None = None
+    # Enum-typed so an unknown value is rejected with a 422 by FastAPI
+    # instead of raising an uncaught ValueError (500) in the route.
+    gender: Gender | None = None
     occupation: str | None = None
     annual_income: float | None = None
-    social_category: str | None = None
-    disability_status: bool = False
+    social_category: SocialCategory | None = None
+    # None = field not sent: an omitted value must not overwrite what is
+    # already stored (it used to default to False and reset the column).
+    disability_status: bool | None = None
     education: str | None = None
     state: str | None = None
     district: str | None = None

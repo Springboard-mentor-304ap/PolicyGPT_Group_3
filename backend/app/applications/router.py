@@ -15,6 +15,7 @@ from backend.app.applications.service import (
     list_applications_for_review,
     list_my_applications,
     update_application_status,
+    withdraw_application,
 )
 from backend.app.db.database import get_db
 from backend.app.models.application import ApplicationStatus
@@ -108,5 +109,21 @@ def change_application_status(
         application_id=application_id,
         new_status=data.status,
         remarks=data.remarks,
+        current_user=current_user,
+    )
+
+
+@router.post(
+    "/{application_id}/withdraw",
+    response_model=ApplicationResponse,
+)
+def withdraw_application_route(
+    application_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return withdraw_application(
+        db=db,
+        application_id=application_id,
         current_user=current_user,
     )

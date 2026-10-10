@@ -31,6 +31,17 @@ logger = logging.getLogger(__name__)
 # and reports scope official data by. Records without a ministry fall back to
 # their department, which holds the same kind of value in the existing data.
 
+# Columns of `policies` that are NOT NULL in the database. An explicit JSON
+# null for one of them would otherwise be written through and fail with an
+# IntegrityError (500) at commit; the API rejects it up front instead — the
+# same rule the FAQ module applies to its update endpoint.
+NON_NULLABLE_UPDATE_FIELDS = (
+    "title",
+    "description",
+    "category",
+    "department",
+)
+
 
 def _policy_owner(policy: Policy) -> str | None:
     return policy.ministry or policy.department
@@ -244,13 +255,13 @@ def update_policy(
     policy_data: PolicyUpdate,
     current_user: User,
 ) -> Policy:
-    policy = get_policy(db, policy_id)
-
     if current_user.role != UserRole.GOVERNMENT_OFFICIAL:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only government officials can update policies",
         )
+
+    policy = get_policy(db, policy_id)
 
     if policy.uploaded_by != current_user.id:
         raise HTTPException(
@@ -265,6 +276,13 @@ def update_policy(
         )
 
     update_fields = policy_data.model_dump(exclude_unset=True)
+
+    for field in NON_NULLABLE_UPDATE_FIELDS:
+        if field in update_fields and update_fields[field] is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"{field} cannot be null",
+            )
 
     if "ministry" in update_fields or "department" in update_fields:
         # An edit may not move the policy out of the official's own scope.
@@ -369,13 +387,13 @@ def archive_policy(
     policy_id: UUID,
     current_user: User,
 ) -> Policy:
-    policy = get_policy(db, policy_id)
-
     if current_user.role != UserRole.GOVERNMENT_OFFICIAL:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only government officials can archive policies",
         )
+
+    policy = get_policy(db, policy_id)
 
     if policy.uploaded_by != current_user.id:
         raise HTTPException(
@@ -422,18 +440,28 @@ def unarchive_policy(
     policy_id: UUID,
     current_user: User,
 ) -> Policy:
-    policy = get_policy(db, policy_id)
-
     if current_user.role != UserRole.GOVERNMENT_OFFICIAL:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only government officials can unarchive policies",
         )
 
+    policy = get_policy(db, policy_id)
+
     if policy.uploaded_by != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You can only unarchive policies you uploaded",
+        )
+
+    # Same department-scope rule as archiving: an official may not bring a
+    # policy back from archive when it sits outside their ministry.
+    scope = _get_official_ministry(db, current_user)
+
+    if not _policy_is_in_scope(policy, scope):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This policy is outside your department scope",
         )
 
     if policy.status != PolicyStatus.ARCHIVED:
@@ -469,13 +497,13 @@ def approve_policy(
     policy_id: UUID,
     current_user: User,
 ) -> Policy:
-    policy = get_policy(db, policy_id)
-
     if current_user.role != UserRole.ADMINISTRATOR:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only administrators can approve policies",
         )
+
+    policy = get_policy(db, policy_id)
 
     if policy.status != PolicyStatus.PENDING_APPROVAL:
         raise HTTPException(
@@ -547,13 +575,13 @@ def reject_policy(
     rejection_reason: str,
     current_user: User,
 ) -> Policy:
-    policy = get_policy(db, policy_id)
-
     if current_user.role != UserRole.ADMINISTRATOR:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only administrators can reject policies",
         )
+
+    policy = get_policy(db, policy_id)
 
     if policy.status != PolicyStatus.PENDING_APPROVAL:
         raise HTTPException(

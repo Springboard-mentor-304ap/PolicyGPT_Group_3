@@ -36,6 +36,12 @@ SCHEME_UPDATE_RECIPIENT_ROLES = (
     UserRole.ORGANIZATION,
 )
 
+# Columns of `schemes` that are NOT NULL in the database. An explicit JSON
+# null for one of them would otherwise be written through and fail with an
+# IntegrityError (500) at commit; the API rejects it up front instead — the
+# same rule the FAQ module applies to its update endpoint.
+NON_NULLABLE_UPDATE_FIELDS = ("title", "description", "category")
+
 # Values the enumerated parameters accept. Numeric parameters are parsed and
 # the free-text ones only have to be non-empty, so every stored rule value is
 # valid for its parameter and evaluation can never crash on bad input.
@@ -254,17 +260,31 @@ def create_scheme(
     scope = _get_official_ministry(db, current_user)
     _enforce_scope(policy, scheme_data.department, scope)
 
+    launch_date = scheme_data.launch_date or date.today()
+
+    # A deadline before the launch date would make the scheme unapplicable
+    # from day one.
+    if (
+        scheme_data.deadline_date is not None
+        and scheme_data.deadline_date < launch_date
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Scheme deadline date cannot be earlier than its launch date",
+        )
+
     scheme = Scheme(
         policy_id=scheme_data.policy_id,
         title=scheme_data.title,
         description=scheme_data.description,
+        required_documents=scheme_data.required_documents,
         category=scheme_data.category,
         benefits=scheme_data.benefits,
         application_process=scheme_data.application_process,
         department=scheme_data.department,
         state=scheme_data.state,
         status=SchemeStatus.PENDING_APPROVAL,
-        launch_date=scheme_data.launch_date or date.today(),
+        launch_date=launch_date,
         deadline_date=scheme_data.deadline_date,
         document_url=scheme_data.document_url,
         created_by=current_user.id,
@@ -402,9 +422,9 @@ def update_scheme(
     scheme_data: SchemeUpdate,
     current_user: User,
 ) -> Scheme:
-    scheme = get_scheme(db, scheme_id)
-
     _require_government_official(current_user)
+
+    scheme = get_scheme(db, scheme_id)
 
     if scheme.created_by != current_user.id:
         raise HTTPException(
@@ -426,11 +446,33 @@ def update_scheme(
 
     update_data = scheme_data.model_dump(exclude_unset=True)
 
+    for field in NON_NULLABLE_UPDATE_FIELDS:
+        if field in update_data and update_data[field] is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"{field} cannot be null",
+            )
+
     if "department" in update_data:
         # The department may only be set within the official's own scope.
         scope = _get_official_ministry(db, current_user)
         policy = db.get(Policy, scheme.policy_id)
         _enforce_scope(policy, update_data.get("department"), scope)
+
+    # Validate the dates as they will exist after the update: fields that are
+    # not being changed keep their stored values.
+    effective_launch = update_data.get("launch_date", scheme.launch_date)
+    effective_deadline = update_data.get("deadline_date", scheme.deadline_date)
+
+    if (
+        effective_deadline is not None
+        and effective_launch is not None
+        and effective_deadline < effective_launch
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Scheme deadline date cannot be earlier than its launch date",
+        )
 
     if scheme.status == SchemeStatus.ARCHIVED:
         for field, value in update_data.items():
@@ -471,9 +513,9 @@ def archive_scheme(
     scheme_id: UUID,
     current_user: User,
 ) -> Scheme:
-    scheme = get_scheme(db, scheme_id)
-
     _require_government_official(current_user)
+
+    scheme = get_scheme(db, scheme_id)
 
     if scheme.created_by != current_user.id:
         raise HTTPException(
@@ -515,9 +557,9 @@ def unarchive_scheme(
     scheme_id: UUID,
     current_user: User,
 ) -> Scheme:
-    scheme = get_scheme(db, scheme_id)
-
     _require_government_official(current_user)
+
+    scheme = get_scheme(db, scheme_id)
 
     if scheme.created_by != current_user.id:
         raise HTTPException(
@@ -558,13 +600,13 @@ def approve_scheme(
     scheme_id: UUID,
     current_user: User,
 ) -> Scheme:
-    scheme = get_scheme(db, scheme_id)
-
     if current_user.role != UserRole.ADMINISTRATOR:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only administrators can approve schemes",
         )
+
+    scheme = get_scheme(db, scheme_id)
 
     if scheme.status != SchemeStatus.PENDING_APPROVAL:
         raise HTTPException(
@@ -601,13 +643,13 @@ def reject_scheme(
     rejection_reason: str,
     current_user: User,
 ) -> Scheme:
-    scheme = get_scheme(db, scheme_id)
-
     if current_user.role != UserRole.ADMINISTRATOR:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only administrators can reject schemes",
         )
+
+    scheme = get_scheme(db, scheme_id)
 
     if scheme.status != SchemeStatus.PENDING_APPROVAL:
         raise HTTPException(
@@ -650,9 +692,9 @@ def create_eligibility_rule(
     value: str,
     current_user: User,
 ) -> EligibilityRule:
-    scheme = get_scheme(db, scheme_id)
-
     _require_government_official(current_user)
+
+    scheme = get_scheme(db, scheme_id)
 
     if scheme.created_by != current_user.id:
         raise HTTPException(
@@ -664,6 +706,15 @@ def create_eligibility_rule(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot add rules to an archived scheme",
+        )
+
+    if scheme.status in (
+        SchemeStatus.ACTIVE,
+        SchemeStatus.PENDING_APPROVAL,
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot add rules to an active or pending approval scheme",
         )
 
     value = _validate_rule_value(parameter, value)
@@ -714,6 +765,8 @@ def update_eligibility_rule(
     value: str | None,
     current_user: User,
 ) -> EligibilityRule:
+    _require_government_official(current_user)
+
     rule = db.get(EligibilityRule, rule_id)
 
     if not rule:
@@ -723,8 +776,6 @@ def update_eligibility_rule(
         )
 
     scheme = get_scheme(db, rule.scheme_id)
-
-    _require_government_official(current_user)
 
     if scheme.created_by != current_user.id:
         raise HTTPException(
@@ -736,6 +787,15 @@ def update_eligibility_rule(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot update rules of an archived scheme",
+        )
+
+    if scheme.status in (
+        SchemeStatus.ACTIVE,
+        SchemeStatus.PENDING_APPROVAL,
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot update rules of an active or pending approval scheme",
         )
 
     # The value is validated against the parameter it will end up with: the
@@ -778,6 +838,8 @@ def delete_eligibility_rule(
     rule_id: UUID,
     current_user: User,
 ) -> None:
+    _require_government_official(current_user)
+
     rule = db.get(EligibilityRule, rule_id)
 
     if not rule:
@@ -787,8 +849,6 @@ def delete_eligibility_rule(
         )
 
     scheme = get_scheme(db, rule.scheme_id)
-
-    _require_government_official(current_user)
 
     if scheme.created_by != current_user.id:
         raise HTTPException(
@@ -800,6 +860,15 @@ def delete_eligibility_rule(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot delete rules from an archived scheme",
+        )
+
+    if scheme.status in (
+        SchemeStatus.ACTIVE,
+        SchemeStatus.PENDING_APPROVAL,
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete rules from an active or pending approval scheme",
         )
 
     target_scheme_id = rule.scheme_id
