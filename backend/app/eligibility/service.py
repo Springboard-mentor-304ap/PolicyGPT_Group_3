@@ -43,6 +43,51 @@ def calculate_age(date_of_birth: date) -> int:
 
     return age
 
+def _split_rule_list(expected) -> list[str]:
+    """Split a rule's comma-separated list value into its entries.
+
+    ``expected`` is the raw rule value (a string); entries are trimmed and
+    blank entries are dropped so a malformed legacy value degrades instead of
+    raising.
+    """
+    if isinstance(expected, str):
+        parts = expected.split(",")
+    elif isinstance(expected, (list, tuple, set)):
+        parts = [str(item) for item in expected]
+    else:
+        parts = [str(expected)]
+
+    return [part.strip() for part in parts if part.strip()]
+
+
+def _value_matches_list(actual, items: list[str]) -> bool:
+    """Membership test: numeric for numeric values, case-insensitive text.
+
+    ``None`` matches nothing, so the callers that treat ``None`` as missing
+    information are never bypassed by a list rule.
+    """
+    if actual is None:
+        return False
+
+    # bool is a subclass of int; compare it as text instead of as a number.
+    if isinstance(actual, bool):
+        haystack = str(actual).lower()
+        return any(haystack == item.lower() for item in items)
+
+    if isinstance(actual, (Decimal, int, float)):
+        actual_number = Decimal(str(actual))
+        for item in items:
+            try:
+                if actual_number == Decimal(item):
+                    return True
+            except InvalidOperation:
+                continue
+        return False
+
+    haystack = str(actual).strip().lower()
+    return any(haystack == item.lower() for item in items)
+
+
 def compare_values(
         actual,
         operator: EligibilityOperator,
@@ -67,6 +112,12 @@ def compare_values(
     if operator == EligibilityOperator.GTE:
         return actual >= expected
 
+    if operator == EligibilityOperator.IN:
+        return _value_matches_list(actual, _split_rule_list(expected))
+
+    if operator == EligibilityOperator.NOT_IN:
+        return not _value_matches_list(actual, _split_rule_list(expected))
+
     return False
 
 
@@ -74,15 +125,24 @@ def evaluate_age_rule(profile: EligibilityProfile, rule):
     if profile.age is None:
         return False, "Age is required"
 
-    expected_age = int(rule.value)
+    # IN/NOT_IN values are comma-separated lists that compare_values parses;
+    # the single-value operators need one number.
+    if rule.operator in (
+        EligibilityOperator.IN,
+        EligibilityOperator.NOT_IN,
+    ):
+        expected = rule.value
+    else:
+        expected = int(rule.value)
+
     actual_age = profile.age
 
-    satisfied = compare_values(actual_age, rule.operator, expected_age)
+    satisfied = compare_values(actual_age, rule.operator, expected)
 
     message = (
-        f"Age must be {rule.operator.value} {expected_age}"
+        f"Age must be {rule.operator.value} {expected}"
         if not satisfied
-        else f"Age satisfies {rule.operator.value} {expected_age}"
+        else f"Age satisfies {rule.operator.value} {expected}"
     )
 
     return satisfied, message
@@ -126,23 +186,32 @@ def evaluate_income_rule(
         return False, "Annual income is required"
 
     actual_income = profile.annual_income
-    expected_income = Decimal(rule.value)
+
+    # IN/NOT_IN values are comma-separated lists that compare_values parses
+    # numerically; the single-value operators need one amount.
+    if rule.operator in (
+        EligibilityOperator.IN,
+        EligibilityOperator.NOT_IN,
+    ):
+        expected = rule.value
+    else:
+        expected = Decimal(rule.value)
 
     satisfied = compare_values(
         actual_income,
         rule.operator,
-        expected_income,
+        expected,
     )
 
     if satisfied:
         message = (
             f"Income requirement satisfied: "
-            f"{actual_income} {rule.operator.value} {expected_income}"
+            f"{actual_income} {rule.operator.value} {expected}"
         )
     else:
         message = (
             f"Income requirement not satisfied: "
-            f"{actual_income} {rule.operator.value} {expected_income}"
+            f"{actual_income} {rule.operator.value} {expected}"
         )
 
     return satisfied, message
@@ -284,6 +353,13 @@ def evaluate_disability_rule(
 ) -> tuple[bool, str]:
 
     actual_status = profile.disability_status
+
+    # None means the question was never answered: report it as missing
+    # information instead of comparing it against the rule's value (which
+    # used to make "never filled in" indistinguishable from "no disability").
+    if actual_status is None:
+        return False, "Disability status is required"
+
     expected_status = rule.value.lower() == "true"
 
     satisfied = compare_values(
@@ -430,7 +506,11 @@ def _evaluate_rule(
 
     elif rule.parameter == EligibilityParameter.DISABILITY_STATUS:
         satisfied, message = evaluate_disability_rule(profile, rule)
-        actual_value = str(profile.disability_status)
+        actual_value = (
+            str(profile.disability_status)
+            if profile.disability_status is not None
+            else None
+        )
 
     else:
         return False, "Unsupported eligibility parameter", None

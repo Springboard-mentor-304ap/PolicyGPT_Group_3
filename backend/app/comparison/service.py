@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
 
+from backend.app.eligibility.formatting import format_rule
 from backend.app.models.eligibility_rule import EligibilityRule
 from backend.app.models.policy import Policy, PolicyStatus
 from backend.app.models.scheme import Scheme, SchemeStatus
@@ -95,8 +96,10 @@ def compare_schemes(
             .all()
         )
 
+        # Human-readable rules ("Age: 18 or above"), not the raw
+        # "age gte 18" triple the engine stores.
         eligibility = [
-            f"{rule.parameter.value} {rule.operator.value} {rule.value}"
+            format_rule(rule.parameter, rule.operator, rule.value)
             for rule in rules
         ]
 

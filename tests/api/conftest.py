@@ -143,6 +143,33 @@ def api(session_factory):
 
 
 @pytest.fixture()
+def real_auth(session_factory):
+    """TestClient wired to the SQLite DB that keeps the REAL auth stack.
+
+    The `api` fixture injects the current user and therefore bypasses token
+    handling entirely. Any test that proves a token is accepted or rejected —
+    deactivation, rotation, logout, password change — must use this fixture
+    instead: only `get_db` is overridden here, so `get_current_user` decodes
+    real JWTs exactly as production does.
+    """
+    def override_get_db():
+        db = session_factory()
+        try:
+            yield db
+        finally:
+            db.close()
+
+    app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides.pop(get_current_user, None)
+
+    with TestClient(app, raise_server_exceptions=False) as client:
+        yield client
+
+    app.dependency_overrides.pop(get_db, None)
+    app.dependency_overrides.pop(get_current_user, None)
+
+
+@pytest.fixture()
 def citizen(seed):
     return seed(
         User(

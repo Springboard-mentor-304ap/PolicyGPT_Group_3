@@ -1,20 +1,40 @@
 from datetime import date
 from uuid import UUID
-from fastapi import HTTPException, status
+from fastapi import HTTPException, Request, status
 from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from backend.app.audit.service import client_ip, log_action
 from backend.app.models.application import Application, ApplicationStatus
+from backend.app.models.government_official_profile import (
+    GovernmentOfficialProfile,
+)
 from backend.app.models.policy import Policy
 from backend.app.models.scheme import Scheme, SchemeStatus
 from backend.app.models.user import User, UserRole
 from backend.app.models.notification import NotificationType
-from backend.app.notifications.service import send_notification
-from backend.app.applications.schemas import ApplicationReviewResponse
+from backend.app.notifications.service import queue_notifications, send_notification
+from backend.app.applications.schemas import (
+    ApplicationReviewResponse,
+    MyApplicationResponse,
+)
+from backend.app.pagination import DEFAULT_LIMIT, clamp_limit
 # Reuses the exact department-scope logic the analytics module applies to
 # government officials (profile department, 403 when the profile is missing).
 from backend.app.analytics.service import _get_official_ministry
+# One canonical scope rule shared with policies, schemes, search, analytics
+# and reports — see backend/app/scope.py.
+from backend.app.scope import (
+    normalized_match,
+    normalize,
+    scheme_in_scope,
+    scheme_scope_filter,
+)
+
+# Audit log actions recorded for the applications module.
+AUDIT_APPLICATION_STATUS_CHANGE = "application.status_change"
+AUDIT_APPLICATION_WITHDRAW = "application.withdraw"
 
 ALLOWED_STATUS_TRANSITIONS = {
     ApplicationStatus.SUBMITTED: {
@@ -116,6 +136,62 @@ def create_application(
     )
 
     db.add(application)
+    # Flush inside the same transaction so the server-generated id exists for
+    # the notification below; nothing is committed yet.
+    db.flush()
+
+    # NEW_APPLICATION to the officials that can actually review it: those
+    # whose department matches the scheme's department or its parent policy's
+    # ministry (the canonical scope rule in backend/app/scope.py). The query
+    # returns nothing when no official is in scope, so this is a no-op then.
+    scope_clauses = []
+
+    # Resolve the scheme's department and its parent policy's ministry in one
+    # query — the same lookup `_application_matches_department` uses.
+    scheme_scope_row = (
+        db.query(Scheme.department, Policy.ministry)
+        .select_from(Scheme)
+        .join(Policy, Policy.id == Scheme.policy_id)
+        .filter(Scheme.id == scheme.id)
+        .first()
+    )
+    scheme_department, policy_ministry = scheme_scope_row or (None, None)
+
+    for scope_value in (scheme_department, policy_ministry):
+        if normalize(scope_value) is not None:
+            scope_clauses.append(
+                normalized_match(GovernmentOfficialProfile.department, scope_value)
+            )
+
+    if scope_clauses:
+        recipients = (
+            db.query(User.id)
+            .join(
+                GovernmentOfficialProfile,
+                GovernmentOfficialProfile.user_id == User.id,
+            )
+            .filter(
+                User.is_active.is_(True),
+                User.role == UserRole.GOVERNMENT_OFFICIAL,
+                User.id != current_user.id,
+                or_(*scope_clauses),
+            )
+            .all()
+        )
+
+        if recipients:
+            queue_notifications(
+                db=db,
+                user_ids=[row[0] for row in recipients],
+                notification_type=NotificationType.NEW_APPLICATION,
+                title="New Application Received",
+                message=(
+                    f'A new application for "{scheme.title}" has been '
+                    "submitted and is waiting for review."
+                ),
+                related_entity_type="application",
+                related_entity_id=application.id,
+            )
 
     # The check above is friendly, but two concurrent submissions can both
     # pass it. The unique constraint on (user_id, scheme_id) is the real
@@ -142,7 +218,8 @@ def _application_matches_department(
     """True when the application's scheme sits in the given department/ministry.
 
     Scope matches either the scheme's own department or its parent policy's
-    ministry — the same fields analytics uses to scope official data.
+    ministry — the canonical rule from backend/app/scope.py, now
+    case-insensitive and trimmed so it agrees with the review list.
     """
     row = (
         db.query(Scheme.department, Policy.ministry)
@@ -154,14 +231,18 @@ def _application_matches_department(
     if not row:
         return False
     scheme_department, policy_ministry = row
-    return department == scheme_department or department == policy_ministry
+    return scheme_in_scope(scheme_department, policy_ministry, department)
 
 
 def list_applications_for_review(
     db: Session,
     status_filter: ApplicationStatus | None,
     current_user: User,
-) -> list[ApplicationReviewResponse]:
+    limit: int = DEFAULT_LIMIT,
+    offset: int = 0,
+) -> tuple[list[ApplicationReviewResponse], int]:
+    """Returns ``(rows, total)``; `total` is the pre-paging count for the
+    X-Total-Count header."""
     """Applications the current staff member is authorized to review.
 
     - Government officials only see applications in their own
@@ -193,16 +274,20 @@ def list_applications_for_review(
 
     if department:
         query = query.filter(
-            or_(
-                Policy.ministry == department,
-                Scheme.department == department,
-            )
+            scheme_scope_filter(department)
         )
 
     if status_filter is not None:
         query = query.filter(Application.status == status_filter)
 
-    rows = query.order_by(Application.submitted_at.desc()).all()
+    total = query.count()
+
+    rows = (
+        query.order_by(Application.submitted_at.desc())
+        .offset(offset)
+        .limit(clamp_limit(limit))
+        .all()
+    )
 
     return [
         ApplicationReviewResponse(
@@ -227,7 +312,7 @@ def list_applications_for_review(
             scheme_department,
             policy_ministry,
         ) in rows
-    ]
+    ], total
 
 def get_application(
         db: Session,
@@ -277,13 +362,57 @@ def get_application(
 def list_my_applications(
     db: Session,
     current_user: User,
-) -> list[Application]:
-    return (
-        db.query(Application)
+    limit: int = DEFAULT_LIMIT,
+    offset: int = 0,
+) -> tuple[list[MyApplicationResponse], int]:
+    """The applicant's own applications with scheme context, paged.
+
+    The scheme columns are joined in so the list needs no extra round-trip
+    per row; a LEFT join keeps an application visible even if its scheme row
+    were ever missing (the extra fields are then null).
+    """
+    query = (
+        db.query(
+            Application,
+            Scheme.title,
+            Scheme.department,
+            Scheme.deadline_date,
+        )
+        .outerjoin(Scheme, Scheme.id == Application.scheme_id)
         .filter(Application.user_id == current_user.id)
-        .order_by(Application.submitted_at.desc())
+    )
+
+    total = query.count()
+
+    rows = (
+        query.order_by(Application.submitted_at.desc())
+        .offset(offset)
+        .limit(clamp_limit(limit))
         .all()
     )
+
+    return [
+        MyApplicationResponse(
+            id=application.id,
+            user_id=application.user_id,
+            scheme_id=application.scheme_id,
+            status=application.status,
+            remarks=application.remarks,
+            approved_by=application.approved_by,
+            rejection_reason=application.rejection_reason,
+            submitted_at=application.submitted_at,
+            updated_at=application.updated_at,
+            scheme_title=scheme_title,
+            scheme_department=scheme_department,
+            scheme_deadline_date=scheme_deadline_date,
+        )
+        for (
+            application,
+            scheme_title,
+            scheme_department,
+            scheme_deadline_date,
+        ) in rows
+    ], total
 
 def update_application_status(
     db: Session,
@@ -291,6 +420,7 @@ def update_application_status(
     new_status: ApplicationStatus,
     remarks: str | None,
     current_user: User,
+    request: Request | None = None,
 ) -> Application:
     if current_user.role not in APPLICATION_REVIEW_ROLES:
         raise HTTPException(
@@ -309,6 +439,8 @@ def update_application_status(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Application not found",
         )
+
+    old_status = application.status
 
     # Department scope: a government official may only touch applications
     # belonging to their own department/ministry (admins are unrestricted).
@@ -371,6 +503,20 @@ def update_application_status(
         related_entity_id=application.id,
     )
 
+    # Staged in the caller's open transaction: the status change, its
+    # notification and its audit entry publish together or not at all.
+    log_action(
+        db=db,
+        actor_id=current_user.id,
+        action=AUDIT_APPLICATION_STATUS_CHANGE,
+        target_table="applications",
+        target_id=application.id,
+        changes={
+            "status": {"old": old_status.value, "new": new_status.value}
+        },
+        ip_address=client_ip(request),
+    )
+
     db.commit()
     db.refresh(application)
 
@@ -381,6 +527,7 @@ def withdraw_application(
     db: Session,
     application_id: UUID,
     current_user: User,
+    request: Request | None = None,
 ) -> Application:
     """Withdraw the caller's own in-progress application.
 
@@ -418,7 +565,23 @@ def withdraw_application(
             ),
         )
 
+    old_status = application.status
+
     application.status = ApplicationStatus.WITHDRAWN
+
+    # Per product decision above, no notification is sent for a withdrawal —
+    # the applicant is the actor. The status change is still audited.
+    log_action(
+        db=db,
+        actor_id=current_user.id,
+        action=AUDIT_APPLICATION_WITHDRAW,
+        target_table="applications",
+        target_id=application.id,
+        changes={
+            "status": {"old": old_status.value, "new": ApplicationStatus.WITHDRAWN.value}
+        },
+        ip_address=client_ip(request),
+    )
 
     db.commit()
     db.refresh(application)

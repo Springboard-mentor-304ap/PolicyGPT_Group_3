@@ -29,23 +29,13 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from backend.app.ai.embedding_service import generate_embedding
+from backend.app.eligibility.formatting import format_rule
 from backend.app.models.eligibility_rule import EligibilityRule
 from backend.app.models.knowledge_chunk import KnowledgeChunk
 from backend.app.models.policy import Policy, PolicyStatus
 from backend.app.models.scheme import Scheme, SchemeStatus
 
 logger = logging.getLogger(__name__)
-
-OPERATOR_LABELS = {
-    "eq": "must be",
-    "neq": "must not be",
-    "lt": "must be less than",
-    "lte": "must be less than or equal to",
-    "gt": "must be greater than",
-    "gte": "must be greater than or equal to",
-    "in": "must be one of",
-    "not_in": "must not be one of",
-}
 
 
 def _normalize_datetime(dt: datetime | str | None) -> datetime | None:
@@ -69,13 +59,9 @@ def _format_list(values: list[str] | None) -> str:
 
 
 def _format_rule(rule: EligibilityRule) -> str:
-    parameter = rule.parameter.value.replace("_", " ").title()
-    operator = OPERATOR_LABELS.get(
-        rule.operator.value,
-        rule.operator.value,
-    )
-
-    return f"- {parameter} {operator} {rule.value}"
+    # Shared formatter: one human-readable wording for every place that shows
+    # a rule (comparison endpoint, knowledge chunks).
+    return f"- {format_rule(rule.parameter, rule.operator, rule.value)}"
 
 
 def _build_policy_content(policy: Policy) -> str:

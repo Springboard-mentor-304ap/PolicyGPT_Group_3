@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Request, Response, status
 from sqlalchemy.orm import Session
 
 from backend.app.auth.dependencies import get_current_user
@@ -10,6 +10,7 @@ from backend.app.models.eligibility_rule import (
     EligibilityParameter,
 )
 from backend.app.models.user import User
+from backend.app.pagination import DEFAULT_LIMIT
 from backend.app.schemes.schemas import (
     EligibilityRuleCreate,
     EligibilityRuleResponse,
@@ -40,6 +41,7 @@ router = APIRouter(prefix="/schemes", tags=["Schemes"])
 @router.post("", response_model=SchemeResponse, status_code=status.HTTP_201_CREATED)
 def create_scheme_route(
     scheme_data: SchemeCreate,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -47,22 +49,34 @@ def create_scheme_route(
         db=db,
         scheme_data=scheme_data,
         current_user=current_user,
+        request=request,
     )
 
 
 @router.get("", response_model=list[SchemeResponse])
 def list_schemes_route(
+    response: Response,
     include_archived: bool = Query(False),
     by_me: bool = Query(False),
+    include_expired: bool = Query(False),
+    limit: int = Query(default=DEFAULT_LIMIT, ge=1),
+    offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return list_schemes(
+    rows, total = list_schemes(
         db=db,
         current_user=current_user,
         include_archived=include_archived,
         by_me=by_me,
+        include_expired=include_expired,
+        limit=limit,
+        offset=offset,
     )
+
+    response.headers["X-Total-Count"] = str(total)
+
+    return rows
 
 
 @router.get("/{scheme_id}", response_model=SchemeResponse)
@@ -96,6 +110,7 @@ def update_scheme_route(
 @router.post("/{scheme_id}/archive", response_model=SchemeResponse)
 def archive_scheme_route(
     scheme_id: UUID,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -103,12 +118,14 @@ def archive_scheme_route(
         db=db,
         scheme_id=scheme_id,
         current_user=current_user,
+        request=request,
     )
 
 
 @router.post("/{scheme_id}/unarchive", response_model=SchemeResponse)
 def unarchive_scheme_route(
     scheme_id: UUID,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -116,12 +133,14 @@ def unarchive_scheme_route(
         db=db,
         scheme_id=scheme_id,
         current_user=current_user,
+        request=request,
     )
 
 
 @router.post("/{scheme_id}/approve", response_model=SchemeResponse)
 def approve_scheme_route(
     scheme_id: UUID,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -129,6 +148,7 @@ def approve_scheme_route(
         db=db,
         scheme_id=scheme_id,
         current_user=current_user,
+        request=request,
     )
 
 
@@ -136,6 +156,7 @@ def approve_scheme_route(
 def reject_scheme_route(
     scheme_id: UUID,
     rejection_data: SchemeReject,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -144,6 +165,7 @@ def reject_scheme_route(
         scheme_id=scheme_id,
         rejection_reason=rejection_data.rejection_reason,
         current_user=current_user,
+        request=request,
     )
 
 

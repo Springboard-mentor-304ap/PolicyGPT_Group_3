@@ -1,9 +1,10 @@
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
 
+from backend.app.audit.service import client_ip, log_action
 from backend.app.auth.dependencies import get_current_user
 from backend.app.auth.schemas import (
     RoleRequestSubmit,
@@ -15,11 +16,94 @@ from backend.app.db.database import get_db
 from backend.app.models.user import User, UserRole
 from backend.app.models.role_request import RoleRequest, RequestedRole, RequestStatus
 from backend.app.models.government_official_profile import GovernmentOfficialProfile
+from backend.app.models.notification import NotificationType
+from backend.app.notifications.service import queue_notifications
 
 router = APIRouter(
     prefix="/role-requests",
     tags=["Role Requests"],
 )
+
+# Audit log actions recorded for the role-request module.
+AUDIT_ROLE_REQUEST_SUBMIT = "role_request.submit"
+AUDIT_ROLE_REQUEST_APPROVE = "role_request.approve"
+AUDIT_ROLE_REQUEST_REJECT = "role_request.reject"
+
+# Who reviews which requests (mirrors the approve/reject authorization):
+# administrators handle organization and government_official requests, and
+# super administrators handle administrator requests.
+ADMIN_MANAGED_ROLES = frozenset(
+    {RequestedRole.ORGANIZATION, RequestedRole.GOVERNMENT_OFFICIAL}
+)
+SUPER_ADMIN_MANAGED_ROLES = frozenset({RequestedRole.ADMINISTRATOR})
+
+
+def _notify_pending_request(
+    db: Session,
+    requester_id,
+    requested_role: str,
+    current_user: User,
+) -> None:
+    """Queue ROLE_REQUEST_UPDATE to the admins that review this role.
+
+    One query resolves the recipients and the rows are staged in the caller's
+    open transaction, so there is no query per administrator. The requester
+    is never notified about their own submission.
+    """
+
+    if requested_role in {r.value for r in ADMIN_MANAGED_ROLES}:
+        reviewer_roles = (UserRole.ADMINISTRATOR,)
+    elif requested_role in {r.value for r in SUPER_ADMIN_MANAGED_ROLES}:
+        reviewer_roles = (UserRole.SUPER_ADMIN,)
+    else:
+        # Researchers are auto-approved and need no review, so there is
+        # nobody to notify.
+        return
+
+    recipients = (
+        db.query(User.id)
+        .filter(
+            User.is_active.is_(True),
+            User.role.in_(reviewer_roles),
+            User.id.notin_([requester_id, current_user.id]),
+        )
+        .all()
+    )
+
+    if not recipients:
+        return
+
+    queue_notifications(
+        db=db,
+        user_ids=[row[0] for row in recipients],
+        notification_type=NotificationType.ROLE_REQUEST_UPDATE,
+        title="Role Request Submitted",
+        message=f"A new {requested_role} role request is waiting for review.",
+        related_entity_type="role_request",
+    )
+
+
+def _notify_requester(
+    db: Session,
+    requester_id,
+    requested_role: str,
+    title: str,
+    message: str,
+    current_user: User,
+) -> None:
+    """Queue one ROLE_REQUEST_UPDATE to the requester, never the actor."""
+
+    if requester_id == current_user.id:
+        return
+
+    queue_notifications(
+        db=db,
+        user_ids=[requester_id],
+        notification_type=NotificationType.ROLE_REQUEST_UPDATE,
+        title=title,
+        message=message,
+        related_entity_type="role_request",
+    )
 
 
 # Required fields for each role (all other fields are optional)
@@ -83,6 +167,7 @@ def _validate_role_details(requested_role: str, details: dict) -> None:
 )
 def submit_role_request(
     data: RoleRequestSubmit,
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -135,11 +220,47 @@ def submit_role_request(
     )
 
     db.add(role_request)
+    # Flush inside the same transaction so the server-generated id exists for
+    # the audit row and notifications below; nothing is committed yet.
+    db.flush()
 
     # If auto-approved, update the user's role immediately
     if initial_status == RequestStatus.APPROVED:
         current_user.role = UserRole(data.requested_role)
         role_request.reviewed_at = datetime.now(timezone.utc)
+
+        # Audit the auto-approval role change. Researchers are not notified
+        # about their own auto-approval (item 3: skip that notification).
+        log_action(
+            db=db,
+            actor_id=current_user.id,
+            action=AUDIT_ROLE_REQUEST_SUBMIT,
+            target_table="role_requests",
+            target_id=role_request.id,
+            changes={
+                "status": {"new": initial_status.value},
+                "role": {
+                    "old": UserRole.CITIZEN.value,
+                    "new": data.requested_role,
+                },
+            },
+            ip_address=client_ip(request),
+        )
+    else:
+        # Non-researcher: alert the admins that review this role.
+        _notify_pending_request(
+            db, current_user.id, data.requested_role, current_user
+        )
+
+        log_action(
+            db=db,
+            actor_id=current_user.id,
+            action=AUDIT_ROLE_REQUEST_SUBMIT,
+            target_table="role_requests",
+            target_id=role_request.id,
+            changes={"status": {"new": initial_status.value}},
+            ip_address=client_ip(request),
+        )
 
     db.commit()
     db.refresh(role_request)
@@ -256,6 +377,7 @@ def list_pending_requests(
 )
 def approve_request(
     request_id: str,
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -311,6 +433,8 @@ def approve_request(
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
+    previous_role = user.role
+
     user.role = UserRole(requested_role)
 
     if requested_role == UserRole.GOVERNMENT_OFFICIAL.value:
@@ -331,6 +455,31 @@ def approve_request(
     role_request.reviewer_id = current_user.id
     role_request.reviewed_at = datetime.now(timezone.utc)
 
+    _notify_requester(
+        db,
+        role_request.user_id,
+        requested_role,
+        title="Role Request Approved",
+        message=f"Your request to become a {requested_role} has been approved.",
+        current_user=current_user,
+    )
+
+    log_action(
+        db=db,
+        actor_id=current_user.id,
+        action=AUDIT_ROLE_REQUEST_APPROVE,
+        target_table="role_requests",
+        target_id=role_request.id,
+        changes={
+            "status": {
+                "old": RequestStatus.PENDING.value,
+                "new": RequestStatus.APPROVED.value,
+            },
+            "role": {"old": previous_role.value, "new": requested_role},
+        },
+        ip_address=client_ip(request),
+    )
+
     db.commit()
     return {"message": f"Request approved. User is now a {requested_role}."}
 
@@ -344,6 +493,7 @@ def approve_request(
 def reject_request(
     request_id: str,
     review_data: RoleRequestReview,
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -397,6 +547,35 @@ def reject_request(
     role_request.reviewer_id = current_user.id
     role_request.reviewed_at = datetime.now(timezone.utc)
     role_request.review_reason = review_data.review_reason
+
+    rejection_message = f"Your request to become a {requested_role} was rejected."
+
+    if review_data.review_reason:
+        rejection_message += f"\nReason: {review_data.review_reason}"
+
+    _notify_requester(
+        db,
+        role_request.user_id,
+        requested_role,
+        title="Role Request Rejected",
+        message=rejection_message,
+        current_user=current_user,
+    )
+
+    log_action(
+        db=db,
+        actor_id=current_user.id,
+        action=AUDIT_ROLE_REQUEST_REJECT,
+        target_table="role_requests",
+        target_id=role_request.id,
+        changes={
+            "status": {
+                "old": RequestStatus.PENDING.value,
+                "new": RequestStatus.REJECTED.value,
+            },
+        },
+        ip_address=client_ip(request),
+    )
 
     db.commit()
     return {"message": "Request rejected"}

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
@@ -20,6 +20,19 @@ class ApplicationResponse(BaseModel):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+class MyApplicationResponse(ApplicationResponse):
+    """An entry in the applicant's own list, enriched by a scheme join.
+
+    All three extra fields are optional: they are null when the joined scheme
+    row is missing, and every other application endpoint keeps its original
+    payload.
+    """
+
+    scheme_title: str | None = None
+    scheme_department: str | None = None
+    scheme_deadline_date: date | None = None
+
 
 class ApplicationStatusUpdate(BaseModel):
     status: ApplicationStatus

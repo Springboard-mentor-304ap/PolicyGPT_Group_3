@@ -267,7 +267,8 @@ def test_active_scheme_is_automatically_indexed(db_session, admin_user):
     assert chunk is not None
     assert chunk.title == "National Merit Scholarship"
     assert "Tuition fee waiver" in chunk.content
-    assert "Age must be less than or equal to 25" in chunk.content
+    # Rules are rendered with the shared human-readable formatter.
+    assert "Age: 25 or below" in chunk.content
 
 
 # 5. An inactive/ineligible scheme is not indexed.
@@ -406,7 +407,7 @@ def test_editing_indexed_scheme_refreshes_content(db_session, admin_user):
         .all()
     )
     assert len(chunks) == 1
-    assert "Income must be less than or equal to 300000" in chunks[0].content
+    assert "Income: 300000 or below" in chunks[0].content
 
 
 # 8. Changing an eligible record to an ineligible status removes its chunks.

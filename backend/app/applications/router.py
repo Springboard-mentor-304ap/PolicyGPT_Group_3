@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Request, Response, status
 from sqlalchemy.orm import Session
 
 from backend.app.applications.schemas import (
@@ -8,6 +8,7 @@ from backend.app.applications.schemas import (
     ApplicationResponse,
     ApplicationReviewResponse,
     ApplicationStatusUpdate,
+    MyApplicationResponse,
 )
 from backend.app.applications.service import (
     create_application,
@@ -21,6 +22,7 @@ from backend.app.db.database import get_db
 from backend.app.models.application import ApplicationStatus
 from backend.app.models.user import User
 from backend.app.auth.dependencies import get_current_user
+from backend.app.pagination import DEFAULT_LIMIT
 
 
 router = APIRouter(
@@ -48,16 +50,25 @@ def submit_application(
 
 @router.get(
     "",
-    response_model=list[ApplicationResponse],
+    response_model=list[MyApplicationResponse],
 )
 def get_my_applications(
+    response: Response,
+    limit: int = Query(default=DEFAULT_LIMIT, ge=1),
+    offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return list_my_applications(
+    rows, total = list_my_applications(
         db=db,
         current_user=current_user,
+        limit=limit,
+        offset=offset,
     )
+
+    response.headers["X-Total-Count"] = str(total)
+
+    return rows
 
 
 # Staff review list — must be registered before "/{application_id}" so the
@@ -67,15 +78,24 @@ def get_my_applications(
     response_model=list[ApplicationReviewResponse],
 )
 def review_applications(
+    response: Response,
     application_status: ApplicationStatus | None = Query(default=None, alias="status"),
+    limit: int = Query(default=DEFAULT_LIMIT, ge=1),
+    offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return list_applications_for_review(
+    rows, total = list_applications_for_review(
         db=db,
         status_filter=application_status,
         current_user=current_user,
+        limit=limit,
+        offset=offset,
     )
+
+    response.headers["X-Total-Count"] = str(total)
+
+    return rows
 
 
 @router.get(
@@ -101,6 +121,7 @@ def get_application_details(
 def change_application_status(
     application_id: UUID,
     data: ApplicationStatusUpdate,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -110,6 +131,7 @@ def change_application_status(
         new_status=data.status,
         remarks=data.remarks,
         current_user=current_user,
+        request=request,
     )
 
 
@@ -119,6 +141,7 @@ def change_application_status(
 )
 def withdraw_application_route(
     application_id: UUID,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -126,4 +149,5 @@ def withdraw_application_route(
         db=db,
         application_id=application_id,
         current_user=current_user,
+        request=request,
     )

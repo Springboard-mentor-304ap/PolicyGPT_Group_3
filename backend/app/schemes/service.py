@@ -1,12 +1,14 @@
 import logging
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from decimal import Decimal, InvalidOperation
 from uuid import UUID
 
-from fastapi import HTTPException, status
-from sqlalchemy import or_, select
+from fastapi import HTTPException, Request, status
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
+from backend.app.audit.service import client_ip, log_action
+from backend.app.pagination import DEFAULT_LIMIT, clamp_limit
 from backend.app.models.eligibility_rule import (
     EligibilityOperator,
     EligibilityParameter,
@@ -17,15 +19,25 @@ from backend.app.models.policy import Policy, PolicyStatus
 from backend.app.models.scheme import Scheme, SchemeStatus
 from backend.app.models.user import User, UserRole
 from backend.app.models.user_profile import Gender, SocialCategory
-from backend.app.notifications.service import send_notification
+from backend.app.notifications.service import queue_notifications, send_notification
 from backend.app.schemes.schemas import SchemeCreate, SchemeUpdate
 # Reuses the existing department-scope rule (profile department, 403 when the
 # profile is missing) the analytics, reports and applications modules already
 # apply to government officials.
 from backend.app.ai.sync_service import schedule_scheme_sync
 from backend.app.analytics.service import _get_official_ministry
+# One canonical scope rule (case-insensitive, trimmed, ministry first with
+# department fallback) shared with policies, applications, search, analytics
+# and reports — see backend/app/scope.py.
+from backend.app.scope import scheme_in_scope, scheme_scope_filter
 
 logger = logging.getLogger(__name__)
+
+# Audit log actions recorded for the schemes module.
+AUDIT_SCHEME_APPROVE = "scheme.approve"
+AUDIT_SCHEME_REJECT = "scheme.reject"
+AUDIT_SCHEME_ARCHIVE = "scheme.archive"
+AUDIT_SCHEME_UNARCHIVE = "scheme.unarchive"
 
 # Audience for SCHEME_UPDATE alerts: the same roles that receive NEW_POLICY
 # alerts when a policy is approved, so citizens/researchers/organizations are
@@ -50,15 +62,87 @@ SOCIAL_CATEGORY_RULE_VALUES = {
     category.value for category in SocialCategory
 }
 
+# ─── Operator / parameter compatibility ──────────────────────────────────
+# Ordering comparisons are only meaningful for numeric parameters and list
+# membership only for values drawn from a set. Enforced at rule create and
+# update so an incompatible pair is a 400 instead of a rule that can never
+# evaluate correctly.
+
+CATEGORICAL_RULE_OPERATORS = frozenset(
+    {
+        EligibilityOperator.EQ,
+        EligibilityOperator.NEQ,
+        EligibilityOperator.IN,
+        EligibilityOperator.NOT_IN,
+    }
+)
+
+# Every comparison operator, plus "in" for a list of exact numeric values
+# (compared numerically). "not_in" is deliberately not offered for the
+# numeric parameters.
+NUMERIC_RULE_OPERATORS = frozenset(
+    {
+        EligibilityOperator.EQ,
+        EligibilityOperator.NEQ,
+        EligibilityOperator.LT,
+        EligibilityOperator.LTE,
+        EligibilityOperator.GT,
+        EligibilityOperator.GTE,
+        EligibilityOperator.IN,
+    }
+)
+
+PARAMETER_OPERATOR_COMPATIBILITY: dict[
+    EligibilityParameter, frozenset[EligibilityOperator]
+] = {
+    EligibilityParameter.AGE: NUMERIC_RULE_OPERATORS,
+    EligibilityParameter.INCOME: NUMERIC_RULE_OPERATORS,
+    EligibilityParameter.GENDER: CATEGORICAL_RULE_OPERATORS,
+    EligibilityParameter.OCCUPATION: CATEGORICAL_RULE_OPERATORS,
+    EligibilityParameter.EDUCATION: CATEGORICAL_RULE_OPERATORS,
+    EligibilityParameter.STATE: CATEGORICAL_RULE_OPERATORS,
+    EligibilityParameter.DISTRICT: CATEGORICAL_RULE_OPERATORS,
+    EligibilityParameter.SOCIAL_CATEGORY: CATEGORICAL_RULE_OPERATORS,
+    EligibilityParameter.DISABILITY_STATUS: frozenset(
+        {EligibilityOperator.EQ, EligibilityOperator.NEQ}
+    ),
+}
+
+
+def _validate_rule_operator(
+    parameter: EligibilityParameter,
+    operator: EligibilityOperator,
+) -> None:
+    """Reject an operator that does not suit its parameter with a 400."""
+    allowed = PARAMETER_OPERATOR_COMPATIBILITY.get(parameter)
+
+    if allowed is None or operator not in allowed:
+        allowed_text = (
+            ", ".join(sorted(op.value for op in allowed))
+            if allowed
+            else "none"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                f"Operator '{operator.value}' is not valid for parameter "
+                f"'{parameter.value}'; allowed operators: {allowed_text}"
+            ),
+        )
+
 
 def _validate_rule_value(
     parameter: EligibilityParameter,
     value: str,
+    operator: EligibilityOperator,
 ) -> str:
-    """Validate a rule value against its parameter, returning it stripped.
+    """Validate a rule value against its parameter and operator.
 
     Raises 400 with a client-safe message instead of storing a value that
     would raise when the eligibility rules are evaluated later.
+
+    For IN/NOT_IN the value is a comma-separated list: no entry may be empty
+    and every entry must be a valid value for the parameter.
     """
     cleaned = value.strip()
 
@@ -68,6 +152,32 @@ def _validate_rule_value(
             detail=f"Rule value is required for {parameter.value}",
         )
 
+    if operator in (EligibilityOperator.IN, EligibilityOperator.NOT_IN):
+        parts = [part.strip() for part in cleaned.split(",")]
+
+        if any(not part for part in parts):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    f"{parameter.value} rule value must be a "
+                    "comma-separated list without empty entries"
+                ),
+            )
+
+        for part in parts:
+            _validate_single_rule_value(parameter, part)
+
+        return cleaned
+
+    _validate_single_rule_value(parameter, cleaned)
+
+    return cleaned
+
+
+def _validate_single_rule_value(
+    parameter: EligibilityParameter,
+    cleaned: str,
+) -> None:
     if parameter == EligibilityParameter.AGE:
         try:
             age = int(cleaned)
@@ -124,8 +234,6 @@ def _validate_rule_value(
                 ),
             )
 
-    return cleaned
-
 
 def _require_government_official(current_user: User) -> None:
     if current_user.role != UserRole.GOVERNMENT_OFFICIAL:
@@ -139,15 +247,11 @@ def scheme_scope_criteria(scope: str):
     """Query criteria that keep a scheme inside an official's scope.
 
     A scheme belongs to the official's department when it carries that
-    department itself, or when it sits under a policy of that ministry. This
-    mirrors the scope rule the application-review module already applies.
+    department itself, or when it sits under a policy of that ministry — the
+    canonical rule from backend/app/scope.py, now case-insensitive and
+    trimmed so list and detail can no longer disagree.
     """
-    return or_(
-        Scheme.department == scope,
-        Scheme.policy_id.in_(
-            select(Policy.id).where(Policy.ministry == scope)
-        ),
-    )
+    return scheme_scope_filter(scope)
 
 
 def _scheme_is_in_scope(db: Session, scheme: Scheme, scope: str) -> bool:
@@ -219,12 +323,7 @@ def _enforce_scope(
     an official can never place (or push) a scheme outside their scope through
     the API.
     """
-    if policy.ministry == scope:
-        return
-
-    submitted = (scheme_department or "").strip()
-
-    if submitted and submitted.casefold() == scope.strip().casefold():
+    if scheme_in_scope(scheme_department, policy.ministry, scope):
         return
 
     raise HTTPException(
@@ -240,6 +339,7 @@ def create_scheme(
     db: Session,
     scheme_data: SchemeCreate,
     current_user: User,
+    request: Request | None = None,
 ) -> Scheme:
     _require_government_official(current_user)
 
@@ -291,6 +391,15 @@ def create_scheme(
     )
 
     db.add(scheme)
+    # Flush inside the same transaction so the server-generated id exists for
+    # the notification below; nothing is committed until db.commit().
+    db.flush()
+
+    # Queued in the same transaction as the insert: the creator's "pending
+    # approval" alert is published together with the scheme itself, and no
+    # alert survives a failed commit.
+    _notify_scheme_awaiting_approval(db, scheme, current_user)
+
     db.commit()
     db.refresh(scheme)
 
@@ -323,6 +432,36 @@ def get_scheme(
     return scheme
 
 
+def _count_scheme_view(
+    db: Session,
+    scheme: Scheme,
+    current_user: User,
+) -> None:
+    """Bump `view_count` for a visit that is actually counted.
+
+    The increment happens in SQL (``view_count = view_count + 1``) so
+    concurrent readers cannot lose an update. Views by the scheme's creator
+    and by administrators are ignored, and callers only reach this after the
+    visibility check, so requests that end in 403/404 never count.
+    """
+    if current_user.role in (UserRole.ADMINISTRATOR, UserRole.SUPER_ADMIN):
+        return
+
+    if scheme.created_by == current_user.id:
+        return
+
+    (
+        db.query(Scheme)
+        .filter(Scheme.id == scheme.id)
+        .update(
+            {Scheme.view_count: Scheme.view_count + 1},
+            synchronize_session=False,
+        )
+    )
+    db.commit()
+    db.refresh(scheme)
+
+
 def get_scheme_details(
     db: Session,
     scheme_id: UUID,
@@ -335,8 +474,20 @@ def get_scheme_details(
     """
     scheme = get_scheme(db, scheme_id)
     _assert_scheme_is_visible(db, scheme, current_user)
+    _count_scheme_view(db, scheme, current_user)
 
     return scheme
+
+
+# Roles that use the public discovery surface: for them a scheme whose
+# deadline has passed is hidden unless include_expired is asked for. Staff
+# (officials, administrators) manage and review those schemes, so they are
+# never filtered.
+PUBLIC_SCHEME_ROLES = frozenset({
+    UserRole.CITIZEN,
+    UserRole.RESEARCHER,
+    UserRole.ORGANIZATION,
+})
 
 
 def list_schemes(
@@ -344,7 +495,15 @@ def list_schemes(
     current_user: User,
     include_archived: bool = False,
     by_me: bool = False,
-) -> list[Scheme]:
+    include_expired: bool = False,
+    limit: int = DEFAULT_LIMIT,
+    offset: int = 0,
+) -> tuple[list[Scheme], int]:
+    """Schemes the caller may see, newest first, paged.
+
+    Returns ``(rows, total)`` — `total` counts every matching row before
+    LIMIT/OFFSET, for the X-Total-Count header.
+    """
     query = db.query(Scheme)
 
     if current_user.role in (UserRole.ADMINISTRATOR, UserRole.SUPER_ADMIN):
@@ -371,9 +530,28 @@ def list_schemes(
         # Citizens, researchers, organizations: ACTIVE only
         query = query.filter(Scheme.status == SchemeStatus.ACTIVE)
 
-    return query.order_by(
-        Scheme.created_at.desc()
-    ).all()
+    # Expired schemes (deadline set and already past) are hidden from the
+    # public listing by default but stay reachable with include_expired=true.
+    # The status column is never touched: a scheme stays ACTIVE in the
+    # database, its window is simply over.
+    if not include_expired and current_user.role in PUBLIC_SCHEME_ROLES:
+        query = query.filter(
+            or_(
+                Scheme.deadline_date.is_(None),
+                Scheme.deadline_date >= date.today(),
+            )
+        )
+
+    total = query.count()
+
+    rows = (
+        query.order_by(Scheme.created_at.desc())
+        .offset(offset)
+        .limit(clamp_limit(limit))
+        .all()
+    )
+
+    return rows, total
 
 
 def _notify_scheme_published(
@@ -382,14 +560,6 @@ def _notify_scheme_published(
     current_user: User,
 ) -> None:
     """Queue SCHEME_UPDATE notifications when a scheme becomes ACTIVE.
-
-    Only approved schemes are public. Edits happen on draft, rejected or
-    archived schemes, which citizens cannot see, so notifying on an edit
-    would alert people about schemes that do not exist for them. The alert is
-    sent on approval instead — the moment the scheme becomes available.
-
-    The notifications are added to the same session as the status change, so
-    a failed commit leaves neither the approval nor the notifications behind.
     """
     recipients = (
         db.query(User)
@@ -414,6 +584,90 @@ def _notify_scheme_published(
             related_entity_type="scheme",
             related_entity_id=scheme.id,
         )
+
+
+def _notify_scheme_awaiting_approval(
+    db: Session,
+    scheme: Scheme,
+    current_user: User,
+) -> None:
+    """Queue APPROVAL_PENDING to the administrators when a scheme is created.
+
+    Recipients come from one query and the rows are staged in the caller's
+    open transaction, so the alert costs no query per administrator and is
+    published together with the scheme. The creating official is excluded.
+    """
+
+    recipients = (
+        db.query(User.id)
+        .filter(
+            User.is_active.is_(True),
+            User.role == UserRole.ADMINISTRATOR,
+            User.id != current_user.id,
+        )
+        .all()
+    )
+
+    if not recipients:
+        return
+
+    queue_notifications(
+        db=db,
+        user_ids=[row[0] for row in recipients],
+        notification_type=NotificationType.APPROVAL_PENDING,
+        title="Scheme Awaiting Approval",
+        message=(
+            f'The scheme "{scheme.title}" has been submitted and is '
+            "waiting for approval."
+        ),
+        related_entity_type="scheme",
+        related_entity_id=scheme.id,
+    )
+
+
+def _notify_scheme_creator_approved(
+    db: Session,
+    scheme: Scheme,
+    current_user: User,
+) -> None:
+    """Queue SCHEME_APPROVED to the scheme's creator. Skips self-approval."""
+
+    if not scheme.created_by or scheme.created_by == current_user.id:
+        return
+
+    queue_notifications(
+        db=db,
+        user_ids=[scheme.created_by],
+        notification_type=NotificationType.SCHEME_APPROVED,
+        title="Scheme Approved",
+        message=f'Your scheme "{scheme.title}" has been approved and is now live.',
+        related_entity_type="scheme",
+        related_entity_id=scheme.id,
+    )
+
+
+def _notify_scheme_creator_rejected(
+    db: Session,
+    scheme: Scheme,
+    current_user: User,
+) -> None:
+    """Queue SCHEME_REJECTED to the creator, carrying the stated reason."""
+
+    if not scheme.created_by or scheme.created_by == current_user.id:
+        return
+
+    queue_notifications(
+        db=db,
+        user_ids=[scheme.created_by],
+        notification_type=NotificationType.SCHEME_REJECTED,
+        title="Scheme Rejected",
+        message=(
+            f'Your scheme "{scheme.title}" was rejected.\n'
+            f"Reason: {scheme.rejection_reason}"
+        ),
+        related_entity_type="scheme",
+        related_entity_id=scheme.id,
+    )
 
 
 def update_scheme(
@@ -512,6 +766,7 @@ def archive_scheme(
     db: Session,
     scheme_id: UUID,
     current_user: User,
+    request: Request | None = None,
 ) -> Scheme:
     _require_government_official(current_user)
 
@@ -532,8 +787,20 @@ def archive_scheme(
             detail="Scheme is already archived",
         )
 
+    old_status = scheme.status
+
     scheme.status = SchemeStatus.ARCHIVED
-    scheme.archived_at = datetime.utcnow()
+    scheme.archived_at = datetime.now(timezone.utc)
+
+    log_action(
+        db=db,
+        actor_id=current_user.id,
+        action=AUDIT_SCHEME_ARCHIVE,
+        target_table="schemes",
+        target_id=scheme.id,
+        changes={"status": {"old": old_status.value, "new": SchemeStatus.ARCHIVED.value}},
+        ip_address=client_ip(request),
+    )
 
     db.commit()
     db.refresh(scheme)
@@ -556,6 +823,7 @@ def unarchive_scheme(
     db: Session,
     scheme_id: UUID,
     current_user: User,
+    request: Request | None = None,
 ) -> Scheme:
     _require_government_official(current_user)
 
@@ -578,6 +846,18 @@ def unarchive_scheme(
     scheme.approved_by = None
     scheme.rejection_reason = None
 
+    log_action(
+        db=db,
+        actor_id=current_user.id,
+        action=AUDIT_SCHEME_UNARCHIVE,
+        target_table="schemes",
+        target_id=scheme.id,
+        changes={
+            "status": {"old": SchemeStatus.ARCHIVED.value, "new": SchemeStatus.PENDING_APPROVAL.value}
+        },
+        ip_address=client_ip(request),
+    )
+
     db.commit()
     db.refresh(scheme)
 
@@ -599,6 +879,7 @@ def approve_scheme(
     db: Session,
     scheme_id: UUID,
     current_user: User,
+    request: Request | None = None,
 ) -> Scheme:
     if current_user.role != UserRole.ADMINISTRATOR:
         raise HTTPException(
@@ -618,7 +899,21 @@ def approve_scheme(
     scheme.approved_by = current_user.id
     scheme.rejection_reason = None
 
+    # Existing public "Scheme Published" alert, unchanged.
     _notify_scheme_published(db, scheme, current_user)
+    _notify_scheme_creator_approved(db, scheme, current_user)
+
+    log_action(
+        db=db,
+        actor_id=current_user.id,
+        action=AUDIT_SCHEME_APPROVE,
+        target_table="schemes",
+        target_id=scheme.id,
+        changes={
+            "status": {"old": SchemeStatus.PENDING_APPROVAL.value, "new": SchemeStatus.ACTIVE.value}
+        },
+        ip_address=client_ip(request),
+    )
 
     db.commit()
     db.refresh(scheme)
@@ -642,6 +937,7 @@ def reject_scheme(
     scheme_id: UUID,
     rejection_reason: str,
     current_user: User,
+    request: Request | None = None,
 ) -> Scheme:
     if current_user.role != UserRole.ADMINISTRATOR:
         raise HTTPException(
@@ -666,6 +962,20 @@ def reject_scheme(
     scheme.status = SchemeStatus.REJECTED
     scheme.rejection_reason = rejection_reason
     scheme.approved_by = None
+
+    _notify_scheme_creator_rejected(db, scheme, current_user)
+
+    log_action(
+        db=db,
+        actor_id=current_user.id,
+        action=AUDIT_SCHEME_REJECT,
+        target_table="schemes",
+        target_id=scheme.id,
+        changes={
+            "status": {"old": SchemeStatus.PENDING_APPROVAL.value, "new": SchemeStatus.REJECTED.value}
+        },
+        ip_address=client_ip(request),
+    )
 
     db.commit()
     db.refresh(scheme)
@@ -717,7 +1027,8 @@ def create_eligibility_rule(
             detail="Cannot add rules to an active or pending approval scheme",
         )
 
-    value = _validate_rule_value(parameter, value)
+    _validate_rule_operator(parameter, operator)
+    value = _validate_rule_value(parameter, value, operator)
 
     rule = EligibilityRule(
         scheme_id=scheme_id,
@@ -798,25 +1109,30 @@ def update_eligibility_rule(
             detail="Cannot update rules of an active or pending approval scheme",
         )
 
-    # The value is validated against the parameter it will end up with: the
-    # one being changed to, or the existing one when only the value changes.
-    # A parameter change also has to keep the stored value valid.
-    if value is not None:
+    # Validate the state the rule will end up in: the fields being changed
+    # plus the stored ones. The (parameter, operator) pair must be
+    # compatible and the value must be valid for that pair — so changing
+    # only the operator of an "in" rule to "eq" while the stored value is
+    # still a list is rejected instead of silently stored.
+    if parameter is not None or operator is not None or value is not None:
         effective_parameter = (
             parameter if parameter is not None else rule.parameter
         )
-        value = _validate_rule_value(effective_parameter, value)
-    elif parameter is not None:
-        rule.value = _validate_rule_value(parameter, rule.value)
+        effective_operator = (
+            operator if operator is not None else rule.operator
+        )
+        effective_value = value if value is not None else rule.value
 
-    if parameter is not None:
-        rule.parameter = parameter
+        _validate_rule_operator(effective_parameter, effective_operator)
+        effective_value = _validate_rule_value(
+            effective_parameter,
+            effective_value,
+            effective_operator,
+        )
 
-    if operator is not None:
-        rule.operator = operator
-
-    if value is not None:
-        rule.value = value
+        rule.parameter = effective_parameter
+        rule.operator = effective_operator
+        rule.value = effective_value
 
     db.commit()
     db.refresh(rule)

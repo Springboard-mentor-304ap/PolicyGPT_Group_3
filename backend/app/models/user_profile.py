@@ -2,7 +2,6 @@ from datetime import date, datetime
 from enum import Enum
 from decimal import Decimal
 
-import sqlalchemy as sa
 from sqlalchemy import Boolean, Date, DateTime, Enum as SQLEnum, Numeric, String, ForeignKey, Index, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -66,10 +65,12 @@ class UserProfile(Base):
         SQLEnum(SocialCategory, name="social_category")
     )
 
-    disability_status: Mapped[bool] = mapped_column(
+    # NULL = the question was never answered (missing information). Only an
+    # explicit True/False is a real answer, and new rows default to NULL so
+    # an untouched profile is not silently recorded as "no disability".
+    disability_status: Mapped[bool | None] = mapped_column(
         Boolean,
-        nullable=False,
-        server_default=sa.false()
+        nullable=True,
     )
 
     education: Mapped[str | None] = mapped_column(String(100))
