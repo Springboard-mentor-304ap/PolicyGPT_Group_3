@@ -1,21 +1,34 @@
 import secrets
-from fastapi import APIRouter, Depends, HTTPException, status
+import uuid
+
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from jose import JWTError, jwt
 
+from backend.app.auth.account_emails import send_password_changed_email
 from backend.app.auth.dependencies import get_current_user
+from backend.app.auth.refresh_tokens import (
+    decode_refresh_token,
+    find_refresh_token,
+    issue_refresh_token,
+    revoke_refresh_token,
+    revoke_refresh_token_by_value,
+    revoke_user_refresh_tokens,
+)
 from backend.app.auth.schemas import (
     ChangePasswordRequest,
     ForgetPasswordRequest,
+    LogoutRequest,
+    ProfileUpdateRequest,
+    RefreshRequest,
     ResetPasswordRequest,
     LoginRequest,
     RegisterRequest,
     TokenResponse,
     VerifyEmailRequest,
     ResendVerificationRequest,
-    UserResponse,
     UserDetailsResponse,
     RegistrationResponse
 )
@@ -23,7 +36,6 @@ from backend.app.auth.security import (
     ALGORITHM,
     SECRET_KEY,
     create_access_token,
-    create_refresh_token,
     hash_password,
     verify_password,
 )
@@ -313,10 +325,10 @@ def login(
         "role": user.role.value,
     })
 
-    refresh_token = create_refresh_token({
-        "sub": str(user.id),
-        "role": user.role.value,
-    })
+    # The refresh token is recorded (hashed) before it is handed out, so
+    # every session is individually revocable and can be rotated.
+    refresh_token = issue_refresh_token(db, user)
+    db.commit()
 
     return {
         "access_token": access_token,
@@ -332,37 +344,38 @@ def login(
     response_model=TokenResponse,
 )
 def refresh_token(
-    refresh_token: str,
+    data: RefreshRequest,
     db: Session = Depends(get_db),
 ):
-    try:
-        payload = jwt.decode(
-            refresh_token,
-            SECRET_KEY,
-            algorithms=[ALGORITHM],
-        )
+    """Rotate the caller's refresh token and return a fresh pair.
 
-        user_id = payload.get("sub")
-        token_type = payload.get("type")
+    The token travels in the request body — query strings leak into access
+    logs and proxies. Each call revokes the presented row and issues a new
+    one; presenting a row that is already revoked means the token was
+    replayed, so every live token of that user is revoked as well.
+    """
+    payload = decode_refresh_token(data.refresh_token)
 
-        if not user_id or token_type != "refresh":
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid refresh token",
-            )
-
-    except JWTError:
+    if payload is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired refresh token",
         )
 
-    user = db.get(User, user_id)
+    row = find_refresh_token(db, payload["jti"])
+
+    if row is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired refresh token",
+        )
+
+    user = db.get(User, row.user_id)
 
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found",
+            detail="Invalid or expired refresh token",
         )
 
     if not user.is_active:
@@ -371,10 +384,23 @@ def refresh_token(
             detail="User account is inactive",
         )
 
+    # Expiry is part of the lookup: an expired row is simply not found, so
+    # it never reaches the rotation below.
+    if not revoke_refresh_token(db, row):
+        revoke_user_refresh_tokens(db, row.user_id)
+        db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired refresh token",
+        )
+
     access_token = create_access_token({
         "sub": str(user.id),
         "role": user.role.value,
     })
+
+    refresh_token = issue_refresh_token(db, user)
+    db.commit()
 
     return {
         "access_token": access_token,
@@ -383,11 +409,33 @@ def refresh_token(
     }
 
 
+# ─── LOGOUT ─────────────────────────────────────────────────────────────────
+
+@router.post("/logout")
+def logout(
+    data: LogoutRequest,
+    db: Session = Depends(get_db),
+):
+    """Revoke the given refresh token.
+
+    Deliberately idempotent: an unknown, expired or already-revoked token is
+    a no-op and the response never changes, so the endpoint cannot be used to
+    probe whether a token was still live. No bearer token is required — a
+    caller whose access token has already expired must still be able to log
+    out.
+    """
+    revoke_refresh_token_by_value(db, data.refresh_token)
+    db.commit()
+
+    return {"message": "Logged out"}
+
+
 # ─── CHANGE PASSWORD ────────────────────────────────────────────────────────
 
 @router.post("/change-password")
 def change_password(
     data: ChangePasswordRequest,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -402,7 +450,14 @@ def change_password(
 
     current_user.password_hash = hash_password(data.new_password)
 
+    # Every existing session dies with the old password.
+    revoke_user_refresh_tokens(db, current_user.id)
+
     db.commit()
+
+    # Best effort: the change already happened, so a mail failure must not
+    # turn a successful change into an error response.
+    background_tasks.add_task(send_password_changed_email, current_user.email)
 
     return {
         "message": "Password changed successfully",
@@ -440,6 +495,7 @@ def forget_password(
 @router.post("/reset-password")
 def reset_password(
     data: ResetPasswordRequest,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ):
     try:
@@ -465,7 +521,17 @@ def reset_password(
             detail="Invalid or expired password reset token"
         )
 
-    user = db.get(User, user_id)
+    # `sub` arrives as text; parse it so the lookup works on every backend
+    # and a non-UUID sub is rejected exactly like any other bad token.
+    try:
+        user_uuid = uuid.UUID(str(user_id))
+    except (ValueError, TypeError, AttributeError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired password reset token",
+        )
+
+    user = db.get(User, user_uuid)
 
     # The token is single-use: it is only accepted while its hashed jti is
     # stored and unexpired, and the stored value is cleared below.
@@ -478,7 +544,13 @@ def reset_password(
     user.password_hash = hash_password(data.new_password)
     clear_password_reset_token(user)
 
+    # A reset means the old password (and every session opened with it) is
+    # compromised — revoke them all.
+    revoke_user_refresh_tokens(db, user.id)
+
     db.commit()
+
+    background_tasks.add_task(send_password_changed_email, user.email)
 
     return {
         "message": "Password Reset Successfully"
@@ -494,4 +566,30 @@ def reset_password(
 def get_me(
     current_user: User = Depends(get_current_user),
 ):
+    return current_user
+
+
+@router.patch(
+    "/me",
+    response_model=UserDetailsResponse,
+)
+def update_me(
+    data: ProfileUpdateRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Update the caller's full name and/or phone — nothing else.
+
+    `exclude_unset` distinguishes a field the client did not send (leave it
+    alone) from an explicit `null` (clear the phone number).
+    """
+    updates = data.model_dump(exclude_unset=True)
+
+    for field, value in updates.items():
+        setattr(current_user, field, value)
+
+    if updates:
+        db.commit()
+        db.refresh(current_user)
+
     return current_user

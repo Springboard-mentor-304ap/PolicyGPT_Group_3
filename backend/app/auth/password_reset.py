@@ -113,11 +113,13 @@ def send_password_reset_email(email: str, token: str) -> bool:
     reset_url = _frontend_reset_url(token)
 
     # The API never returns the token, so the backend console is the local
-    # testing equivalent of opening the e-mail.
-    print(
-        f"[DEV] Password reset link for {email}: {reset_url}",
-        flush=True,
-    )
+    # testing equivalent of opening the e-mail. Suppressed in production so a
+    # reset token is never written to the log stream.
+    if os.getenv("ENVIRONMENT", "").strip().lower() != "production":
+        print(
+            f"[DEV] Password reset link for {email}: {reset_url}",
+            flush=True,
+        )
 
     subject = "Reset your PolicyGPT password"
     body = (
