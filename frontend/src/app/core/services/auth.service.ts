@@ -1,5 +1,5 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable, catchError, tap, throwError } from 'rxjs';
 import {
   ChangePasswordRequest,
@@ -172,16 +172,25 @@ export class AuthService {
     const refreshToken = this.getRefreshToken();
     if (!refreshToken) {
       this.clearTokens();
+      this.currentUser.set(null);
       return throwError(() => new Error('No refresh token available'));
     }
-    const params = new HttpParams().set('refresh_token', refreshToken);
-    return this.http.post<TokenResponse>('/api/auth/refresh', null, { params }).pipe(
-      tap((response) => this.saveTokens(response)),
-      catchError((error) => {
-        this.clearTokens();
-        return throwError(() => error);
-      })
-    );
+    // The token travels in the request BODY (query strings leak into logs)
+    // and is rotated: the response's refresh_token replaces the one we sent,
+    // and reusing the old one would revoke the whole chain. Concurrent
+    // callers coalesce into one call through the error interceptor.
+    return this.http
+      .post<TokenResponse>('/api/auth/refresh', { refresh_token: refreshToken })
+      .pipe(
+        tap((response) => this.saveTokens(response)),
+        catchError((error) => {
+          // A rejected refresh ends the session: drop the tokens and the
+          // in-memory user so the guards send the caller to login.
+          this.clearTokens();
+          this.currentUser.set(null);
+          return throwError(() => error);
+        })
+      );
   }
 
   // ─── LOGOUT ──────────────────────────────────────────────────────────────

@@ -30,6 +30,8 @@ export class LoginComponent {
   loginForm: FormGroup;
   loading = signal(false);
   errorMessage = signal<string | null>(null);
+  /** Email to prefill on /verify-email when login is blocked as unverified. */
+  verifyEmailLink = signal<string | null>(null);
 
   constructor() {
     this.loginForm = this.fb.group({
@@ -46,6 +48,7 @@ export class LoginComponent {
 
     this.loading.set(true);
     this.errorMessage.set(null);
+    this.verifyEmailLink.set(null);
 
     const email = (this.loginForm.value.email as string).trim();
     const password = this.loginForm.value.password as string;
@@ -96,7 +99,29 @@ export class LoginComponent {
   }
 
   private handleApiError(error: any): void {
+    const status = error?.status;
     const detail = error?.error?.detail;
+
+    // 403 is the backend's way of saying the credentials were right but the
+    // account is not usable yet — each case gets its own message.
+    if (status === 403 && typeof detail === 'string') {
+      if (/not verified/i.test(detail)) {
+        this.errorMessage.set(
+          'Your email address has not been verified yet. Check your inbox for the 6-digit code, or resend it from the verification page.'
+        );
+        this.verifyEmailLink.set(
+          (this.loginForm.value.email as string | null)?.trim() ?? ''
+        );
+        return;
+      }
+
+      if (/inactive|deactivat/i.test(detail)) {
+        this.errorMessage.set(
+          'Your account has been deactivated. Contact your administrator to have it reactivated.'
+        );
+        return;
+      }
+    }
 
     if (typeof detail === 'string') {
       this.errorMessage.set(detail);
