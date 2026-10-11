@@ -6,6 +6,7 @@ from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
+from sqlalchemy import text
 
 from alembic import context
 
@@ -87,6 +88,20 @@ def run_migrations_online() -> None:
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )
+
+    # knowledge_chunks stores pgvector embeddings, and CREATE EXTENSION is
+    # per-database: a brand-new database never has `vector`, even when the
+    # development one does (it is not in template1). Running it before any
+    # migration is what makes `alembic upgrade head` work on an empty
+    # database. It deliberately lives in env.py rather than inside an
+    # already-applied migration, which must never be edited.
+    #
+    # It runs on its own short transaction: leaving the migration connection
+    # already inside a transaction would stop MigrationContext from owning
+    # one, and migrations that use autocommit_block() (ALTER TYPE ... ADD
+    # VALUE) assert on exactly that.
+    with connectable.begin() as bootstrap:
+        bootstrap.exec_driver_sql("CREATE EXTENSION IF NOT EXISTS vector")
 
     with connectable.connect() as connection:
         context.configure(

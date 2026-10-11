@@ -49,4 +49,7 @@ def downgrade() -> None:
     op.drop_index('ix_applications_status', table_name='applications')
     op.drop_index('ix_applications_scheme_id', table_name='applications')
     op.drop_table('applications')
+    # Enum types outlive their table in Postgres; drop them here so a
+    # `downgrade base` + `upgrade head` round trip starts from a clean slate.
+    op.execute("DROP TYPE IF EXISTS application_status")
     # ### end Alembic commands ###

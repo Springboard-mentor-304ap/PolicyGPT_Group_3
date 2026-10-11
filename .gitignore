@@ -17,3 +17,4 @@ __pycache__/
 
 # Generated report exports
 backend/generated_reports/
+*.bundle
