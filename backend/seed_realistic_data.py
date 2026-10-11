@@ -1,29 +1,73 @@
 """
 Seed the database with realistic Indian government policies and schemes.
 Run: source .venv/bin/activate && python backend/seed_realistic_data.py
+
+The uploading / approving users are looked up by e-mail instead of being
+referenced by hardcoded UUIDs. Configure the addresses with:
+
+    SEED_GOV_OFFICIAL_EMAIL   (default: govofficial@m2test.com)
+    SEED_ADMIN_EMAIL          (default: admin@policygpt.gov)
+
+Refuses to run when ENVIRONMENT=production.
 """
 import os
 import sys
 # Ensure project root is on the path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# Guard before importing anything that touches the database or settings.
+if os.getenv("ENVIRONMENT", "").strip().lower() == "production":
+    print("ERROR: Refusing to run seed script with ENVIRONMENT=production.")
+    sys.exit(1)
+
 from datetime import date, datetime
 from backend.app.db.database import SessionLocal
 from backend.app.models.policy import Policy, PolicyCategory, PolicyStatus
 from backend.app.models.scheme import Scheme, SchemeCategory, SchemeStatus
+from backend.app.models.eligibility_rule import (
+    EligibilityRule,
+    EligibilityParameter,
+    EligibilityOperator,
+)
 from backend.app.models.user import User
 
-# Fixed UUIDs
-GOV_USER_ID = "ccdfbab9-0247-434f-9d61-f27120eaad6a"  # govofficial@m2test.com
-ADMIN_USER_ID = "39a99b6f-a8f2-4c26-976b-2f5cc4f6475e"  # admin@policygpt.gov
-
-import uuid
+GOV_OFFICIAL_EMAIL = os.getenv(
+    "SEED_GOV_OFFICIAL_EMAIL", "govofficial@m2test.com"
+).strip().lower()
+ADMIN_EMAIL = os.getenv(
+    "SEED_ADMIN_EMAIL", "admin@policygpt.gov"
+).strip().lower()
 
 
 def uid():
+    import uuid
+
     return uuid.uuid4()
 
 
 db = SessionLocal()
+
+# ── Step 0: Resolve the seeding users by e-mail ────────────────────────────
+print("Looking up seeding users by e-mail...")
+users_by_email = {
+    row.email: row.id
+    for row in db.query(User).filter(User.email.in_([GOV_OFFICIAL_EMAIL, ADMIN_EMAIL])).all()
+}
+
+missing = [e for e in (GOV_OFFICIAL_EMAIL, ADMIN_EMAIL) if e not in users_by_email]
+if missing:
+    print(
+        "ERROR: No user found for: "
+        + ", ".join(missing)
+        + ". Create these users first (e.g. with backend/app/seed_super_admin.py"
+        " and seed_admins.py) or point SEED_GOV_OFFICIAL_EMAIL / SEED_ADMIN_EMAIL"
+        " at existing accounts."
+    )
+    db.close()
+    sys.exit(1)
+
+GOV_USER_ID = users_by_email[GOV_OFFICIAL_EMAIL]
+ADMIN_USER_ID = users_by_email[ADMIN_EMAIL]
 
 # ── Step 1: Delete all existing policies and schemes ────────────────────────
 print("Deleting existing policies and schemes...")
@@ -61,7 +105,7 @@ policies_data = [
     },
     {
         "title": "Pradhan Mantri Kisan Samman Nidhi (PM-KISAN)",
-        "description": "Direct income support scheme providing ₹6,000 per year to small and marginal farmer families, paid in three equal instalments of ₹2,000. The scheme aims to supplement the financial needs of farmers for procuring various inputs related to agriculture and allied activities, as well as domestic needs. Over 11 crore farmer families have benefited since inception.",
+        "description": "Direct income support scheme providing ₹6,000 per year to small and marginal farmer families, paid in three equal instalments of ₹2,000. The scheme aims to supplement the financial needs of farmers for providing various inputs for agriculture and allied activities as well as domestic needs. Over 11 crore farmer families have benefited since inception.",
         "category": PolicyCategory.AGRICULTURE,
         "department": "Department of Agriculture & Farmers Welfare",
         "ministry": "Ministry of Agriculture & Farmers Welfare",
@@ -87,7 +131,7 @@ policies_data = [
     },
     {
         "title": "National Rural Employment Guarantee Act (MGNREGA)",
-        "description": "The world's largest public works programme guaranteeing 100 days of wage employment per year to every rural household whose adult members volunteer for unskilled manual work. The scheme focuses on water conservation, drought proofing, land development, flood control, and rural connectivity. It serves as a critical social safety net for over 6 crore households annually.",
+        "description": "The world's largest public works programme guaranteeing 100 days of wage employment per year to every rural household whose adult members volunteer for unskilled manual work. The scheme focuses on water conservation, drought proofing, land development, flood control, and rural employment. It is a critical social safety net for over 6 crore households annually.",
         "category": PolicyCategory.EMPLOYMENT,
         "department": "Ministry of Rural Development",
         "ministry": "Ministry of Rural Development",
@@ -113,7 +157,7 @@ policies_data = [
     },
     {
         "title": "National Green Hydrogen Mission",
-        "description": "A strategic initiative to position India as a global hub for green hydrogen production and export. The mission targets production capacity of 5 million metric tonnes per annum by 2030, with an outlay of ₹19,744 crore. It covers electrolyser manufacturing, green hydrogen production in identified zones, and development of infrastructure for storage, transportation, and distribution.",
+        "description": "A strategic initiative to position India as a global hub for green hydrogen production and export. The mission targets production capacity of 5 million metric tonnes per annum by 2030, with an outlay of ₹19,744 crore. It covers electrolyser manufacturing, green hydrogen production in identified zones, and development of infrastructure for storage, transport, and distribution.",
         "category": PolicyCategory.ENVIRONMENT,
         "department": "Ministry of New and Renewable Energy",
         "ministry": "Ministry of New and Renewable Energy",
@@ -139,7 +183,7 @@ policies_data = [
     },
     {
         "title": "Beti Bachao Beti Padhao",
-        "description": "A tri-ministerial programme addressing declining child sex ratio and promoting education of the girl child. The scheme operates across 640 districts with convergence of health, education, and women development interventions. It includes awareness campaigns, enforcement of PC-PNDT Act, and recognition of schools with excellent enrollment of girls.",
+        "description": "A tri-ministerial programme addressing declining child sex ratio and promoting education of the girl child. The scheme operates across 640 districts with convergence of health, education, and women development interventions. It includes awareness campaigns, enforcement of PC-PNDT Act, and support for girls with excellent enrollment of girls.",
         "category": PolicyCategory.WOMEN_CHILD_WELFARE,
         "department": "Ministry of Women and Child Development",
         "ministry": "Ministry of Women and Child Development",
@@ -152,7 +196,7 @@ policies_data = [
     },
     {
         "title": "Bharatmala Pariyojana — National Highway Development",
-        "description": "India's largest highway development programme envisaging construction of 34,800 km of national highways at an estimated cost of ₹5.35 lakh crore. The programme includes economic corridors, inter-corridor and feeder routes, national corridor efficiency improvements, border and coastal connectivity roads, and green-field expressways with advanced traffic management systems.",
+        "description": "India's largest highway development programme envisaging construction of 34,800 km of national highways at an estimated cost of ₹5.35 lakh crore. The programme includes economic corridors, inter-corridor and feeder routes, national corridor efficiency improvements, border and coastal connectivity roads, and green-field expressways.",
         "category": PolicyCategory.INFRASTRUCTURE,
         "department": "Ministry of Road Transport & Highways",
         "ministry": "Ministry of Road Transport and Highways",
@@ -165,7 +209,7 @@ policies_data = [
     },
     {
         "title": "PM eVIDYA — Unified Digital Education Platform",
-        "description": "A comprehensive initiative to digitise and deliver quality education through multiple modes — DIKSHA portal, Swayam Prabha TV channels, SWAYAM online courses, and community radio. The platform provides 200+ SWAYAM Prabha DTH channels, 340 MOOCs, and accessible content for differently-abled students in Indian Sign Language.",
+        "description": "A comprehensive initiative to digitise and deliver quality education through multiple modes — DIKSHA portal, Swayam Prabha TV channels, SWAYAM online courses, and community radio. The platform offers 200+ SWAYAM Prabha DTH channels, 340 MOOCs, and accessible content for differently-abled students in Indian Sign Language.",
         "category": PolicyCategory.EDUCATION,
         "department": "Department of Higher Education",
         "ministry": "Ministry of Education",
@@ -178,7 +222,7 @@ policies_data = [
     },
     {
         "title": "Smart Cities Mission — Urban Infrastructure Modernisation",
-        "description": "Aims to develop 100 smart cities with advanced infrastructure, sustainable environments, and technology-driven solutions. The mission focuses on area-based development including retrofitting, redevelopment, green-field development, and pan-city smart solutions. Core components include integrated command and control centres, intelligent transport systems, and smart water management.",
+        "description": "Aims to develop 100 smart cities with advanced infrastructure, sustainable environments, and technology-driven solutions. Core features include integrated command and control centres, intelligent transport systems, and technology-driven solutions. Core features include integrated command and control centres, intelligent transport systems, and water management.",
         "category": PolicyCategory.INFRASTRUCTURE,
         "department": "Ministry of Housing and Urban Affairs",
         "ministry": "Ministry of Housing and Urban Affairs",
@@ -254,11 +298,11 @@ schemes_data = [
     {
         "policy_index": 2,  # PM-KISAN
         "title": "PM-KISAN Maan Dhan Yojana",
-        "description": "Pension scheme for small and marginal farmers providing ₹3,000 per month after age 60. The government contributes an equal amount to the pension fund. Farmers aged 18-40 can enrol with a monthly contribution of ₹55 to ₹200 based on age. The scheme provides social security to farmers with no regular pension coverage.",
+        "description": "Pension scheme for small and marginal farmers providing ₹3,000 per month after age 60. The government contributes an equal amount to the pension fund. Farmers aged 18-40 can enrol with a monthly contribution of ₹55 to ₹200 based on age. The scheme provides social security without regular pension coverage.",
         "category": SchemeCategory.FARMER_WELFARE,
         "benefits": ["₹3,000 monthly pension after age 60", "Government matches farmer contribution", "50% contribution by Central Government", "Voluntary and contributory pension", "Family pension provision"],
         "required_documents": ["Aadhaar Card", "Bank Account Passbook", "Land Records (Khasra)", "Age Proof"],
-        "application_process": "Register at nearest CSC or through Maan Dhan portal. Aadhaar-linked bank account mandatory for contribution auto-debit.",
+        "application_process": "Register at nearest CSC or via the Maan Dhan portal. Aadhaar-linked bank account mandatory for contribution auto-debit.",
         "department": "Department of Agriculture & Farmers Welfare",
         "state": None,
         "status": SchemeStatus.ACTIVE,
@@ -302,11 +346,11 @@ schemes_data = [
     {
         "policy_index": 7,  # Stand-Up India
         "title": "MUDRA Yojana — Micro Units Development & Refinance",
-        "description": "Provides loans up to ₹10 lakh to non-corporate, non-farm small/micro enterprises. Three categories: Shishu (up to ₹50,000), Kishore (₹50,001 to ₹5 lakh), and Tarun (₹5,00,001 to ₹10 lakh). No collateral required. Available through banks, NBFCs, and MFIs.",
+        "description": "Provides loans up to ₹10 lakh to non-corporate, non-farm small/micro enterprises. Three categories: Shishu (up to ₹50,000), Kishore (₹50,001 to ₹5 lakh), and Tarun (₹5,00,001 to ₹10 lakh). No collateral or guarantor required. Repayment tenure up to 5 years. Available through banks, NBFCs, and MFIs.",
         "category": SchemeCategory.BUSINESS_SUPPORT,
-        "benefits": ["Loans up to ₹10 lakh without collateral", "Three categories based on business stage", "No processing fee for Shishu loans", "Repayment tenure up to 5 years", "Across 1.5 lakh lending points"],
+        "benefits": ["Loans up to ₹10 lakh without collateral", "Three categories based on business stage", "No processing fees", "Repayment tenure up to 5 years", "Across 1.5 lakh lending points"],
         "required_documents": ["Aadhaar Card", "PAN Card", "Business Plan / Project Report", "Caste Certificate (for Stand-Up India)", "Voter ID / Passport"],
-        "application_process": "Apply online at mudra.org.in or visit nearest bank branch. Shishu loans disbursed within 7 days. KYC and basic document verification.",
+        "application_process": "Apply online at mudra.org.in or visit nearest bank branch. Loans typically disbursed within 7 days. KYC and basic document verification.",
         "department": "Department of Financial Services",
         "ministry": "Ministry of Finance",
         "state": None,
@@ -319,9 +363,9 @@ schemes_data = [
     {
         "policy_index": 8,  # Beti Bachao Beti Padhao
         "title": "Sukanya Samriddhi Yojana — Girl Child Prosperity",
-        "description": "Small deposit savings scheme for girl children below 10 years offering 8.2% annual interest (highest among small savings schemes). Maximum deposit ₹1.5 lakh per year for 15 years. Maturity amount received after 21 years or at marriage after 18. Tax-free returns under Section 80C.",
+        "description": "Small deposit savings scheme for girl children below 10 years offering 8.2% annual interest (highest among small savings schemes). Maximum deposit ₹1.5 lakh per year for 15 years. Maturity amount received after 21 years or on marriage after 18. Tax-free returns under Section 80C.",
         "category": SchemeCategory.WOMEN_EMPOWERMENT,
-        "benefits": ["8.2% annual interest rate", "Tax-free maturity amount", "Deposit limit ₹1.5 lakh/year", "Partial withdrawal at 18 for education", "Maturity in 21 years"],
+        "benefits": ["8.2% annual interest rate", "Tax-free maturity amount", "Deposit limit ₹1.5 lakh/year", "Partial withdrawal after 10 years for education", "Tax benefits under 80C"],
         "required_documents": ["Girl Child Birth Certificate", "Parent/Guardian Aadhaar Card", "Address Proof", "Bank/Payment Slip"],
         "application_process": "Open account at any post office or authorised commercial bank branch. Minimum initial deposit ₹250. One account per girl child.",
         "department": "Ministry of Women and Child Development",
@@ -338,7 +382,7 @@ schemes_data = [
         "description": "Funding support for setting up green hydrogen production facilities at strategic locations. Provides capital subsidy of up to 30% of project cost for first 10 pilot projects. Targets electrolyser capacity of 500 MW by 2025 in Gujarat, Maharashtra, and Tamil Nadu industrial corridors.",
         "category": SchemeCategory.SOCIAL_SECURITY,
         "benefits": ["30% capital subsidy on project cost", "Land allocation in industrial zones", "Power purchase agreements at subsidised rates", "Technical assistance from NTPC/IOC", "Export facilitation support"],
-        "required_documents": ["Company Registration Certificate", "Environmental Clearance", "Project Feasibility Report", "Land Lease Agreement", "Financial Statements"],
+        "required_documents": ["Company Registration Certificate", "Environmental Clearance", "Project Feasibility Report", "Financial Statements", "Technical Reports"],
         "application_process": "Submit proposal to MNRE through the National Green Hydrogen Mission portal. Evaluation by expert committee based on technical feasibility and financial viability.",
         "department": "Ministry of New and Renewable Energy",
         "state": "Gujarat",
@@ -369,9 +413,9 @@ schemes_data = [
         "title": "Expressway Development Programme — Phase I",
         "description": "Construction of 26 greenfield expressways connecting major economic hubs. Includes the Delhi-Mumbai Expressway (1,350 km), Bengaluru-Chennai Expressway, and Amritsar-Jamnagar Economic Corridor. Features controlled-access highways with toll plazas, rest areas, and highway patrol.",
         "category": SchemeCategory.SOCIAL_SECURITY,
-        "benefits": ["Reduced travel time by 40%", "35,000+ jobs during construction", "Logistics cost reduction of 15%", "Improved road safety standards", "Connectivity to ports and airports"],
+        "benefits": ["Reduced travel time by 40%", "35,000+ jobs during construction", "Logistics cost reduction of 15%", "Improved road safety standards", "Freight corridor integration"],
         "required_documents": ["Land Acquisition Documents", "Environmental Clearance", "Traffic Survey Report"],
-        "application_process": "Tenders issued through NHAI portal. EPC contracts awarded through competitive bidding. Land acquisition handled by state governments.",
+        "application_process": "Tenders issued through NHAI portal. EPC contracts awarded based on technical and financial bids. Construction begins after land acquisition.",
         "department": "National Highways Authority of India",
         "state": None,
         "status": SchemeStatus.ACTIVE,
@@ -406,6 +450,82 @@ for sd in schemes_data:
     db.add(s)
     print(f"  ✓ Scheme: {s.title} ({s.status.value})")
 
+db.flush()
+
+# ── Step 4: Create eligibility rules ────────────────────────────────────────
+eligibility_rules = {
+    "PM SHRI Schools — Quality Education Initiative": [
+        (EligibilityParameter.AGE, EligibilityOperator.GTE, "6"),
+        (EligibilityParameter.EDUCATION, EligibilityOperator.EQ, "school"),
+    ],
+    "Ayushman Bharat Health Account (ABHA)": [
+        (EligibilityParameter.AGE, EligibilityOperator.GTE, "0"),
+        (EligibilityParameter.INCOME, EligibilityOperator.LTE, "800000"),
+    ],
+    "PM-KISAN Maan Dhan Yojana": [
+        (EligibilityParameter.AGE, EligibilityOperator.GTE, "18"),
+        (EligibilityParameter.AGE, EligibilityOperator.LTE, "40"),
+        (EligibilityParameter.OCCUPATION, EligibilityOperator.EQ, "farmer"),
+    ],
+    "MGNREGA Wage Employment — Current Year": [
+        (EligibilityParameter.AGE, EligibilityOperator.GTE, "18"),
+        (EligibilityParameter.OCCUPATION, EligibilityOperator.EQ, "unskilled_worker"),
+    ],
+    "PM Awas Yojana — Credit Linked Subsidy Scheme (CLSS)": [
+        (EligibilityParameter.INCOME, EligibilityOperator.LTE, "300000"),
+        (EligibilityParameter.STATE, EligibilityOperator.EQ, "Karnataka"),
+    ],
+    "MUDRA Yojana — Micro Units Development & Refinance": [
+        (EligibilityParameter.AGE, EligibilityOperator.GTE, "18"),
+        (EligibilityParameter.OCCUPATION, EligibilityOperator.EQ, "self-employed"),
+    ],
+    "Sukanya Samriddhi Yojana — Girl Child Prosperity": [
+        (EligibilityParameter.AGE, EligibilityOperator.LTE, "10"),
+        (EligibilityParameter.GENDER, EligibilityOperator.EQ, "female"),
+    ],
+    "Green Hydrogen Pilot Projects — Funding Initiative": [
+        (EligibilityParameter.STATE, EligibilityOperator.EQ, "Gujarat"),
+        (EligibilityParameter.OCCUPATION, EligibilityOperator.EQ, "business"),
+    ],
+    "DigiLocker — Digital Document Wallet": [
+        (EligibilityParameter.AGE, EligibilityOperator.GTE, "0"),
+    ],
+    "Expressway Development Programme — Phase I": [
+        (EligibilityParameter.AGE, EligibilityOperator.GTE, "18"),
+        (EligibilityParameter.EDUCATION, EligibilityOperator.EQ, "graduate"),
+    ],
+}
+
+scheme_by_title = {
+    scheme.title: scheme
+    for scheme in db.query(Scheme).all()
+}
+
+rule_count = 0
+
+for scheme_title, rules in eligibility_rules.items():
+    scheme = scheme_by_title.get(scheme_title)
+
+    if not scheme:
+        print(f"  ⚠ Scheme not found for eligibility rules: {scheme_title}")
+        continue
+
+    for parameter, operator, value in rules:
+        rule = EligibilityRule(
+            id=uid(),
+            scheme_id=scheme.id,
+            parameter=parameter,
+            operator=operator,
+            value=value,
+        )
+        db.add(rule)
+        rule_count += 1
+
+    print(f"  ✓ Eligibility rules: {scheme.title} ({len(rules)})")
 db.commit()
-print(f"\n✅ Done! Created {len(policies)} policies and {len(schemes_data)} schemes.")
+
+print(
+    f"\n✅ Done! Created {len(policies)} policies, "
+    f"{len(schemes_data)} schemes, and {rule_count} eligibility rules."
+)
 db.close()

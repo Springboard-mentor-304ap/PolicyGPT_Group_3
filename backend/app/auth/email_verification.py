@@ -11,6 +11,7 @@ plaintext code never touches the database.
 """
 
 import logging
+import os
 import secrets
 import time
 
@@ -80,7 +81,8 @@ def send_verification_code(email: str, code: str) -> bool:
     never fails the caller: the request stays successful and the failure is
     reported in the log.
     """
-    print(f"[DEV] Email verification code for {email}: {code}", flush=True)
+    if os.getenv("ENVIRONMENT", "").strip().lower() != "production":
+        print(f"[DEV] Email verification code for {email}: {code}", flush=True)
 
     subject = "Your PolicyGPT verification code"
     body = (

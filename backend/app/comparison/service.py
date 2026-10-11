@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
 
+from backend.app.eligibility.formatting import format_rule
 from backend.app.models.eligibility_rule import EligibilityRule
 from backend.app.models.policy import Policy, PolicyStatus
 from backend.app.models.scheme import Scheme, SchemeStatus
@@ -10,10 +11,15 @@ def compare_items(
         request: ComparisonRequest,
 ) -> list[ComparisonItem]:
 
-    if request.type == ComparisonType.POLICY:
-        return compare_policies(db, request.ids)
+    # Deduplicate first (keeping the requested order): the not-found check
+    # below compares the returned rows against this list, so a repeated id
+    # used to make it fail with a 404 even though every item existed.
+    unique_ids = list(dict.fromkeys(request.ids))
 
-    return compare_schemes(db, request.ids)
+    if request.type == ComparisonType.POLICY:
+        return compare_policies(db, unique_ids)
+
+    return compare_schemes(db, unique_ids)
 
 def compare_policies(
         db: Session,
@@ -90,8 +96,10 @@ def compare_schemes(
             .all()
         )
 
+        # Human-readable rules ("Age: 18 or above"), not the raw
+        # "age gte 18" triple the engine stores.
         eligibility = [
-            f"{rule.parameter.value} {rule.operator.value} {rule.value}"
+            format_rule(rule.parameter, rule.operator, rule.value)
             for rule in rules
         ]
 

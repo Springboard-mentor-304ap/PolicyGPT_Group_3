@@ -408,6 +408,18 @@
   background: var(--color-primary-blue);
 }
 
+.unread-label {
+  display: inline;
+  margin-left: 4px;
+
+}
+
+@media (max-width: 768px) {
+  .unread-label {
+    display: none;
+  }
+}
+
 .notification-body {
   flex: 1;
   display: flex;

@@ -1,11 +1,12 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request, Response
 from sqlalchemy.orm import Session
 
 from backend.app.auth.dependencies import get_current_user
 from backend.app.db.database import get_db
 from backend.app.models.user import User
+from backend.app.pagination import DEFAULT_LIMIT
 from backend.app.policies.schemas import (
     PolicyCreate,
     PolicyDetailResponse,
@@ -53,17 +54,26 @@ def create_policy_route(
     response_model=list[PolicyResponse],
 )
 def list_policies_route(
+    response: Response,
     include_archived: bool = Query(False),
     by_me: bool = Query(False),
+    limit: int = Query(default=DEFAULT_LIMIT, ge=1),
+    offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return list_policies(
+    rows, total = list_policies(
         db=db,
         current_user=current_user,
         include_archived=include_archived,
         by_me=by_me,
+        limit=limit,
+        offset=offset,
     )
+
+    response.headers["X-Total-Count"] = str(total)
+
+    return rows
 
 
 @router.get("/{policy_id}", response_model=PolicyDetailResponse)
@@ -103,6 +113,7 @@ def update_policy_route(
 )
 def archive_policy_route(
     policy_id: UUID,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -110,6 +121,7 @@ def archive_policy_route(
         db=db,
         policy_id=policy_id,
         current_user=current_user,
+        request=request,
     )
 
 
@@ -119,6 +131,7 @@ def archive_policy_route(
 )
 def unarchive_policy_route(
     policy_id: UUID,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -126,6 +139,7 @@ def unarchive_policy_route(
         db=db,
         policy_id=policy_id,
         current_user=current_user,
+        request=request,
     )
 
 
@@ -135,6 +149,7 @@ def unarchive_policy_route(
 )
 def approve_policy_route(
     policy_id: UUID,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -142,6 +157,7 @@ def approve_policy_route(
         db=db,
         policy_id=policy_id,
         current_user=current_user,
+        request=request,
     )
 
 
@@ -152,6 +168,7 @@ def approve_policy_route(
 def reject_policy_route(
     policy_id: UUID,
     rejection_data: PolicyReject,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -160,4 +177,5 @@ def reject_policy_route(
         policy_id=policy_id,
         rejection_reason=rejection_data.rejection_reason,
         current_user=current_user,
+        request=request,
     )

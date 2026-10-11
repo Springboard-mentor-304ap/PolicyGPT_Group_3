@@ -1,0 +1,249 @@
+<div class="helpdesk-page page-container">
+  <!-- Page header (same structure as the other application pages) -->
+  <div class="page-header">
+    <div class="header-nav">
+      <app-back-to-dashboard></app-back-to-dashboard>
+      <span class="breadcrumb-separator">/</span>
+      <span class="breadcrumb-current">AI Helpdesk</span>
+    </div>
+    <h1 class="page-title">AI Helpdesk</h1>
+    <p class="page-subtitle">
+      Ask questions about government policies and schemes available in PolicyGPT.
+      Answers are generated from the policies and schemes already recorded in the
+      PolicyGPT knowledge base.
+    </p>
+  </div>
+
+  <!-- ══ Question ═══════════════════════════════════════════════════════════ -->
+  <app-card padding="lg">
+    <form class="ask-form" (submit)="onAskSubmit($event)" novalidate>
+      <div class="form-field">
+        <label class="field-label" for="helpdesk-question">Your question</label>
+        <textarea
+          id="helpdesk-question"
+          name="helpdesk-question"
+          class="question-input"
+          rows="4"
+          [attr.maxlength]="maxQuestionLength"
+          [value]="question()"
+          [disabled]="asking()"
+          [attr.aria-invalid]="questionError() ? 'true' : null"
+          [attr.aria-describedby]="
+            questionError() ? 'helpdesk-question-hint helpdesk-question-error' : 'helpdesk-question-hint'
+          "
+          (input)="onQuestionInput($event)"
+          placeholder="Ask about a government policy or scheme..."
+        ></textarea>
+        <div class="question-meta">
+          <p class="field-hint" id="helpdesk-question-hint">
+            Ask about schemes, benefits, eligibility criteria or required documents.
+            Questions can be up to {{ maxQuestionLength }} characters.
+          </p>
+          <span
+            class="char-count"
+            [class.is-near-limit]="question().length >= maxQuestionLength * 0.9"
+            aria-hidden="true"
+          >
+            {{ question().length }} / {{ maxQuestionLength }}
+          </span>
+        </div>
+        @if (questionError()) {
+          <p class="field-error" id="helpdesk-question-error" role="alert">
+            {{ questionError() }}
+          </p>
+        }
+      </div>
+
+      <div class="examples">
+        <span class="examples-label" id="helpdesk-examples-label">Examples</span>
+        <ul class="example-list" aria-labelledby="helpdesk-examples-label">
+          @for (example of examples; track example) {
+            <li>
+              <button
+                type="button"
+                class="example-chip"
+                [disabled]="asking()"
+                (click)="useExample(example)"
+              >
+                {{ example }}
+              </button>
+            </li>
+          }
+        </ul>
+      </div>
+
+      <div class="form-actions">
+        <p class="disclaimer">
+          The Helpdesk summarises the information already in PolicyGPT. Eligibility is
+          determined by the Eligibility Checker, not by the Helpdesk.
+        </p>
+        <app-button
+          type="submit"
+          variant="primary"
+          [disabled]="asking()"
+          [loading]="asking()"
+        >
+          {{ asking() ? 'Getting answer...' : 'Ask Helpdesk' }}
+        </app-button>
+      </div>
+    </form>
+  </app-card>
+
+  <!-- ══ Loading ════════════════════════════════════════════════════════════ -->
+  @if (asking()) {
+    <app-card padding="lg">
+      <h2 class="panel-title">Answer</h2>
+      <p class="status-text" role="status">
+        <span class="spinner" aria-hidden="true"></span>
+        Getting an answer...
+      </p>
+      <app-skeleton type="text" [count]="3"></app-skeleton>
+    </app-card>
+  }
+
+  <!-- ══ Error ══════════════════════════════════════════════════════════════ -->
+  @if (!asking() && errorMessage()) {
+    <app-card padding="lg">
+      <div class="notice notice-error" role="alert">
+        <p>{{ errorMessage() }}</p>
+        @if (signedOut()) {
+          <app-button variant="secondary" size="sm" (btnClick)="signIn()">
+            Sign in
+          </app-button>
+        } @else {
+          <app-button variant="secondary" size="sm" (btnClick)="retry()">
+            Try again
+          </app-button>
+        }
+      </div>
+    </app-card>
+  }
+
+  <!-- ══ Empty state ════════════════════════════════════════════════════════ -->
+  @if (idle()) {
+    <app-card padding="lg">
+      <div class="empty-state">
+        <span class="empty-icon" aria-hidden="true">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+            <path d="M9.5 8.5a2.5 2.5 0 0 1 4.5 1.5c0 1.5-2 2-2 3"></path>
+            <line x1="12" y1="15" x2="12.01" y2="15"></line>
+          </svg>
+        </span>
+        <h2 class="empty-title">Ask a question to get started</h2>
+        <p class="empty-text">
+          The Helpdesk answers using only the policies and schemes available in the
+          PolicyGPT knowledge base. It does not browse the internet, and it cannot
+          confirm whether you qualify for a scheme.
+        </p>
+        <ul class="empty-list">
+          <li><span aria-hidden="true">•</span> Scheme benefits and covered services</li>
+          <li><span aria-hidden="true">•</span> Eligibility criteria as recorded in the system</li>
+          <li><span aria-hidden="true">•</span> Documents and application steps mentioned in a scheme</li>
+        </ul>
+      </div>
+    </app-card>
+  }
+
+  <!-- ══ Answer ═════════════════════════════════════════════════════════════ -->
+  @if (!asking() && hasAnswer()) {
+    <app-card padding="lg" id="helpdesk-answer">
+      <div class="answer-header">
+        <h2 class="panel-title">Answer</h2>
+        @if (askedQuestion()) {
+          <p class="asked-question">{{ askedQuestion() }}</p>
+        }
+      </div>
+
+      <div class="answer-body">
+        @for (block of answerBlocks(); track $index) {
+          @if (block.kind === 'paragraph') {
+            <p class="answer-paragraph">
+              <app-helpdesk-answer-text [segments]="block.segments" />
+            </p>
+          } @else if (block.kind === 'list') {
+            @if (block.ordered) {
+              <ol class="answer-list">
+                @for (item of block.items; track $index) {
+                  <li><app-helpdesk-answer-text [segments]="item.segments" /></li>
+                }
+              </ol>
+            } @else {
+              <ul class="answer-list">
+                @for (item of block.items; track $index) {
+                  <li><app-helpdesk-answer-text [segments]="item.segments" /></li>
+                }
+              </ul>
+            }
+          } @else {
+            <div class="answer-table-wrap">
+              <table class="answer-table">
+                <thead>
+                  <tr>
+                    @for (cell of block.header; track $index) {
+                      <th scope="col">
+                        @for (line of cell; track $index) {
+                          <span class="cell-line">
+                            <app-helpdesk-answer-text [segments]="line" />
+                          </span>
+                        }
+                      </th>
+                    }
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (row of block.rows; track $index) {
+                    <tr>
+                      @for (cell of row; track $index) {
+                        <td>
+                          @for (line of cell; track $index) {
+                            <span class="cell-line">
+                              <app-helpdesk-answer-text [segments]="line" />
+                            </span>
+                          }
+                        </td>
+                      }
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        }
+      </div>
+    </app-card>
+
+    <!-- ══ Sources ══════════════════════════════════════════════════════════ -->
+    @if (sources().length > 0) {
+      <section class="sources-section" aria-labelledby="helpdesk-sources-title">
+        <h2 class="sources-title" id="helpdesk-sources-title">Sources</h2>
+        <p class="sources-subtitle">
+          Policies and schemes from the PolicyGPT knowledge base that this answer is
+          based on.
+        </p>
+        <div class="source-list">
+          @for (source of sources(); track source.id) {
+            <article class="source-card">
+              <div class="source-head">
+                <app-badge [variant]="sourceBadge(source)" size="sm">
+                  {{ sourceLabel(source) }}
+                </app-badge>
+                @if (relevance(source) !== null) {
+                  <span class="source-relevance">Relevance {{ relevance(source) }}%</span>
+                }
+              </div>
+              <h3 class="source-title">{{ source.title }}</h3>
+            </article>
+          }
+        </div>
+      </section>
+    }
+  }
+</div>

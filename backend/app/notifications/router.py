@@ -1,4 +1,4 @@
-from fastapi import Depends, APIRouter, HTTPException, Query, status
+from fastapi import Depends, APIRouter, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session
 from uuid import UUID
 
@@ -13,12 +13,14 @@ from backend.app.notifications.schemas import (
     DeadlineReminderRunResponse,
 )
 from backend.app.notifications.service import (
+    delete_notification,
     get_unread_count,
     list_notifications,
     mark_notification_as_read,
     mark_all_notifications_as_read,
     run_deadline_reminders,
 )
+from backend.app.pagination import DEFAULT_LIMIT
 
 # Reminder sweeps change data for every applicant, so they are restricted to
 # platform administrators rather than department-scoped officials.
@@ -34,10 +36,24 @@ router = APIRouter(
     response_model=list[NotificationResponse],
 )
 def get_notifications(
+    response: Response,
+    unread_only: bool = Query(default=False),
+    limit: int = Query(default=DEFAULT_LIMIT, ge=1),
+    offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return list_notifications(db, current_user)
+    rows, total = list_notifications(
+        db,
+        current_user,
+        unread_only=unread_only,
+        limit=limit,
+        offset=offset,
+    )
+
+    response.headers["X-Total-Count"] = str(total)
+
+    return rows
 
 
 @router.get(
@@ -87,6 +103,16 @@ def mark_all_as_read(
     )
 
     return {"updated_count": updated_count}
+
+
+@router.delete("/{notification_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_notification_route(
+    notification_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Delete one of the caller's own in-app notifications (404 otherwise)."""
+    delete_notification(db, notification_id, current_user)
 
 
 @router.patch("/{notification_id}/read", response_model=MarkReadResponse)

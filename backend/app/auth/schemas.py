@@ -1,3 +1,5 @@
+import re
+
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 from uuid import UUID
 from datetime import date, datetime
@@ -92,6 +94,79 @@ class TokenResponse(BaseModel):
     token_type: str
 
 
+class RefreshRequest(BaseModel):
+    """The refresh token is sent in the body, never as a query parameter.
+
+    Query strings end up in access logs, proxies and browser history, so a
+    credential does not belong in one.
+    """
+
+    refresh_token: str = Field(min_length=1)
+
+
+class LogoutRequest(BaseModel):
+    refresh_token: str = Field(min_length=1)
+
+
+# ─── Profile update (PATCH /auth/me) ───────────────────────────────────────
+
+# Indian mobile numbers: 10 digits, optionally written with the +91 country
+# code. Anything else (letters, wrong length, another country code) is
+# rejected instead of being stored as-is.
+PHONE_PATTERN = re.compile(r"^(?:\+91)?(\d{10})$")
+
+
+def normalize_phone(value: str) -> str:
+    """Validate an Indian phone number and return its canonical 10 digits."""
+    cleaned = (
+        value.strip()
+        .replace(" ", "")
+        .replace("-", "")
+        .replace("(", "")
+        .replace(")", "")
+    )
+    match = PHONE_PATTERN.fullmatch(cleaned)
+
+    if not match:
+        raise ValueError(
+            "Phone must be 10 digits, optionally prefixed with +91"
+        )
+
+    return match.group(1)
+
+
+class ProfileUpdateRequest(BaseModel):
+    """PATCH /auth/me: full name and phone only, both optional.
+
+    The router sends `exclude_unset=True`, so a field that was not sent is
+    left alone while an explicit `null` clears the phone number.
+    """
+
+    full_name: str | None = Field(default=None, min_length=1, max_length=150)
+    phone: str | None = Field(default=None, max_length=20)
+
+    @field_validator("full_name")
+    @classmethod
+    def validate_full_name(cls, value):
+        if value is None:
+            return value
+
+        value = value.strip()
+
+        if not value:
+            raise ValueError("Full name cannot be empty")
+
+        return value
+
+    @field_validator("phone")
+    @classmethod
+    def validate_phone(cls, value):
+        if value is None:
+            return value
+
+        return normalize_phone(value)
+
+
 class VerifyEmailRequest(BaseModel):
     # Address the code was sent to (the code itself is stored hashed).
     email: EmailStr | None = None
@@ -108,17 +183,6 @@ class ResendVerificationRequest(BaseModel):
 
 # ─── User Response ───────────────────────────────────────────────────────────
 
-class UserResponse(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: UUID
-    full_name: str
-    email: str
-    phone: str | None = None
-    role: str
-    is_active: bool
-    email_verified: bool
-
 class UserProfileResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -130,7 +194,8 @@ class UserProfileResponse(BaseModel):
     occupation: str | None = None
     annual_income: Decimal | None = None
     social_category: SocialCategory | None = None
-    disability_status: bool
+    # NULL = never answered; must not 500 on a profile without the flag.
+    disability_status: bool | None = None
     education: str | None = None
     state: str | None = None
     district: str | None = None
@@ -157,11 +222,15 @@ class UserDetailsResponse(BaseModel):
 class CitizenProfileRequest(BaseModel):
     phone: str | None = None
     date_of_birth: str | None = None  # ISO date string
-    gender: str | None = None
+    # Enum-typed so an unknown value is rejected with a 422 by FastAPI
+    # instead of raising an uncaught ValueError (500) in the route.
+    gender: Gender | None = None
     occupation: str | None = None
     annual_income: float | None = None
-    social_category: str | None = None
-    disability_status: bool = False
+    social_category: SocialCategory | None = None
+    # None = field not sent: an omitted value must not overwrite what is
+    # already stored (it used to default to False and reset the column).
+    disability_status: bool | None = None
     education: str | None = None
     state: str | None = None
     district: str | None = None
@@ -177,7 +246,9 @@ class CitizenProfileResponse(BaseModel):
     occupation: str | None = None
     annual_income: float | None = None
     social_category: str | None = None
-    disability_status: bool = False
+    # Nullable: an unanswered disability question comes back as null instead
+    # of being coerced to False ("no disability").
+    disability_status: bool | None = None
     education: str | None = None
     state: str | None = None
     district: str | None = None

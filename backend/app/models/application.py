@@ -13,6 +13,8 @@ class ApplicationStatus(str, Enum):
     ADDITIONAL_INFORMATION_REQUIRED = "additional_information_required"
     APPROVED = "approved"
     REJECTED = "rejected"
+    # Set by the applicant through the withdraw endpoint; terminal.
+    WITHDRAWN = "withdrawn"
 
 class Application(Base):
     __tablename__ = "applications"

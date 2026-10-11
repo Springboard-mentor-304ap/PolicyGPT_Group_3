@@ -23,6 +23,14 @@ class NotificationType(str, Enum):
     SCHEME_UPDATE = "scheme_update"
     DEADLINE_REMINDER = "deadline_reminder"
     APPLICATION_UPDATE = "application_update"
+    # Workflow notifications queued by the transaction that made the change.
+    POLICY_REJECTED = "policy_rejected"
+    SCHEME_APPROVED = "scheme_approved"
+    SCHEME_REJECTED = "scheme_rejected"
+    ROLE_REQUEST_UPDATE = "role_request_update"
+    FEEDBACK_UPDATE = "feedback_update"
+    APPROVAL_PENDING = "approval_pending"
+    NEW_APPLICATION = "new_application"
 
 
 class NotificationChannel(str, Enum):

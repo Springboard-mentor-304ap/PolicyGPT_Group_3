@@ -1,0 +1,343 @@
+<div class="finder-page page-container">
+  <!-- Page header (same structure as the other application pages) -->
+  <div class="page-header">
+    <div class="header-nav">
+      <app-back-to-dashboard></app-back-to-dashboard>
+      <span class="breadcrumb-separator">/</span>
+      <span class="breadcrumb-current">Scheme Finder</span>
+    </div>
+    <h1 class="page-title">Find schemes you're eligible for</h1>
+    <p class="page-subtitle">
+      Describe yourself in your own words, review the details we extract, and see which
+      government schemes match your profile.
+    </p>
+  </div>
+
+  <!-- ══ State 1 — natural-language input ══════════════════════════════════ -->
+  @if (step() === 'input') {
+    <app-card padding="lg">
+      <form class="finder-form" (submit)="onFindSubmit($event)" novalidate>
+        <div class="form-field">
+          <label class="field-label" for="finder-description">Tell us about yourself</label>
+          <textarea
+            id="finder-description"
+            name="finder-description"
+            class="description-input"
+            rows="6"
+            [attr.maxlength]="maxDescriptionLength"
+            [value]="description()"
+            (input)="onDescriptionInput($event)"
+            [disabled]="extracting()"
+            [attr.aria-invalid]="descriptionError() ? 'true' : null"
+            [attr.aria-describedby]="
+              descriptionError() ? 'finder-description-error' : 'finder-description-hint'
+            "
+            placeholder="Example: I am 24 years old, a student from Karnataka, and my family earns about ₹2 lakh per year."
+          ></textarea>
+          <p class="field-hint" id="finder-description-hint">
+            Include details such as your age, income, occupation, education, and location.
+            Up to {{ maxDescriptionLength }} characters.
+          </p>
+          @if (descriptionError()) {
+            <p class="field-error" id="finder-description-error" role="alert">
+              {{ descriptionError() }}
+            </p>
+          }
+        </div>
+
+        @if (descriptionNotice()) {
+          <div class="notice notice-warning" role="status">
+            <p>{{ descriptionNotice() }}</p>
+          </div>
+        }
+
+        @if (extractionError()) {
+          <div class="notice notice-error" role="alert">
+            <p>{{ extractionError() }}</p>
+            <app-button variant="secondary" size="sm" (btnClick)="findSchemes()">
+              Try again
+            </app-button>
+          </div>
+        }
+
+        <div class="form-actions">
+          <app-button
+            type="submit"
+            variant="primary"
+            [disabled]="extracting()"
+            [loading]="extracting()"
+          >
+            Find schemes
+          </app-button>
+          @if (extracting()) {
+            <span class="status-text" role="status">
+              <span class="spinner" aria-hidden="true"></span>
+              Extracting your information...
+            </span>
+          }
+        </div>
+      </form>
+    </app-card>
+  }
+
+  <!-- ══ State 2 — review & confirm the extracted profile ═══════════════════ -->
+  @if (step() === 'review') {
+    <app-card padding="lg">
+      <div class="panel-heading">
+        <h2 class="panel-title">Review your information</h2>
+        <p class="panel-subtitle">
+          Check the information below and correct anything that is missing or incorrect.
+          Fields shown as “Not provided” were not mentioned in your description — leave them
+          blank if you would rather not share them.
+        </p>
+      </div>
+
+      @if (matching()) {
+        <div class="status-text status-text-block" role="status">
+          <span class="spinner" aria-hidden="true"></span>
+          Checking available schemes...
+        </div>
+      } @else {
+        <form class="profile-form" [formGroup]="profileForm" (ngSubmit)="checkEligibility()" novalidate>
+          @if (matchError()) {
+            <div class="notice notice-error" role="alert">
+              <p>{{ matchError() }}</p>
+              <app-button variant="secondary" size="sm" (btnClick)="checkEligibility()">
+                Try again
+              </app-button>
+            </div>
+          }
+
+          <div class="form-grid">
+            <div class="form-field">
+              <app-input
+                formControlName="age"
+                type="number"
+                label="Age"
+                id="finder-age"
+                name="age"
+                placeholder="Not provided"
+                [error]="fieldError('age')"
+              />
+              @if (isBlank('age')) {
+                <p class="missing-note">Not provided</p>
+              }
+            </div>
+
+            <div class="form-field">
+              <app-select
+                formControlName="gender"
+                label="Gender"
+                id="finder-gender"
+                name="gender"
+                placeholder="Not provided"
+                [options]="genderOptionsFor()"
+              />
+            </div>
+
+            <div class="form-field">
+              <app-input
+                formControlName="annual_income"
+                type="number"
+                label="Annual income (₹)"
+                id="finder-annual-income"
+                name="annual_income"
+                placeholder="Not provided"
+                [error]="fieldError('annual_income')"
+              />
+              @if (isBlank('annual_income')) {
+                <p class="missing-note">Not provided</p>
+              }
+            </div>
+
+            <div class="form-field">
+              <app-input
+                formControlName="occupation"
+                type="text"
+                label="Occupation"
+                id="finder-occupation"
+                name="occupation"
+                placeholder="Not provided"
+              />
+              @if (isBlank('occupation')) {
+                <p class="missing-note">Not provided</p>
+              }
+            </div>
+
+            <div class="form-field">
+              <app-select
+                formControlName="education"
+                label="Education"
+                id="finder-education"
+                name="education"
+                placeholder="Not provided"
+                [options]="educationOptionsFor()"
+              />
+            </div>
+
+            <div class="form-field">
+              <app-input
+                formControlName="state"
+                type="text"
+                label="State"
+                id="finder-state"
+                name="state"
+                placeholder="Not provided"
+              />
+              @if (isBlank('state')) {
+                <p class="missing-note">Not provided</p>
+              }
+            </div>
+
+            <div class="form-field">
+              <app-input
+                formControlName="district"
+                type="text"
+                label="District"
+                id="finder-district"
+                name="district"
+                placeholder="Not provided"
+              />
+              @if (isBlank('district')) {
+                <p class="missing-note">Not provided</p>
+              }
+            </div>
+
+            <div class="form-field">
+              <app-select
+                formControlName="social_category"
+                label="Social category"
+                id="finder-social-category"
+                name="social_category"
+                placeholder="Not provided"
+                [options]="socialCategoryOptionsFor()"
+              />
+            </div>
+
+            <div class="form-field">
+              <app-select
+                formControlName="disability_status"
+                label="Disability status"
+                id="finder-disability-status"
+                name="disability_status"
+                placeholder="Not provided"
+                hint="Select “Yes” only if a disability is certified."
+                [options]="disabilityOptions"
+              />
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <app-button type="button" variant="secondary" (btnClick)="startOver()">
+              Start over
+            </app-button>
+            <app-button type="submit" variant="primary" [disabled]="matching()">
+              Check eligibility
+            </app-button>
+          </div>
+        </form>
+      }
+    </app-card>
+  }
+
+  <!-- ══ State 3 — deterministic match results ═════════════════════════════ -->
+  @if (step() === 'results' && matchResult()) {
+    <div class="results-section">
+      <app-card padding="lg">
+        <div class="results-summary">
+          <div class="summary-head">
+          <div>
+              <h2 class="panel-title">Scheme matches</h2>
+              <p class="panel-subtitle">
+                Based on the profile you confirmed. Each result is explained by the scheme's
+                own eligibility rules.
+              </p>
+            </div>
+            <app-button variant="secondary" (btnClick)="editInformation()">
+              Edit information
+            </app-button>
+          </div>
+
+          @if (totalMatches() > 0) {
+            <ul class="summary-tiles">
+              @for (section of sections; track section.key) {
+                @if (matchesFor(section.key).length > 0) {
+                  <li class="summary-tile">
+                    <span class="tile-count">{{ matchesFor(section.key).length }}</span>
+                    <span class="tile-label">{{ section.shortLabel }}</span>
+                  </li>
+                }
+              }
+            </ul>
+          }
+        </div>
+      </app-card>
+
+      @if (totalMatches() === 0) {
+        <app-card padding="lg">
+          <div class="empty-state">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              width="48"
+              height="48"
+              aria-hidden="true"
+            >
+              <circle cx="11" cy="11" r="8"></circle>
+              <path d="m21 21-4.35-4.35"></path>
+            </svg>
+            <h3>No matching schemes found</h3>
+            <p>
+              No scheme could be matched against the profile you confirmed. Try adding more
+              information about your age, income, occupation, education, or location.
+            </p>
+            <app-button variant="primary" (btnClick)="editInformation()">
+              Edit information
+            </app-button>
+          </div>
+        </app-card>
+      } @else {
+        @for (section of sections; track section.key) {
+          @if (matchesFor(section.key).length > 0) {
+            <section class="result-group" [attr.aria-labelledby]="'finder-group-' + section.key">
+              <div class="group-header">
+                <div class="group-heading">
+                  <h3 class="group-title" [id]="'finder-group-' + section.key">
+                    {{ section.title }}
+                  </h3>
+                  <app-badge [variant]="section.badge">
+                    {{ matchesFor(section.key).length }}
+                  </app-badge>
+                </div>
+                @if (section.key === 'more_information_required') {
+                  <app-button
+                    variant="outline"
+                    size="sm"
+                    (btnClick)="editInformation(missingFieldFor(section.key))"
+                  >
+                    Update information
+                  </app-button>
+                }
+              </div>
+              <p class="group-description">{{ section.description }}</p>
+
+              <div class="match-list">
+                @for (match of matchesFor(section.key); track match.scheme_id) {
+                  <app-finder-match-card
+                    [match]="match"
+                    [badgeVariant]="section.badge"
+                    [statusLabel]="section.statusLabel"
+                  ></app-finder-match-card>
+                }
+              </div>
+            </section>
+          }
+        }
+      }
+    </div>
+  }
+</div>

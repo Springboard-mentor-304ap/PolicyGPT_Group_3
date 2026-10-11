@@ -2,6 +2,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
+from uuid import UUID
 
 from backend.app.auth.security import (
     ALGORITHM,
@@ -42,6 +43,17 @@ def get_current_user(
                 detail="Invalid token",
             )
 
+        # `sub` arrives as text; parse it here so the lookup never hands the
+        # database a value it cannot compare against a UUID (and so a forged
+        # sub that is not a UUID is a 401 rather than a server error).
+        try:
+            user_uuid = UUID(str(user_id))
+        except (ValueError, TypeError, AttributeError):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token",
+            )
+
         # Only access tokens can authenticate API requests
         token_type = payload.get("type")
 
@@ -57,7 +69,7 @@ def get_current_user(
             detail="Invalid or expired token",
         )
 
-    user = db.get(User, user_id)
+    user = db.get(User, user_uuid)
 
     if not user:
         raise HTTPException(

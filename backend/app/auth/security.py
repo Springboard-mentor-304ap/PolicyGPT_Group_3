@@ -10,8 +10,14 @@ load_dotenv()
 
 SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
+# Short-lived by design: the client keeps a refresh token (rotated on every
+# use) and exchanges it for a fresh access token. 30 minutes limits the
+# damage of a leaked access token without prompting for a password again.
 ACCESS_TOKEN_EXPIRE_MINUTES = int(
-    os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440")
+    os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30")
+)
+REFRESH_TOKEN_EXPIRE_DAYS = int(
+    os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7")
 )
 
 if not SECRET_KEY:
@@ -61,7 +67,7 @@ def create_refresh_token(data: dict) -> str:
     to_encode = data.copy()
 
     expire = datetime.now(timezone.utc) + timedelta(
-        days=7
+        days=REFRESH_TOKEN_EXPIRE_DAYS
     )
 
     to_encode.update({
@@ -78,21 +84,3 @@ def create_refresh_token(data: dict) -> str:
 
 # Password reset tokens are created and stored by
 # `backend.app.auth.password_reset` (single-use jti + hashed storage).
-
-
-def create_email_verification_token(email: str) -> str:
-    """Create a JWT token for email verification. Expires in 24 hours."""
-    expire = datetime.now(timezone.utc) + timedelta(hours=24)
-
-    payload = {
-        "sub": email,
-        "email": email,
-        "exp": expire,
-        "type": "email_verification",
-    }
-
-    return jwt.encode(
-        payload,
-        SECRET_KEY,
-        algorithm=ALGORITHM,
-    )

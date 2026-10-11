@@ -1,3 +1,4 @@
+import os
 import uuid
 from datetime import date, datetime, time, timedelta, timezone
 from enum import Enum
@@ -5,10 +6,12 @@ from pathlib import Path
 from typing import TypeVar
 from uuid import UUID
 
-from fastapi import HTTPException, status
+from fastapi import HTTPException, Request, status
 from sqlalchemy import Date, DateTime, cast, func
 from sqlalchemy.orm import Session
 
+from backend.app.audit.service import client_ip, log_action
+from backend.app.pagination import DEFAULT_LIMIT, clamp_limit
 from backend.app.analytics.service import (
     get_analytics_overview,
     get_department_statistics,
@@ -21,7 +24,7 @@ from backend.app.models.application import Application
 from backend.app.models.government_official_profile import (
     GovernmentOfficialProfile,
 )
-from backend.app.models.notification import Notification
+from backend.app.models.notification import Notification, NotificationChannel
 from backend.app.models.policy import Policy, PolicyCategory, PolicyStatus
 from backend.app.models.report import Report, ReportFormat, ReportType
 from backend.app.models.scheme import Scheme, SchemeCategory, SchemeStatus
@@ -36,8 +39,20 @@ from backend.app.reports.schemas import (
     ReportSummaryItem,
     ReportTable,
 )
+# One canonical scope rule (case-insensitive, trimmed, ministry first with
+# department fallback) shared with policies, schemes, applications, search
+# and analytics — see backend/app/scope.py.
+from backend.app.scope import (
+    normalized_match,
+    normalize,
+    policy_scope_filter,
+    scheme_scope_filter,
+)
 
 EnumMember = TypeVar("EnumMember", bound=Enum)
+
+# Audit log action recorded when a report is generated.
+AUDIT_REPORT_GENERATE = "report.generate"
 
 # Roles allowed to use the Reports module at all. Researchers analyse policy
 # and scheme data, so they can generate the department-visible reports; the
@@ -62,6 +77,11 @@ REPORT_PLATFORM_ROLES = (UserRole.ADMINISTRATOR, UserRole.SUPER_ADMIN)
 REPORT_TIMEZONE = "UTC"
 
 REPORTS_DIRECTORY = Path(__file__).resolve().parents[2] / "generated_reports"
+
+# Generated files are kept for this many days, then deleted by the in-process
+# maintenance sweep (see backend.app.main). The row is stamped at deletion time
+# so the download endpoint can answer 410 Gone for an expired report.
+REPORT_RETENTION_DAYS = int(os.getenv("REPORT_RETENTION_DAYS", "30"))
 
 REPORT_TITLES = {
     ReportType.POLICY: "Policy Report",
@@ -217,7 +237,7 @@ def _enforce_department_scope(
     for field in ("department", "ministry"):
         requested = getattr(filters, field)
 
-        if requested and requested.casefold() != scope.casefold():
+        if requested and normalize(requested) != normalize(scope):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=(
@@ -328,6 +348,7 @@ def _daily_series(
     identifier,
     start: datetime | None,
     end: datetime | None,
+    criteria: list | None = None,
 ) -> list[list]:
     """Daily counts bucketed by UTC calendar day.
 
@@ -335,6 +356,8 @@ def _daily_series(
     resolves in the database session timezone. Reports use UTC calendar days
     for both filters and dated series, so the bucketing is done explicitly in
     UTC here and the requested date range is applied to the timestamp itself.
+    `criteria` additionally narrows the counted rows (used to keep simulated
+    SMS records out of the notification series).
     """
 
     day = func.date(func.timezone(REPORT_TIMEZONE, column))
@@ -345,6 +368,8 @@ def _daily_series(
         start,
         end,
     )
+
+    query = _apply_criteria(query, criteria)
 
     return [
         [str(day_value), count]
@@ -374,7 +399,7 @@ def _build_policy_report(
     if scope is not None:
         # Officials are locked to their own department/ministry; a matching
         # filter in the request is confirmed above but never widens the scope.
-        query = query.filter(Policy.ministry == scope)
+        query = query.filter(policy_scope_filter(scope))
     else:
         if filters.department:
             query = query.filter(Policy.department == filters.department)
@@ -490,9 +515,10 @@ def _build_scheme_report(
     )
 
     if scope is not None:
-        # Schemes have no ministry of their own, so the department scope is
-        # resolved through the parent policy (same rule as Analytics).
-        query = query.filter(Policy.ministry == scope)
+        # A scheme belongs to the scope through its own department or through
+        # the ministry of its parent policy — the canonical rule, so the
+        # report matches what the scheme list shows.
+        query = query.filter(scheme_scope_filter(scope))
     elif filters.ministry:
         query = query.filter(Policy.ministry == filters.ministry)
 
@@ -720,7 +746,7 @@ def _build_department_report(
     criteria = []
 
     if scope is not None:
-        criteria.append(Policy.ministry == scope)
+        criteria.append(policy_scope_filter(scope))
     else:
         if filters.department:
             criteria.append(Policy.department == filters.department)
@@ -833,7 +859,7 @@ def _build_department_report(
 
     if scope is not None:
         official_query = official_query.filter(
-            GovernmentOfficialProfile.department == scope
+            normalized_match(GovernmentOfficialProfile.department, scope)
         )
 
     official_rows = (
@@ -947,6 +973,12 @@ def _notification_section(
                     Notification.id,
                     None,
                     None,
+                    # SMS rows are never actually sent, so they stay out of
+                    # the aggregates (same exclusion as the analytics
+                    # endpoint).
+                    criteria=[
+                        Notification.channel != NotificationChannel.SMS
+                    ],
                 ),
             ),
         ],
@@ -1031,7 +1063,7 @@ def _build_analytics_report(
                     ),
                 ),
                 ReportTable(
-                    title="Scheme Usage (by views)",
+                    title="Scheme Usage (top 20 by views)",
                     columns=["Scheme ID", "Title", "Views"],
                     rows=[
                         [
@@ -1231,10 +1263,53 @@ def report_file_path(report_id: UUID, report_format: ReportFormat) -> Path:
     return REPORTS_DIRECTORY / f"{report_id}.{extension}"
 
 
+def cleanup_expired_reports(
+    db: Session,
+    now: datetime | None = None,
+    retention_days: int | None = None,
+) -> int:
+    """Delete generated files older than the retention window.
+
+    Every report row whose generated_at is past the cutoff has its file
+    removed (if still present) and is stamped with file_deleted_at so the
+    expiry is explicit and durable. Runs from the existing in-process
+    maintenance loop in backend.app.main — no separate scheduler.
+
+    Returns the number of report rows marked as expired.
+    """
+
+    days = REPORT_RETENTION_DAYS if retention_days is None else retention_days
+    reference = now or datetime.now(timezone.utc)
+
+    if reference.tzinfo is None:
+        reference = reference.replace(tzinfo=timezone.utc)
+
+    cutoff = reference - timedelta(days=days)
+
+    expired_reports = (
+        db.query(Report)
+        .filter(
+            Report.file_deleted_at.is_(None),
+            Report.generated_at < cutoff,
+        )
+        .all()
+    )
+
+    for report in expired_reports:
+        _remove_file(report_file_path(report.id, report.format))
+        report.file_deleted_at = reference
+
+    if expired_reports:
+        db.commit()
+
+    return len(expired_reports)
+
+
 def generate_report(
     db: Session,
     report_request: ReportGenerateRequest,
     current_user: User,
+    request: Request | None = None,
 ) -> Report:
     _require_generator(current_user)
 
@@ -1304,6 +1379,20 @@ def generate_report(
 
     try:
         db.add(report)
+        # Staged in the same transaction as the report row: the audit entry
+        # and the report publish together or not at all.
+        log_action(
+            db=db,
+            actor_id=current_user.id,
+            action=AUDIT_REPORT_GENERATE,
+            target_table="reports",
+            target_id=report.id,
+            changes={
+                "report_type": report_request.report_type.value,
+                "format": report_request.format.value,
+            },
+            ip_address=client_ip(request),
+        )
         db.commit()
         db.refresh(report)
     except Exception as error:
@@ -1321,7 +1410,14 @@ def generate_report(
 def list_reports(
     db: Session,
     current_user: User,
-) -> list[Report]:
+    limit: int = DEFAULT_LIMIT,
+    offset: int = 0,
+) -> tuple[list[Report], int]:
+    """Reports the caller may see, newest first, paged.
+
+    Returns ``(rows, total)`` — `total` counts every matching row before
+    LIMIT/OFFSET, for the X-Total-Count header.
+    """
     query = db.query(Report)
 
     # Administrators see the platform-wide history; officials only see the
@@ -1329,7 +1425,16 @@ def list_reports(
     if current_user.role not in REPORT_PLATFORM_ROLES:
         query = query.filter(Report.generated_by == current_user.id)
 
-    return query.order_by(Report.generated_at.desc()).all()
+    total = query.count()
+
+    rows = (
+        query.order_by(Report.generated_at.desc())
+        .offset(offset)
+        .limit(clamp_limit(limit))
+        .all()
+    )
+
+    return rows, total
 
 
 def get_report(
@@ -1358,6 +1463,15 @@ def get_report(
 
 
 def get_report_file(report: Report) -> Path:
+    if report.file_deleted_at is not None:
+        raise HTTPException(
+            status_code=status.HTTP_410_GONE,
+            detail=(
+                "This report has expired and its file was deleted after "
+                "the retention period. Please generate a new report."
+            ),
+        )
+
     file_path = report_file_path(report.id, report.format)
 
     if not file_path.is_file():

@@ -1,0 +1,114 @@
+<article class="match-card">
+  <div class="match-top">
+    <app-badge [variant]="badgeVariant" [dot]="true">{{ statusLabel }}</app-badge>
+    <a class="scheme-link text-link" [routerLink]="['/schemes', match.scheme_id]">
+      View scheme details
+    </a>
+  </div>
+
+  <h4 class="match-title">{{ match.scheme_title }}</h4>
+  <p class="match-summary">{{ match.summary }}</p>
+
+  @if (match.missing_information.length > 0) {
+    <div class="missing-block">
+      <span class="missing-label">Information still needed</span>
+      <ul class="missing-list">
+        @for (item of match.missing_information; track item) {
+          <li class="missing-chip">{{ label(item) }}</li>
+        }
+      </ul>
+    </div>
+  }
+
+  @if (match.rules.length > 0) {
+    <div class="match-details">
+      <button
+        type="button"
+        class="details-toggle"
+        [attr.aria-expanded]="detailsOpen()"
+        [attr.aria-controls]="rulesElementId(match.scheme_id)"
+        (click)="toggleDetails()"
+      >
+        <svg
+          class="toggle-chevron"
+          [class.open]="detailsOpen()"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+        <span>{{ detailsOpen() ? 'Hide eligibility details' : 'View eligibility details' }}</span>
+        <span class="rule-count">
+          {{ match.rules.length }}
+          {{ match.rules.length === 1 ? 'criterion' : 'criteria' }}
+        </span>
+      </button>
+
+      @if (detailsOpen()) {
+        <ul class="rule-list" [id]="rulesElementId(match.scheme_id)">
+          @for (rule of match.rules; track rule.parameter) {
+            <li
+              class="rule-row"
+              [class.is-satisfied]="rule.satisfied"
+              [class.is-unsatisfied]="!rule.satisfied"
+            >
+              <span class="rule-icon" aria-hidden="true">
+                @if (rule.satisfied) {
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="3"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                } @else {
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="3"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
+                }
+              </span>
+
+              <div class="rule-body">
+                <div class="rule-head">
+                  <span class="rule-parameter">{{ label(rule.parameter) }}</span>
+                  <span class="rule-verdict">
+                    {{ rule.satisfied ? 'Requirement satisfied' : 'Requirement not satisfied' }}
+                  </span>
+                </div>
+
+                <p class="rule-message">{{ rule.message }}</p>
+
+                <dl class="rule-values">
+                  <div class="rule-value">
+                    <dt>Requirement</dt>
+                    <dd>{{ requiredText(rule) }}</dd>
+                  </div>
+                  <div class="rule-value">
+                    <dt>Your information</dt>
+                    <dd>{{ rule.actual_value === null || rule.actual_value === '' ? 'Not provided' : rule.actual_value }}</dd>
+                  </div>
+                </dl>
+              </div>
+            </li>
+          }
+        </ul>
+      }
+    </div>
+  }
+</article>

@@ -61,3 +61,9 @@ class Report(Base):
         nullable=False,
         server_default=func.now(),
     )
+
+    # Set by the retention cleanup once the generated file has been deleted;
+    # NULL means the file (if any) is still within the retention window.
+    file_deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+    )

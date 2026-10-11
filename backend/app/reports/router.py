@@ -1,12 +1,13 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from backend.app.auth.dependencies import get_current_user
 from backend.app.db.database import get_db
 from backend.app.models.user import User
+from backend.app.pagination import DEFAULT_LIMIT
 from backend.app.reports.schemas import ReportGenerateRequest, ReportResponse
 from backend.app.reports.service import (
     REPORT_ALLOWED_ROLES,
@@ -47,6 +48,7 @@ router = APIRouter(
 )
 def generate_report_route(
     report_request: ReportGenerateRequest,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_report_access),
 ):
@@ -54,6 +56,7 @@ def generate_report_route(
         db=db,
         report_request=report_request,
         current_user=current_user,
+        request=request,
     )
 
 
@@ -62,13 +65,22 @@ def generate_report_route(
     response_model=list[ReportResponse],
 )
 def list_reports_route(
+    response: Response,
+    limit: int = Query(default=DEFAULT_LIMIT, ge=1),
+    offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_report_access),
 ):
-    return list_reports(
+    rows, total = list_reports(
         db=db,
         current_user=current_user,
+        limit=limit,
+        offset=offset,
     )
+
+    response.headers["X-Total-Count"] = str(total)
+
+    return rows
 
 
 @router.get(

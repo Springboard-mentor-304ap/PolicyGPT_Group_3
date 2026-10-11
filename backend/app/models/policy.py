@@ -53,7 +53,7 @@ class Policy(Base):
     )
 
     category: Mapped[PolicyCategory] = mapped_column(
-        SQLEnum(PolicyCategory, name="policy_category"),
+        SQLEnum(PolicyCategory, name="policy_category", values_callable=lambda enum: [member.value for member in enum],),
         nullable=False,
     )
 

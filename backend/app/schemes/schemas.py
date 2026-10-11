@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 from backend.app.models.scheme import SchemeCategory, SchemeStatus
 from backend.app.models.eligibility_rule import (
@@ -66,6 +66,16 @@ class SchemeResponse(BaseModel):
     archived_at: datetime | None
 
     model_config = ConfigDict(from_attributes=True)
+
+    @computed_field
+    @property
+    def is_expired(self) -> bool:
+        """Computed, never stored: the deadline is set and already past.
+
+        The database status is left alone — an expired scheme is still ACTIVE
+        (or whatever it was), its application window has simply closed.
+        """
+        return self.deadline_date is not None and self.deadline_date < date.today()
 
 
 class EligibilityRuleCreate(BaseModel):
