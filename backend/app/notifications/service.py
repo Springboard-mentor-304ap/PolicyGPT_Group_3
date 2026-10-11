@@ -2,6 +2,7 @@ import logging
 import os
 import smtplib
 from email.message import EmailMessage
+from typing import Iterable
 from dotenv import load_dotenv
 
 from sqlalchemy.orm import Session
@@ -10,7 +11,9 @@ from uuid import UUID
 from datetime import date, datetime, timedelta, timezone
 
 
+from backend.app.models.application import Application
 from backend.app.models.notification import Notification, NotificationChannel, NotificationType
+from backend.app.pagination import DEFAULT_LIMIT, clamp_limit
 from backend.app.models.scheme import Scheme, SchemeStatus
 from backend.app.models.user import User, UserRole
 
@@ -97,6 +100,9 @@ def create_notification(
 def get_notification_channels(
     notification_type: NotificationType,
 ) -> list[NotificationChannel]:
+    if notification_type in WORKFLOW_NOTIFICATION_TYPES:
+        return [NotificationChannel.IN_APP]
+
     if notification_type in {
         NotificationType.NEW_POLICY,
         NotificationType.SCHEME_UPDATE,
@@ -117,6 +123,60 @@ def get_notification_channels(
         ]
 
     return [NotificationChannel.IN_APP]
+
+
+# Workflow notifications (policy/scheme review, role requests, feedback and
+# new applications) are in-app only: no mail or SMS provider is wired for
+# them, so an extra channel row would be a record that never leaves the box.
+WORKFLOW_NOTIFICATION_TYPES = frozenset(
+    {
+        NotificationType.POLICY_REJECTED,
+        NotificationType.SCHEME_APPROVED,
+        NotificationType.SCHEME_REJECTED,
+        NotificationType.ROLE_REQUEST_UPDATE,
+        NotificationType.FEEDBACK_UPDATE,
+        NotificationType.APPROVAL_PENDING,
+        NotificationType.NEW_APPLICATION,
+    }
+)
+
+
+def queue_notifications(
+    db: Session,
+    user_ids: Iterable[UUID],
+    notification_type: NotificationType,
+    title: str,
+    message: str,
+    related_entity_type: str | None = None,
+    related_entity_id: UUID | None = None,
+) -> list[Notification]:
+    """Stage one IN_APP notification per recipient in the open transaction.
+
+    Nothing is committed here: the caller's commit publishes the change and
+    its notifications together, so they succeed or fail as one unit. Rows are
+    staged through the session flush, not `bulk_insert_mappings`, because the
+    test harness (and any caller sharing a session) must see them before the
+    commit.
+    """
+
+    notifications = []
+
+    for user_id in user_ids:
+        notifications.append(
+            create_notification(
+                db=db,
+                user_id=user_id,
+                notification_type=notification_type,
+                title=title,
+                message=message,
+                channel=NotificationChannel.IN_APP,
+                related_entity_type=related_entity_type,
+                related_entity_id=related_entity_id,
+            )
+        )
+
+    return notifications
+
 
 def send_notification(
     db: Session,
@@ -197,13 +257,56 @@ def _in_app_records(db: Session, user_id: UUID):
 
 def list_notifications(
     db: Session,
-    current_user: User
-) -> list[Notification]:
-    return (
-        _in_app_records(db, current_user.id)
-        .order_by(Notification.created_at.desc())
+    current_user: User,
+    unread_only: bool = False,
+    limit: int = DEFAULT_LIMIT,
+    offset: int = 0,
+) -> tuple[list[Notification], int]:
+    """The caller's in-app inbox, newest first, paged.
+
+    Returns ``(rows, total)`` where `total` counts every matching row before
+    paging, which is what the X-Total-Count header carries.
+    """
+    query = _in_app_records(db, current_user.id)
+
+    if unread_only:
+        query = query.filter(Notification.is_read.is_(False))
+
+    total = query.count()
+
+    rows = (
+        query.order_by(Notification.created_at.desc())
+        .offset(offset)
+        .limit(clamp_limit(limit))
         .all()
     )
+
+    return rows, total
+
+
+def delete_notification(
+    db: Session,
+    notification_id,
+    current_user: User,
+) -> None:
+    """Delete one of the caller's own in-app notifications.
+
+    Delivery records (EMAIL / SMS rows) and other people's notifications are
+    invisible here — `_in_app_records` already scopes the lookup — so a wrong
+    id is a plain 404.
+    """
+    notification = _in_app_records(db, current_user.id).filter(
+        Notification.id == notification_id,
+    ).first()
+
+    if not notification:
+        raise HTTPException(
+            status_code=404,
+            detail="Notification not found",
+        )
+
+    db.delete(notification)
+    db.commit()
 
 
 def get_unread_count(
@@ -263,9 +366,13 @@ def run_deadline_reminders(
 
     Reminders go to the users who can actually apply (active citizens and
     organizations) for every ACTIVE scheme whose deadline falls inside the
-    reminder window. The run is idempotent: a user is only ever notified once
-    per scheme, so repeated executions (scheduled ticks, manual triggers, or
+    reminder window — but never to a user who already has an application for
+    that scheme. The run is idempotent: a user is only ever notified once per
+    scheme, so repeated executions (scheduled ticks, manual triggers, or
     several API workers) cannot duplicate a reminder.
+
+    The "already reminded" and "already applied" lookups are each one bulk
+    query for the whole run instead of a query per user per scheme.
     """
 
     if threshold_days is None:
@@ -295,6 +402,35 @@ def run_deadline_reminders(
         .all()
     )
 
+    scheme_ids = [scheme.id for scheme in schemes]
+
+    # One query for every reminder that already exists for these schemes …
+    already_notified = {
+        (user_id, entity_id)
+        for user_id, entity_id in db.query(
+            Notification.user_id,
+            Notification.related_entity_id,
+        )
+        .filter(
+            Notification.type == NotificationType.DEADLINE_REMINDER,
+            Notification.related_entity_type == "scheme",
+            Notification.related_entity_id.in_(scheme_ids),
+        )
+        .all()
+    }
+
+    # … and one query for every user who already applied to them. Applicants
+    # have nothing left to do, so they must not be reminded again.
+    applicants = {
+        (user_id, applied_scheme_id)
+        for user_id, applied_scheme_id in db.query(
+            Application.user_id,
+            Application.scheme_id,
+        )
+        .filter(Application.scheme_id.in_(scheme_ids))
+        .all()
+    }
+
     created = 0
     skipped = 0
 
@@ -309,18 +445,13 @@ def run_deadline_reminders(
         )
 
         for recipient in recipients:
-            already_notified = (
-                db.query(Notification.id)
-                .filter(
-                    Notification.user_id == recipient.id,
-                    Notification.type == NotificationType.DEADLINE_REMINDER,
-                    Notification.related_entity_type == "scheme",
-                    Notification.related_entity_id == scheme.id,
-                )
-                .first()
-            )
+            key = (recipient.id, scheme.id)
 
-            if already_notified:
+            if key in applicants:
+                skipped += 1
+                continue
+
+            if key in already_notified:
                 skipped += 1
                 continue
 
