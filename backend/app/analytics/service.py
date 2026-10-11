@@ -6,7 +6,15 @@ from backend.app.models.policy import Policy
 from backend.app.models.scheme import Scheme
 from backend.app.models.search_history import SearchHistory
 from backend.app.models.user import User, UserRole
-from backend.app.models.notification import Notification
+from backend.app.models.notification import Notification, NotificationChannel
+# One canonical scope rule (case-insensitive, trimmed, ministry first with
+# department fallback) shared with policies, schemes, applications, search
+# and reports — see backend/app/scope.py.
+from backend.app.scope import policy_scope_filter, scheme_scope_filter
+
+# Top schemes returned by the usage leaderboard (analytics endpoint and the
+# analytics report, which reuses this service).
+SCHEME_USAGE_LIMIT = 20
 from backend.app.models.government_official_profile import (
     GovernmentOfficialProfile,
 )
@@ -58,7 +66,7 @@ def get_analytics_overview(
 
     if ministry:
         policy_query = policy_query.filter(
-            Policy.ministry == ministry
+            policy_scope_filter(ministry)
         )
 
     total_policies = policy_query.scalar() or 0
@@ -70,7 +78,7 @@ def get_analytics_overview(
 
     if ministry:
         scheme_query = scheme_query.filter(
-            Policy.ministry == ministry
+            scheme_scope_filter(ministry)
         )
 
     total_schemes = scheme_query.scalar() or 0
@@ -103,7 +111,7 @@ def get_policy_statistics(
 
     if ministry:
         category_query = category_query.filter(
-            Policy.ministry == ministry
+            policy_scope_filter(ministry)
         )
 
     category_rows = category_query.all()
@@ -118,7 +126,7 @@ def get_policy_statistics(
 
     if ministry:
         status_query = status_query.filter(
-            Policy.ministry == ministry
+            policy_scope_filter(ministry)
         )
 
     status_rows = status_query.all()
@@ -133,7 +141,7 @@ def get_policy_statistics(
 
     if ministry:
         department_query = department_query.filter(
-            Policy.ministry == ministry
+            policy_scope_filter(ministry)
         )
 
     department_rows = department_query.all()
@@ -171,7 +179,7 @@ def get_scheme_statistics(
 
     if ministry:
         category_query = category_query.filter(
-            Policy.ministry == ministry
+            scheme_scope_filter(ministry)
         )
 
     category_rows = category_query.all()
@@ -187,7 +195,7 @@ def get_scheme_statistics(
 
     if ministry:
         status_query = status_query.filter(
-            Policy.ministry == ministry
+            scheme_scope_filter(ministry)
         )
 
     status_rows = status_query.all()
@@ -203,12 +211,15 @@ def get_scheme_statistics(
 
     if ministry:
         usage_query = usage_query.filter(
-            Policy.ministry == ministry
+            scheme_scope_filter(ministry)
         )
 
+    # Capped: the leaderboard (and the report that reuses it) shows the top
+    # schemes by views instead of every scheme in the scope.
     usage_rows = (
         usage_query
         .order_by(Scheme.view_count.desc())
+        .limit(SCHEME_USAGE_LIMIT)
         .all()
     )
 
@@ -319,7 +330,7 @@ def get_department_statistics(
 
     if ministry:
         policy_query = policy_query.filter(
-            Policy.ministry == ministry
+            policy_scope_filter(ministry)
         )
 
     policy_rows = policy_query.all()
@@ -335,7 +346,7 @@ def get_department_statistics(
 
     if ministry:
         scheme_query = scheme_query.filter(
-            Policy.ministry == ministry
+            scheme_scope_filter(ministry)
         )
 
     scheme_rows = scheme_query.all()
@@ -353,11 +364,18 @@ def get_department_statistics(
 
 
 def get_notification_statistics(db: Session) -> dict:
+    # SMS rows are delivery records only: no SMS provider is configured, so
+    # they are never actually sent. They are excluded from every aggregate
+    # here (and therefore from the notification section of analytics reports)
+    # instead of being counted as delivered messages.
+    not_sms = Notification.channel != NotificationChannel.SMS
+
     type_rows = (
         db.query(
             Notification.type,
             func.count(Notification.id),
         )
+        .filter(not_sms)
         .group_by(Notification.type)
         .all()
     )
@@ -367,6 +385,7 @@ def get_notification_statistics(db: Session) -> dict:
             Notification.channel,
             func.count(Notification.id),
         )
+        .filter(not_sms)
         .group_by(Notification.channel)
         .all()
     )
@@ -376,6 +395,7 @@ def get_notification_statistics(db: Session) -> dict:
             Notification.is_read,
             func.count(Notification.id),
         )
+        .filter(not_sms)
         .group_by(Notification.is_read)
         .all()
     )
@@ -385,6 +405,7 @@ def get_notification_statistics(db: Session) -> dict:
             func.date(Notification.created_at).label("date"),
             func.count(Notification.id),
         )
+        .filter(not_sms)
         .group_by(func.date(Notification.created_at))
         .order_by(func.date(Notification.created_at))
         .all()

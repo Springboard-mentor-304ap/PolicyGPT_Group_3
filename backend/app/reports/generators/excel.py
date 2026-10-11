@@ -128,6 +128,26 @@ def _column_widths(table: ReportTable) -> list[int]:
     return widths
 
 
+def _merged_column_widths(tables: list[ReportTable]) -> list[int]:
+    """Widest cell per column index across every table on the sheet.
+
+    Several tables share one sheet but their columns do not line up, so each
+    column takes the maximum width any table needs at that index — setting
+    widths per table made the last table on the sheet win.
+    """
+
+    merged: list[int] = []
+
+    for table in tables:
+        for index, width in enumerate(_column_widths(table)):
+            if index < len(merged):
+                merged[index] = max(merged[index], width)
+            else:
+                merged.append(width)
+
+    return merged
+
+
 def _write_table(sheet: Worksheet, table: ReportTable, row: int, is_first: bool) -> int:
     if table.title:
         _write_text(sheet, row, 1, table.title, SECTION_FONT)
@@ -153,9 +173,6 @@ def _write_table(sheet: Worksheet, table: ReportTable, row: int, is_first: bool)
         sheet.cell(row=row, column=1, value=EMPTY_TABLE_TEXT)
         row += 1
 
-    for index, width in enumerate(_column_widths(table), start=1):
-        sheet.column_dimensions[get_column_letter(index)].width = width
-
     if is_first:
         sheet.freeze_panes = sheet.cell(row=header_row + 1, column=1)
         sheet.auto_filter.ref = (
@@ -169,6 +186,9 @@ def _write_table(sheet: Worksheet, table: ReportTable, row: int, is_first: bool)
 def _write_section(sheet: Worksheet, section: ReportSection, row: int) -> int:
     for index, table in enumerate(section.tables):
         row = _write_table(sheet, table, row, is_first=index == 0)
+
+    for index, width in enumerate(_merged_column_widths(section.tables), start=1):
+        sheet.column_dimensions[get_column_letter(index)].width = width
 
     return row
 
