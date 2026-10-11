@@ -3,9 +3,11 @@ Seed script to create the initial Super Admin user.
 
 Usage:
     cd <project root>
-    python -m backend.app.seed_super_admin
+    SEED_SUPER_ADMIN_PASSWORD=<password> python -m backend.app.seed_super_admin
 
 Requires DATABASE_URL and JWT_SECRET_KEY in .env or environment.
+Credentials are read from SEED_SUPER_ADMIN_NAME / SEED_SUPER_ADMIN_EMAIL /
+SEED_SUPER_ADMIN_PASSWORD. The script refuses to run when ENVIRONMENT=production.
 """
 
 import os
@@ -22,7 +24,6 @@ try:
 except ImportError:
     pass
 
-from backend.app.db.database import Base
 from backend.app.models.user import User, UserRole
 from backend.app.auth.security import hash_password
 
@@ -37,13 +38,17 @@ def get_or_create_super_admin(session: Session) -> User:
         print(f"  Super Admin already exists: {existing.email} (id={existing.id})")
         return existing
 
-    # Prompt for details
-    full_name = input("Super Admin full name [Admin]: ").strip() or "Admin"
-    email = input("Super Admin email [admin@policygpt.gov]: ").strip() or "admin@policygpt.gov"
-    password = input("Super Admin password: ").strip()
+    full_name = os.getenv("SEED_SUPER_ADMIN_NAME", "Admin").strip() or "Admin"
+    email = (
+        os.getenv("SEED_SUPER_ADMIN_EMAIL", "admin@policygpt.gov").strip().lower()
+    )
+    password = os.getenv("SEED_SUPER_ADMIN_PASSWORD", "").strip()
 
     if not password:
-        print("ERROR: Password cannot be empty.")
+        print(
+            "ERROR: Set SEED_SUPER_ADMIN_PASSWORD in the environment "
+            "(or .env) before running this script."
+        )
         sys.exit(1)
 
     admin = User(
@@ -63,6 +68,12 @@ def get_or_create_super_admin(session: Session) -> User:
 
 
 def main():
+    if os.getenv("ENVIRONMENT", "").strip().lower() == "production":
+        print(
+            "ERROR: Refusing to run seed script with ENVIRONMENT=production."
+        )
+        sys.exit(1)
+
     database_url = os.environ.get("DATABASE_URL")
     if not database_url:
         print("ERROR: DATABASE_URL environment variable not set.")
@@ -71,9 +82,6 @@ def main():
 
     print("Creating database engine...")
     engine = create_engine(database_url)
-
-    print("Creating tables (if not exists)...")
-    Base.metadata.create_all(bind=engine)
 
     with Session(engine) as session:
         print("\nSetting up Super Admin...")
