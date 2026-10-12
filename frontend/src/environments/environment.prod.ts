@@ -13,5 +13,5 @@ export const environment = {
    * Deployed API origin, no trailing slash.
    * REPLACE with the real backend URL for your deployment.
    */
-  apiUrl: 'https://policygpt-api.example.gov',
+  apiUrl: 'https://policygpt-api-6y6j.onrender.com',
 };
