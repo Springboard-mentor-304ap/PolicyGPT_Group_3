@@ -3,7 +3,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query, Request, Response, status
 from sqlalchemy.orm import Session
 
-from backend.app.auth.dependencies import get_current_user
+from backend.app.auth.dependencies import get_current_user, get_current_user_optional
 from backend.app.db.database import get_db
 from backend.app.models.eligibility_rule import (
     EligibilityOperator,
@@ -62,7 +62,7 @@ def list_schemes_route(
     limit: int = Query(default=DEFAULT_LIMIT, ge=1),
     offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User | None = Depends(get_current_user_optional),
 ):
     rows, total = list_schemes(
         db=db,
@@ -83,7 +83,7 @@ def list_schemes_route(
 def get_scheme_route(
     scheme_id: UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User | None = Depends(get_current_user_optional),
 ):
     return get_scheme_details(
         db=db,

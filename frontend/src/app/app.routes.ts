@@ -38,7 +38,6 @@ export const routes: Routes = [
   // Policy Management Routes
   {
     path: 'policies',
-    canActivate: [authGuard],
     loadComponent: () =>
       import('./pages/policies/policy-list/policy-list.component').then(
         (m) => m.PolicyListComponent
@@ -54,7 +53,6 @@ export const routes: Routes = [
   },
   {
     path: 'policies/:id',
-    canActivate: [authGuard],
     loadComponent: () =>
       import('./pages/policies/policy-detail/policy-detail.component').then(
         (m) => m.PolicyDetailComponent
@@ -71,7 +69,6 @@ export const routes: Routes = [
   // Scheme Management Routes
   {
     path: 'schemes',
-    canActivate: [authGuard],
     loadComponent: () =>
       import('./pages/schemes/scheme-list/scheme-list.component').then(
         (m) => m.SchemeListComponent
@@ -87,7 +84,6 @@ export const routes: Routes = [
   },
   {
     path: 'schemes/:id',
-    canActivate: [authGuard],
     loadComponent: () =>
       import('./pages/schemes/scheme-details/scheme-details.component').then(
         (m) => m.SchemeDetailsComponent
@@ -124,6 +120,7 @@ export const routes: Routes = [
   // (no auth dependency), so the page stays open to guests as well.
   {
     path: 'finder',
+    canActivate: [authGuard],
     loadComponent: () =>
       import('./pages/finder/finder.component').then((m) => m.FinderComponent),
   },

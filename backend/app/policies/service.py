@@ -332,59 +332,93 @@ def _count_policy_view(
     db.refresh(policy)
 
 
+
 def get_policy_details(
     db: Session,
     policy_id: UUID,
-    current_user: User,
+    current_user: User | None,
 ) -> PolicyDetailResponse:
     policy = get_policy(db, policy_id)
-    _assert_policy_is_visible(db, policy, current_user)
-    _count_policy_view(db, policy, current_user)
 
-    query = db.query(Scheme).filter(Scheme.policy_id == policy.id)
+    if current_user is None:
+        if policy.status != PolicyStatus.APPROVED:
+            raise HTTPException(
+                status_code=404,
+                detail="Policy not found",
+            )
+    else:
+        _assert_policy_is_visible(db, policy, current_user)
+        _count_policy_view(db, policy, current_user)
 
-    if current_user.role in (UserRole.ADMINISTRATOR, UserRole.SUPER_ADMIN):
-        query = query.filter(Scheme.status != SchemeStatus.ARCHIVED)
+    query = db.query(Scheme).filter(
+        Scheme.policy_id == policy.id
+    )
+
+    if current_user is None:
+        # Guests can see active schemes only.
+        query = query.filter(
+            Scheme.status == SchemeStatus.ACTIVE
+        )
+
+    elif current_user.role in (
+        UserRole.ADMINISTRATOR,
+        UserRole.SUPER_ADMIN,
+    ):
+        query = query.filter(
+            Scheme.status != SchemeStatus.ARCHIVED
+        )
+
     elif current_user.role == UserRole.GOVERNMENT_OFFICIAL:
         query = query.filter(
             (Scheme.created_by == current_user.id)
             | (Scheme.status == SchemeStatus.ACTIVE)
-        ).filter(Scheme.status != SchemeStatus.ARCHIVED)
-    else:
-        query = query.filter(Scheme.status == SchemeStatus.ACTIVE)
+        ).filter(
+            Scheme.status != SchemeStatus.ARCHIVED
+        )
 
-    schemes = query.order_by(Scheme.created_at.desc()).all()
-    policy_data = PolicyResponse.model_validate(policy).model_dump()
+    else:
+        query = query.filter(
+            Scheme.status == SchemeStatus.ACTIVE
+        )
+
+    schemes = query.order_by(
+        Scheme.created_at.desc()
+    ).all()
+
+    policy_data = PolicyResponse.model_validate(
+        policy
+    ).model_dump()
+
     return PolicyDetailResponse(
         **policy_data,
-        schemes=[PolicySchemeSummary.model_validate(scheme) for scheme in schemes],
+        schemes=[
+            PolicySchemeSummary.model_validate(scheme)
+            for scheme in schemes
+        ],
     )
+
 
 
 def list_policies(
     db: Session,
-    current_user: User,
+    current_user: User | None,
     include_archived: bool = False,
     by_me: bool = False,
     limit: int = DEFAULT_LIMIT,
     offset: int = 0,
 ) -> tuple[list[Policy], int]:
-    """Policies the caller may see, newest first, paged.
-
-    Returns ``(rows, total)`` — `total` counts every matching row before
-    LIMIT/OFFSET, which is what the X-Total-Count header carries.
-    """
     query = db.query(Policy)
 
-    if current_user.role in (UserRole.ADMINISTRATOR, UserRole.SUPER_ADMIN):
-        # Admins see all statuses from all users; `by_me` is only offered to
-        # officials, so their behaviour is unchanged.
+
+    if current_user is None:
+        query = query.filter(
+            Policy.status == PolicyStatus.APPROVED
+        )
+
+    elif current_user.role in (UserRole.ADMINISTRATOR, UserRole.SUPER_ADMIN):
         if not include_archived:
             query = query.filter(Policy.status != PolicyStatus.ARCHIVED)
     elif current_user.role == UserRole.GOVERNMENT_OFFICIAL:
-        # Officials are locked to their own ministry. Inside that scope they
-        # see their own records (all statuses) + APPROVED records from other
-        # officials, or only their own records when "By Me" is selected.
         scope = _get_official_ministry(db, current_user)
         query = query.filter(
             policy_scope_filter(scope)
@@ -399,7 +433,6 @@ def list_policies(
         if not include_archived:
             query = query.filter(Policy.status != PolicyStatus.ARCHIVED)
     else:
-        # Citizens, researchers, organizations: APPROVED only
         query = query.filter(Policy.status == PolicyStatus.APPROVED)
 
     total = query.count()
