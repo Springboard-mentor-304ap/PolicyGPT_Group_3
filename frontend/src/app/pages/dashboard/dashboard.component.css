@@ -1,13 +1,17 @@
-/* Dashboard Layout */
+/* Dashboard Layout — warm off-white government-portal surface */
 .dashboard-layout {
   display: flex;
   min-height: 100vh;
-  background-color: var(--color-bg-app);
+  background-color: var(--color-gov-cream);
 }
 
 /* Main Content */
 .main-content {
   flex: 1;
+  /* min-width: 0 keeps flex's automatic minimum (min-content of the
+     sections below) from widening this column past the viewport — the
+     cause of horizontal scrolling on mobile. */
+  min-width: 0;
   margin-left: 260px;
   transition: margin-left var(--transition-normal);
   min-height: 100vh;
@@ -34,9 +38,10 @@
 }
 
 .page-title {
+  font-family: var(--font-family-display);
   font-size: var(--font-size-2xl);
   font-weight: var(--font-weight-bold);
-  color: var(--color-text-primary);
+  color: var(--color-gov-ink);
   margin-bottom: var(--space-1);
 }
 
@@ -136,7 +141,7 @@
 
 .stat-card {
   background-color: var(--color-bg-surface);
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--color-gov-line);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
   display: flex;
@@ -186,9 +191,10 @@
 }
 
 .stat-value {
+  font-family: var(--font-family-display);
   font-size: var(--font-size-2xl);
   font-weight: var(--font-weight-bold);
-  color: var(--color-text-primary);
+  color: var(--color-gov-ink);
   line-height: 1;
 }
 
@@ -211,9 +217,10 @@
 }
 
 .section-title {
+  font-family: var(--font-family-display);
   font-size: var(--font-size-lg);
   font-weight: var(--font-weight-semibold);
-  color: var(--color-text-primary);
+  color: var(--color-gov-ink);
 }
 
 .section-icon {
@@ -245,7 +252,11 @@
 /* Charts Grid */
 .charts-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  /* min(320px, 100%) keeps the 320px desktop minimum but lets tracks shrink
+     on narrow viewports — a hard 320px min forced the whole main column
+     wider than the screen (flex min-width: auto), causing horizontal
+     scrolling on mobile. */
+  grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
   gap: 1.5rem;
   margin-top: 1rem;
 }
@@ -266,9 +277,10 @@
 
 .state-title,
 .intel-title {
+  font-family: var(--font-family-display);
   font-size: 1.05rem;
   font-weight: 700;
-  color: var(--color-text-primary);
+  color: var(--color-gov-ink);
 }
 
 .state-title {
@@ -337,7 +349,7 @@
 
 .intel-card {
   background: var(--color-bg-surface);
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--color-gov-line);
   border-radius: 12px;
   padding: 1.5rem;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);

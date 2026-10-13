@@ -8,6 +8,11 @@
  *   3. Typography — Heading hierarchy & text utility classes
  *   4. Layout     — Structural utilities (flex, grid, spacing, surfaces)
  *   5. Utilities  — Atomic helpers (text-align, cursor, opacity, animations)
+ *   6. Theme      — Government-portal theme layer (serif display titles,
+ *                   keyboard focus ring); colors come from the tokens.
+ *   7. Dashboard  — Government-portal theme for the dashboard (hero, stats,
+ *                   feature grid, categories); kept global to stay within
+ *                   Angular's per-component style budget.
  */
 
 @import './styles/_variables.css';
@@ -15,3 +20,5 @@
 @import './styles/_typography.css';
 @import './styles/_layout.css';
 @import './styles/_utilities.css';
+@import './styles/_theme-gov.css';
+@import './styles/_dashboard-gov.css';

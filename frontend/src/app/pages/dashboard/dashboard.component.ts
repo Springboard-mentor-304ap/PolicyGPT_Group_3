@@ -1,8 +1,10 @@
 import { Component, inject, signal, computed, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 
 import { AuthService } from '../../core/services/auth.service';
+import { SearchService } from '../../core/services/search.service';
 import { AnalyticsService } from '../../core/services/analytics.service';
 import { ApplicationService } from '../../core/services/application.service';
 import { NotificationService } from '../../core/services/notification.service';
@@ -25,7 +27,10 @@ import { DashboardSidebarComponent } from './components/dashboard-sidebar/dashbo
 import { NotificationBellComponent } from './components/notification-bell/notification-bell.component';
 import { PendingApprovalsComponent } from './components/pending-approvals/pending-approvals.component';
 import { UsageLeaderboardComponent } from './components/usage-leaderboard/usage-leaderboard.component';
-import { QuickActionsComponent } from './components/quick-actions/quick-actions.component';
+import {
+  QuickActionsComponent,
+  QuickActionItem,
+} from './components/quick-actions/quick-actions.component';
 import { RoleRequestCardsComponent } from './components/role-request-cards/role-request-cards.component';
 import { ProfileCompletionComponent } from './components/profile-completion/profile-completion.component';
 import { ApplicationApprovalsComponent } from './application-approvals/application-approvals.component';
@@ -37,6 +42,7 @@ export type DashboardLoadState = 'idle' | 'loading' | 'ready' | 'error';
   standalone: true,
   imports: [
     CommonModule,
+    FormsModule,
     RouterLink,
     FloatingCompareDockComponent,
     DonutChartComponent,
@@ -59,6 +65,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   readonly authService = inject(AuthService);
   private readonly analyticsService = inject(AnalyticsService);
   private readonly notificationService = inject(NotificationService);
+  private readonly searchService = inject(SearchService);
   private readonly router = inject(Router);
 
   private pollInterval: ReturnType<typeof setInterval> | null = null;
@@ -84,6 +91,307 @@ export class DashboardComponent implements OnInit, OnDestroy {
   // ── Shell ────────────────────────────────────────────────────────────────
   readonly sidebarOpen = signal<boolean>(true);
   readonly activeMenu = signal<string>('overview');
+
+  // ── Hero search (GET /api/search, public endpoint) ───────────────────────
+  /** Text bound to the hero search box. */
+  heroQuery = '';
+
+  /**
+   * Catalogue totals for the compact statistics row. They come from the
+   * public search endpoint (`search_type` only, no query or filters, so the
+   * API never records them as search history). `null` renders as “—” while
+   * loading or when the API is unreachable — never a fabricated number.
+   */
+  readonly policyTotal = signal<number | null>(null);
+  readonly schemeTotal = signal<number | null>(null);
+
+  /** Stats row: catalogue totals for everyone, platform totals for admins. */
+  readonly platformStats = computed(() => {
+    const official = this.isGovOfficial();
+    const overview = this.overview();
+
+    // When the role can read /api/analytics/overview, prefer its ministry-
+    // scoped totals so this row agrees with the analytics cards below;
+    // everyone else uses the public catalogue totals.
+    const policyValue = overview?.total_policies ?? this.policyTotal();
+    const schemeValue = overview?.total_schemes ?? this.schemeTotal();
+
+    const stats: {
+      label: string;
+      value: number | null;
+      icon: string;
+      tone: string;
+    }[] = [
+      {
+        icon: 'document',
+        tone: 'blue',
+        label: official ? 'Ministry Policies' : 'Policies',
+        value: policyValue,
+      },
+      {
+        icon: 'gift',
+        tone: 'green',
+        label: official ? 'Ministry Schemes' : 'Schemes',
+        value: schemeValue,
+      },
+    ];
+
+    if (overview && overview.total_users !== null) {
+      stats.push({
+        icon: 'users',
+        tone: 'navy',
+        label: 'Registered Users',
+        value: overview.total_users,
+      });
+    }
+    if (overview && overview.total_searches !== null) {
+      stats.push({
+        icon: 'search',
+        tone: 'saffron',
+        label: 'Searches Recorded',
+        value: overview.total_searches,
+      });
+    }
+
+    return stats;
+  });
+
+  // ── Hero chips & category grid (canonical /api/search filter values) ─────
+  readonly popularChips: { label: string; value: string }[] = [
+    { label: 'Education', value: 'education' },
+    { label: 'Health', value: 'healthcare' },
+    { label: 'Housing', value: 'housing' },
+    { label: 'Employment', value: 'employment_programs' },
+    { label: 'Agriculture', value: 'farmer_welfare' },
+    { label: 'Social Welfare', value: 'social_security' },
+  ];
+
+  readonly categoryChips: {
+    label: string;
+    value: string;
+    icon: string;
+    tone: string;
+  }[] = [
+    { label: 'Education', value: 'education', icon: 'book', tone: 'navy' },
+    { label: 'Health', value: 'healthcare', icon: 'heart', tone: 'rose' },
+    { label: 'Housing', value: 'housing', icon: 'home', tone: 'green' },
+    {
+      label: 'Employment',
+      value: 'employment_programs',
+      icon: 'briefcase',
+      tone: 'saffron',
+    },
+    { label: 'Agriculture', value: 'farmer_welfare', icon: 'leaf', tone: 'green' },
+    {
+      label: 'Social Welfare',
+      value: 'social_security',
+      icon: 'users',
+      tone: 'blue',
+    },
+    { label: 'Scholarships', value: 'scholarships', icon: 'award', tone: 'navy' },
+    {
+      label: 'Women & Child',
+      value: 'women_empowerment',
+      icon: 'user',
+      tone: 'rose',
+    },
+    {
+      label: 'Business Support',
+      value: 'business_support',
+      icon: 'briefcase',
+      tone: 'blue',
+    },
+    { label: 'Environment', value: 'environment', icon: 'globe', tone: 'green' },
+  ];
+
+  // ── Feature grid: role-aware shortcuts to real routes ────────────────────
+  readonly quickAccess = computed<QuickActionItem[]>(() => {
+    if (this.isGuest()) {
+      return [
+        {
+          icon: 'document',
+          tone: 'blue',
+          label: 'Browse Policies',
+          hint: 'Central and state policy repository',
+          link: '/policies',
+        },
+        {
+          icon: 'gift',
+          tone: 'green',
+          label: 'Browse Schemes',
+          hint: 'Welfare schemes and their benefits',
+          link: '/schemes',
+        },
+        {
+          icon: 'compass',
+          tone: 'saffron',
+          label: 'Scheme Finder',
+          hint: 'Describe your need in plain language',
+          link: '/finder',
+        },
+      ];
+    }
+
+    const discovery: QuickActionItem[] = [
+      {
+        icon: 'search',
+        tone: 'blue',
+        label: 'Search & Explore',
+        hint: 'Find policies and schemes',
+        link: '/search',
+      },
+      {
+        icon: 'check-circle',
+        tone: 'green',
+        label: 'Eligibility Checker',
+        hint: 'See which schemes you qualify for',
+        link: '/eligibility',
+      },
+      {
+        icon: 'compass',
+        tone: 'saffron',
+        label: 'Scheme Finder',
+        hint: 'Describe your need in plain language',
+        link: '/finder',
+      },
+      {
+        icon: 'bookmark',
+        tone: 'navy',
+        label: 'Compare Schemes',
+        hint: 'Compare benefits side by side',
+        link: '/compare',
+      },
+      {
+        icon: 'helpdesk',
+        tone: 'blue',
+        label: 'AI Helpdesk',
+        hint: 'Ask questions about policies and schemes',
+        link: '/helpdesk',
+      },
+      {
+        icon: 'folder',
+        tone: 'saffron',
+        label: 'My Applications',
+        hint: 'Track your scheme applications',
+        link: '/applications',
+      },
+    ];
+
+    if (this.isGovOfficial() || this.isAdmin()) {
+      return [
+        {
+          icon: 'document',
+          tone: 'blue',
+          label: 'Policies',
+          hint: 'Upload and manage policies',
+          link: '/policies',
+        },
+        {
+          icon: 'gift',
+          tone: 'green',
+          label: 'Schemes',
+          hint: 'Create and manage welfare schemes',
+          link: '/schemes',
+        },
+        {
+          icon: 'folder',
+          tone: 'saffron',
+          label: 'Application Approvals',
+          hint: 'Review citizen applications',
+          link: '/applications/review',
+        },
+        {
+          icon: 'chart',
+          tone: 'navy',
+          label: 'Reports',
+          hint: 'Generate downloadable reports',
+          link: '/reports',
+        },
+      ];
+    }
+
+    if (this.isResearcher()) {
+      return [
+        discovery[0],
+        {
+          icon: 'document',
+          tone: 'blue',
+          label: 'Policies',
+          hint: 'Browse the policy repository',
+          link: '/policies',
+        },
+        {
+          icon: 'gift',
+          tone: 'green',
+          label: 'Schemes',
+          hint: 'Browse welfare schemes',
+          link: '/schemes',
+        },
+        {
+          icon: 'chart',
+          tone: 'navy',
+          label: 'Reports',
+          hint: 'Generate downloadable reports',
+          link: '/reports',
+        },
+      ];
+    }
+
+    return discovery;
+  });
+
+  /** Right-hand “A Unified Platform” tiles: real destinations per role. */
+  readonly platformTiles = computed(() => {
+    if (this.isGuest()) {
+      return [
+        {
+          icon: 'document',
+          tone: 'blue',
+          label: 'Discover Policies',
+          hint: 'Central and state policy repository',
+          link: '/policies',
+        },
+        {
+          icon: 'gift',
+          tone: 'green',
+          label: 'Explore Schemes',
+          hint: 'Welfare schemes and their benefits',
+          link: '/schemes',
+        },
+        {
+          icon: 'compass',
+          tone: 'saffron',
+          label: 'Scheme Finder',
+          hint: 'Get matched to the right scheme',
+          link: '/finder',
+        },
+      ];
+    }
+
+    return [
+      {
+        icon: 'search',
+        tone: 'blue',
+        label: 'Discover',
+        hint: 'Find relevant policies and schemes',
+        link: '/search',
+      },
+      {
+        icon: 'check-circle',
+        tone: 'saffron',
+        label: 'Check Eligibility',
+        hint: 'Understand if you qualify',
+        link: '/eligibility',
+      },
+      {
+        icon: 'bookmark',
+        tone: 'green',
+        label: 'Compare & Apply',
+        hint: 'Make informed decisions',
+        link: '/compare',
+      },
+    ];
+  });
 
   readonly isGuest = computed(() => !this.authService.isAuthenticated());
 
@@ -228,6 +536,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   // ── Lifecycle ────────────────────────────────────────────────────────────
   ngOnInit(): void {
+    // Catalogue totals are public, so every dashboard variant loads them.
+    this.loadCatalogueTotals();
+
     // The role decides both the dashboard variant and which analytics
     // endpoints are allowed, so load once with whatever profile is cached and
     // reload after `/auth/me` refreshes it.
@@ -257,6 +568,44 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (this.visibilityHandler) {
       document.removeEventListener('visibilitychange', this.visibilityHandler);
     }
+  }
+
+  /**
+   * Load the policy / scheme totals shown in the statistics row.
+   *
+   * Uses `GET /api/search` with `search_type` only: the response carries the
+   * count in its body (no CORS-exposed header needed) and the backend skips
+   * history logging when no query or filter is present.
+   */
+  private loadCatalogueTotals(): void {
+    this.searchService
+      .search({ type: 'policy', page: 1, page_size: 1 })
+      .subscribe({
+        next: (res) => this.policyTotal.set(res.total),
+        error: () => this.policyTotal.set(null),
+      });
+
+    this.searchService
+      .search({ type: 'scheme', page: 1, page_size: 1 })
+      .subscribe({
+        next: (res) => this.schemeTotal.set(res.total),
+        error: () => this.schemeTotal.set(null),
+      });
+  }
+
+  /** Hero search: jump to the existing Search page with the query. */
+  submitHeroSearch(): void {
+    const q = this.heroQuery.trim();
+    this.router.navigate(['/search'], {
+      queryParams: q ? { q } : {},
+    });
+  }
+
+  /** Popular chip / category card: same Search page, category filter. */
+  searchCategory(value: string): void {
+    this.router.navigate(['/search'], {
+      queryParams: { category: value },
+    });
   }
 
   /** Load everything the current role is entitled to see. */
