@@ -37,6 +37,11 @@ SCHEME_UPDATE_RECIPIENT_ROLES = (
     UserRole.RESEARCHER,
     UserRole.ORGANIZATION,
 )
+PUBLIC_SCHEME_ROLES = frozenset({
+    UserRole.CITIZEN,
+    UserRole.RESEARCHER,
+    UserRole.ORGANIZATION,
+})
 
 NON_NULLABLE_UPDATE_FIELDS = ("title", "description", "category")
 
