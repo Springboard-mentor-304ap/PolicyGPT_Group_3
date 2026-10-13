@@ -59,6 +59,7 @@ export class LoginComponent {
         this.authService.getMe().subscribe({
           next: (user) => {
             this.loading.set(false);
+            console.log('[LOGIN] Profile loaded:', user.email, user.email_verified, user.role);
             this.routeUserByRole(user.role);
           },
           error: () => {
@@ -76,9 +77,11 @@ export class LoginComponent {
   }
 
   private routeUserByRole(role: string | null): void {
+    console.log('[LOGIN] Routing user by role:', role);
+
     const returnUrl = this.route.snapshot.queryParams['returnUrl'];
 
-    if (returnUrl) {
+    if (returnUrl && !returnUrl.startsWith('/verify-email')) {
       this.router.navigateByUrl(returnUrl);
       return;
     }
