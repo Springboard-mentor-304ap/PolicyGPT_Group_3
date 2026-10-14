@@ -278,6 +278,46 @@ export class DashboardComponent implements OnInit, OnDestroy {
     ];
 
     if (this.isGovOfficial() || this.isAdmin()) {
+      if (this.isAdmin()) {
+        // Administrative destinations only — citizen tools stay off this list.
+        return [
+          {
+            icon: 'user',
+            tone: 'blue',
+            label: this.isSuperAdmin()
+              ? 'User & Role Management'
+              : 'User Management',
+            hint: 'Search accounts, review roles and account status',
+            link: '/admin/users',
+          },
+          {
+            icon: 'folder',
+            tone: 'saffron',
+            label: this.isSuperAdmin()
+              ? 'Administrator Approvals'
+              : 'Role Approvals',
+            hint: this.isSuperAdmin()
+              ? 'Review administrator access requests'
+              : 'Review pending role upgrade requests',
+            link: '/role-approvals',
+          },
+          {
+            icon: 'chart',
+            tone: 'navy',
+            label: 'Reports',
+            hint: 'Generate downloadable reports',
+            link: '/reports',
+          },
+          {
+            icon: 'document',
+            tone: 'green',
+            label: 'Audit Logs',
+            hint: 'Review recorded administrative events',
+            link: '/admin/audit-logs',
+          },
+        ];
+      }
+
       return [
         {
           icon: 'document',
@@ -368,6 +408,62 @@ export class DashboardComponent implements OnInit, OnDestroy {
       ];
     }
 
+    if (this.isGovOfficial() || this.isAdmin()) {
+      if (this.isAdmin()) {
+        return [
+          {
+            icon: 'users',
+            tone: 'blue',
+            label: 'User Management',
+            hint: 'Search accounts and review role status',
+            link: '/admin/users',
+          },
+          {
+            icon: 'user',
+            tone: 'saffron',
+            label: this.isSuperAdmin()
+              ? 'Administrator Approvals'
+              : 'Access Requests',
+            hint: this.isSuperAdmin()
+              ? 'Approve or reject administrator access'
+              : 'Approve or reject role upgrade requests',
+            link: '/role-approvals',
+          },
+          {
+            icon: 'book',
+            tone: 'green',
+            label: 'Audit Logs',
+            hint: 'Trace administrative activity',
+            link: '/admin/audit-logs',
+          },
+        ];
+      }
+
+      return [
+        {
+          icon: 'document',
+          tone: 'blue',
+          label: 'Policy Management',
+          hint: 'Upload and maintain department policies',
+          link: '/policies',
+        },
+        {
+          icon: 'gift',
+          tone: 'green',
+          label: 'Scheme Management',
+          hint: 'Create and maintain welfare schemes',
+          link: '/schemes',
+        },
+        {
+          icon: 'briefcase',
+          tone: 'saffron',
+          label: 'Application Review',
+          hint: 'Process citizen applications',
+          link: '/applications/review',
+        },
+      ];
+    }
+
     return [
       {
         icon: 'search',
@@ -395,6 +491,101 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   readonly isGuest = computed(() => !this.authService.isAuthenticated());
 
+  // ── Hero copy, per role ─────────────────────────────────────────────────
+  // Guests and citizens keep the discovery message; staff roles get copy
+  // that matches what the platform actually lets them do.
+  readonly heroEyebrow = computed(() => {
+    if (this.isGuest() || this.isCitizen() || this.isOrganization()) {
+      return 'Government Policies & Schemes';
+    }
+    if (this.isGovOfficial()) {
+      return 'Government Operations';
+    }
+    if (this.isResearcher()) {
+      return 'Policy Research';
+    }
+    return 'Platform Administration';
+  });
+
+  readonly heroTitleLead = computed(() => {
+    if (this.isGuest() || this.isCitizen() || this.isOrganization()) {
+      return 'Find Government Schemes';
+    }
+    if (this.isGovOfficial()) {
+      return 'Manage Policies & Schemes';
+    }
+    if (this.isResearcher()) {
+      return 'Explore & Analyze';
+    }
+    if (this.isSuperAdmin()) {
+      return 'Oversee Platform Access';
+    }
+    return 'Manage the Platform';
+  });
+
+  readonly heroTitleTail = computed(() => {
+    if (this.isGuest() || this.isCitizen() || this.isOrganization()) {
+      return 'that';
+    }
+    if (this.isGovOfficial()) {
+      return 'for your';
+    }
+    if (this.isResearcher()) {
+      return 'government';
+    }
+    if (this.isSuperAdmin()) {
+      return 'and';
+    }
+    return 'with';
+  });
+
+  readonly heroTitleEm = computed(() => {
+    if (this.isGuest() || this.isCitizen() || this.isOrganization()) {
+      return 'work for you';
+    }
+    if (this.isGovOfficial()) {
+      return 'department';
+    }
+    if (this.isResearcher()) {
+      return 'initiatives';
+    }
+    if (this.isSuperAdmin()) {
+      return 'security';
+    }
+    return 'confidence';
+  });
+
+  readonly heroSubtitle = computed(() => {
+    if (this.isGuest() || this.isCitizen() || this.isOrganization()) {
+      return (
+        'Search, explore and understand government policies and schemes ' +
+        'across central and state departments.'
+      );
+    }
+    if (this.isGovOfficial()) {
+      return (
+        'Manage policies and schemes and monitor departmental activity ' +
+        'across your department.'
+      );
+    }
+    if (this.isResearcher()) {
+      return (
+        'Explore government policies, compare initiatives and analyze ' +
+        'trends with platform-wide data.'
+      );
+    }
+    if (this.isSuperAdmin()) {
+      return (
+        'Oversee administrator access, security and platform-wide ' +
+        'operations.'
+      );
+    }
+    return (
+      'Manage users, access requests, feedback and platform activity ' +
+      'across the portal.'
+    );
+  });
+
   /**
    * A token exists but `/api/auth/me` has not answered yet, so the role (and
    * therefore the dashboard variant) is still unknown.
@@ -407,6 +598,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
     const role = this.authService.userRole();
     return role === UserRole.ADMINISTRATOR || role === UserRole.SUPER_ADMIN;
   });
+
+  readonly isSuperAdmin = computed(
+    () => this.authService.userRole() === UserRole.SUPER_ADMIN
+  );
 
   readonly isGovOfficial = computed(
     () => this.authService.userRole() === UserRole.GOVERNMENT_OFFICIAL
@@ -833,6 +1028,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
         // always navigates somewhere, even with an empty pending queue.
         this.router.navigate(['/role-approvals']);
         break;
+      case 'users':
+        // Administrator-only user management page (guarded route).
+        this.router.navigate(['/admin/users']);
+        break;
+      case 'audit-logs':
+        // Administrator-only audit trail page (guarded route).
+        this.router.navigate(['/admin/audit-logs']);
+        break;
       case 'analytics':
         this.scrollToSection('notification-analytics');
         break;
@@ -944,31 +1147,67 @@ export class DashboardComponent implements OnInit, OnDestroy {
       { id: 'faq', label: 'FAQ', icon: 'help-circle' },
     ];
 
+    // Government officials get management destinations only — the citizen
+    // tools (eligibility, finder, compare, helpdesk) are deliberately absent.
     if (this.isGovOfficial()) {
       return [
-        ...base,
-        { id: 'policies-create', label: 'Upload Policy', icon: 'file-plus' },
-        { id: 'schemes-create', label: 'Create Scheme', icon: 'gift' },
-        { id: 'applications-review', label: 'Application Approvals', icon: 'folder' },
-        { id: 'reports', label: 'Reports', icon: 'document' },
+        { id: 'overview', label: 'Overview', icon: 'home' },
+        { id: 'policies', label: 'Policies', icon: 'document' },
+        { id: 'schemes', label: 'Schemes', icon: 'gift' },
+        // Global search stays available to officials (already implemented).
+        { id: 'search', label: 'Search & Explore', icon: 'search' },
+        { id: 'applications-review', label: 'Applications', icon: 'folder' },
+        { id: 'analytics', label: 'Analytics', icon: 'chart' },
+        { id: 'reports', label: 'Reports', icon: 'chart' },
+        { id: 'notifications', label: 'Notifications', icon: 'bell' },
         { id: 'profile', label: 'Government Profile', icon: 'user' },
       ];
     }
 
+    // Super admins own administrator access: their approvals queue only ever
+    // contains administrator requests (the API filters by reviewer role).
+    if (this.isSuperAdmin()) {
+      return [
+        { id: 'overview', label: 'Overview', icon: 'home' },
+        { id: 'users', label: 'User & Role Management', icon: 'users' },
+        {
+          id: 'approvals',
+          label: 'Administrator Approvals',
+          icon: 'folder',
+        },
+        { id: 'analytics', label: 'Platform Analytics', icon: 'chart' },
+        { id: 'audit-logs', label: 'Audit Logs', icon: 'shield' },
+        { id: 'reports', label: 'Reports', icon: 'document' },
+        { id: 'notifications', label: 'Notifications', icon: 'bell' },
+      ];
+    }
+
+    // Administrators manage the platform except administrator access —
+    // approving an administrator request is the super admin's prerogative.
     if (this.isAdmin()) {
       return [
-        ...base,
+        { id: 'overview', label: 'Overview', icon: 'home' },
+        { id: 'users', label: 'User Management', icon: 'users' },
         { id: 'approvals', label: 'Role Approvals', icon: 'folder' },
-        { id: 'applications-review', label: 'Application Approvals', icon: 'folder' },
+        { id: 'analytics', label: 'Platform Analytics', icon: 'chart' },
         { id: 'reports', label: 'Reports', icon: 'document' },
+        { id: 'feedback', label: 'Feedback', icon: 'chat' },
+        { id: 'audit-logs', label: 'Audit Logs', icon: 'shield' },
+        { id: 'notifications', label: 'Notifications', icon: 'bell' },
       ];
     }
 
     if (this.isResearcher()) {
       return [
-        ...base,
+        { id: 'overview', label: 'Overview', icon: 'home' },
+        { id: 'search', label: 'Search & Explore', icon: 'search' },
+        { id: 'policies', label: 'Policies', icon: 'document' },
+        { id: 'schemes', label: 'Schemes', icon: 'gift' },
+        { id: 'compare', label: 'Compare Schemes', icon: 'columns' },
+        { id: 'helpdesk', label: 'AI Helpdesk', icon: 'helpdesk' },
         { id: 'analytics', label: 'Platform Analytics', icon: 'chart' },
         { id: 'reports', label: 'Reports', icon: 'document' },
+        { id: 'notifications', label: 'Notifications', icon: 'bell' },
       ];
     }
 
@@ -984,6 +1223,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       ...base,
       { id: 'notifications', label: 'Notifications', icon: 'bell' },
       { id: 'applications', label: 'My Applications', icon: 'folder' },
+      { id: 'profile', label: 'My Profile', icon: 'user' },
       { id: 'role-upgrade', label: 'Role Upgrade', icon: 'folder' },
     ];
   });

@@ -135,12 +135,11 @@
     <!-- HERO: search entry point (public endpoint, same for every role) -->
     <section class="gov-hero" aria-label="Search government policies and schemes">
       <div class="gov-hero-inner">
-        <span class="gov-eyebrow">Government Policies &amp; Schemes</span>
-        <h2 class="gov-hero-title">Find Government Schemes<br />that <em>work for you</em></h2>
-        <p class="gov-hero-sub">
-          Search, explore and understand government policies and schemes
-          across central and state departments.
-        </p>
+        <span class="gov-eyebrow">{{ heroEyebrow() }}</span>
+        <h2 class="gov-hero-title">
+          {{ heroTitleLead() }}<br />{{ heroTitleTail() }} <em>{{ heroTitleEm() }}</em>
+        </h2>
+        <p class="gov-hero-sub">{{ heroSubtitle() }}</p>
 
         <form class="gov-hero-search" (ngSubmit)="submitHeroSearch()">
           <span class="gov-hero-search-icon">
@@ -168,6 +167,37 @@
         </div>
       </div>
     </section>
+
+    <!-- IMPORTANT ACTIONABLE MESSAGES — directly below the hero, before
+         statistics and other dashboard content. Relocated (not duplicated)
+         from the sections further down; each stays role-gated and keeps its
+         existing actions and workflows. -->
+
+    <!-- Complete profile notice (any signed-in role with an incomplete
+         profile; renders nothing once the profile is complete) -->
+    @if (!isGuest() && !isProfilePending()) {
+      <app-profile-completion></app-profile-completion>
+    }
+
+    <!-- Role upgrade notice (citizen only) -->
+    @if (!isGuest() && !isProfilePending() && isCitizen()) {
+      <app-role-request-cards></app-role-request-cards>
+    }
+
+    <!-- Pending application approvals (government officials,
+         administrators) -->
+    @if (!isGuest() && canReviewApplications()) {
+      <app-application-approvals></app-application-approvals>
+    }
+
+    <!-- Pending role approvals (administrators only) -->
+    @if (isAdmin() && pendingRequests().length > 0) {
+      <app-pending-approvals
+        [requests]="pendingRequests()"
+        (approve)="approveRequest($event)"
+        (reject)="rejectRequest($event)">
+      </app-pending-approvals>
+    }
 
     <!-- Compact statistics row: catalogue totals come from the public
          search endpoint; platform totals appear for administrator roles. -->
@@ -309,32 +339,6 @@
           </div>
         }
       </section>
-
-      <!-- Role upgrade cards (citizen only) -->
-      @if (isCitizen()) {
-        <app-role-request-cards></app-role-request-cards>
-      }
-    }
-
-    <!-- 3b. PROFILE COMPLETION (any signed-in role with an incomplete
-         profile; renders nothing once the profile is complete) -->
-    @if (!isGuest() && !isProfilePending()) {
-      <app-profile-completion></app-profile-completion>
-    }
-
-    <!-- 3c. APPLICATION APPROVALS (government officials, administrators) -->
-    @if (!isGuest() && canReviewApplications()) {
-      <app-application-approvals></app-application-approvals>
-    }
-
-    <!-- 3d. PENDING ROLE APPROVALS (administrators only) — kept directly
-         below Application Approvals instead of after the analytics panels -->
-    @if (isAdmin() && pendingRequests().length > 0) {
-      <app-pending-approvals
-        [requests]="pendingRequests()"
-        (approve)="approveRequest($event)"
-        (reject)="rejectRequest($event)">
-      </app-pending-approvals>
     }
 
     <!-- 4. ANALYTICS DASHBOARD (government officials, researchers, admins) -->

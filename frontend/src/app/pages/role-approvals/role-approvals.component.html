@@ -27,13 +27,17 @@
         No role requests are waiting for review.
       </div>
     }
-  </div>
 
-  @if (!loading() && !loadError() && requests().length > 0) {
-    <app-pending-approvals
-      [requests]="requests()"
-      (approve)="approveRequest($event)"
-      (reject)="rejectRequest($event)">
-    </app-pending-approvals>
-  }
+    <!-- Same component the dashboard renders; `compact` drops the
+         dashboard's full-bleed section gutters so the list shares this
+         page's container width and alignment. -->
+    @if (!loading() && !loadError() && requests().length > 0) {
+      <app-pending-approvals
+        [compact]="true"
+        [requests]="requests()"
+        (approve)="approveRequest($event)"
+        (reject)="rejectRequest($event)">
+      </app-pending-approvals>
+    }
+  </div>
 </div>
