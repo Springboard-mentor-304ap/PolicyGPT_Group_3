@@ -97,10 +97,19 @@
 }
 
 .nav-item.active {
-  background-color: var(--color-primary-blue);
-  color: var(--color-text-inverse);
-  /* Saffron marker ties the navy rail to the government portal theme. */
-  box-shadow: inset 3px 0 0 var(--color-gov-saffron-bright);
+  /* Warm-ivory active row with deep-navy text; the rail stays #0B2545. */
+  background-color: #f7f3eb;
+  color: #0b2545;
+  /* Thin saffron indicator along the left edge of the active item. */
+  box-shadow: inset 3px 0 0 #f0a23a;
+}
+
+/* Explicit so the generic white-on-navy hover never overrides the ivory
+   row: slightly deeper ivory feedback keeps navy text readable. */
+.nav-item.active:hover,
+.nav-item.active:focus-visible {
+  background-color: var(--color-bg-muted);
+  color: var(--color-text-primary);
 }
 
 .nav-item svg {

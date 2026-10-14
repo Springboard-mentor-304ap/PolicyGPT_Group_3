@@ -78,6 +78,14 @@
           <line x1="2" y1="12" x2="22" y2="12"></line>
           <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
         }
+        @case ('columns') {
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+          <line x1="12" y1="3" x2="12" y2="21"></line>
+        }
+        @case ('trending-up') {
+          <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+          <polyline points="17 6 23 6 23 12"></polyline>
+        }
       }
     </svg>
   </ng-template>
@@ -317,6 +325,16 @@
     <!-- 3c. APPLICATION APPROVALS (government officials, administrators) -->
     @if (!isGuest() && canReviewApplications()) {
       <app-application-approvals></app-application-approvals>
+    }
+
+    <!-- 3d. PENDING ROLE APPROVALS (administrators only) — kept directly
+         below Application Approvals instead of after the analytics panels -->
+    @if (isAdmin() && pendingRequests().length > 0) {
+      <app-pending-approvals
+        [requests]="pendingRequests()"
+        (approve)="approveRequest($event)"
+        (reject)="rejectRequest($event)">
+      </app-pending-approvals>
     }
 
     <!-- 4. ANALYTICS DASHBOARD (government officials, researchers, admins) -->
@@ -680,15 +698,6 @@
               </div>
             </div>
           </section>
-        }
-
-        <!-- Pending role approvals (administrators only) -->
-        @if (isAdmin() && pendingRequests().length > 0) {
-          <app-pending-approvals
-            [requests]="pendingRequests()"
-            (approve)="approveRequest($event)"
-            (reject)="rejectRequest($event)">
-          </app-pending-approvals>
         }
 
         <!-- Your notifications inbox (analytics roles can still use it) -->

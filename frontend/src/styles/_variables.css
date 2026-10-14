@@ -8,14 +8,14 @@
      1. COLOR PALETTE
      ========================================================================== */
   
-  /* Primary Brand Blues */
+  /* Primary Brand — slate blue (buttons, links, interactive accents) */
   --color-primary-navy: #0b2545;
   --color-primary-navy-dark: #07192f;
-  --color-primary-blue: #0062d2;
-  --color-primary-hover: #0050ad;
-  --color-primary-active: #003f8a;
-  --color-primary-subtle: #eef4ff;
-  --color-primary-border: #bfdbfe;
+  --color-primary-blue: #526d8a;
+  --color-primary-hover: #405873;
+  --color-primary-active: #35475a;
+  --color-primary-subtle: #eff1f4;
+  --color-primary-border: #c3ccd8;
 
   /* Text — primary is the deep navy of the government portal theme;
      body/secondary/muted stay neutral for readable Inter copy. */
@@ -26,7 +26,7 @@
   --color-text-inverse: #ffffff;
 
   /* Surfaces & Backgrounds — warm ivory page with white content surfaces */
-  --color-bg-app: #f7f4ed;
+  --color-bg-app: #f7f3eb;
   --color-bg-surface: #ffffff;
   --color-bg-muted: #f1ebdf;
   --color-bg-subtle: #f5f1e7;
@@ -63,13 +63,14 @@
   
   --font-family-base: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   --font-family-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  /* Display serif for headings only (page/section titles, hero, stats).
-     Body text, forms and tables keep --font-family-base (Inter). */
-  --font-family-display: 'Playfair Display', Georgia, 'Times New Roman', serif;
+  /* Headings use the same Inter family as body text (serif display fonts
+     are not used anywhere in the app). The token is kept so every heading
+     rule that references it keeps working unchanged. */
+  --font-family-display: var(--font-family-base);
 
   /* Government portal palette (dashboard accents: warm cream surfaces,
      saffron / green highlights over the navy + blue brand pair). */
-  --color-gov-cream: #f7f4ed;
+  --color-gov-cream: #f7f3eb;
   --color-gov-cream-deep: #f1ebdf;
   --color-gov-line: #e6dfd1;
   --color-gov-saffron: #a35c0f;
@@ -198,7 +199,7 @@
      keyboard focus is clearly visible (WCAG 2.4.7) on every form control
      that sets `outline: none` and relies on this token instead of the
      theme's :focus-visible outline. */
-  --shadow-focus-ring: 0 0 0 3px rgba(0, 98, 210, 0.55);
+  --shadow-focus-ring: 0 0 0 3px rgba(82, 109, 138, 0.55);
   --shadow-focus-danger: 0 0 0 3px rgba(239, 68, 68, 0.55);
   --shadow-focus-success: 0 0 0 3px rgba(16, 185, 129, 0.55);
 

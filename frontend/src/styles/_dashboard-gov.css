@@ -2,14 +2,15 @@
  * PolicyGPT — government portal dashboard theme.
  *
  * Hero banner, statistics strip, feature grid and category chips for
- * DashboardComponent, plus the serif display treatment for dashboard
+ * DashboardComponent, plus the display-font treatment for dashboard
  * headings. Kept in the global bundle because dashboard.component.css
  * already sits close to Angular's per-component style budget
  * (4kB warning / 8kB error — see angular.json budgets).
  *
- * Uses only tokens from _variables.css: no new images or dependencies.
- * Body text, forms and tables keep Inter (--font-family-base); only
- * headings use --font-family-display (Playfair Display).
+ * Uses tokens from _variables.css and one static hero photograph served
+ * from public/ (/images/policygpt-hero.png); no new dependencies.
+ * Body text, forms and tables keep Inter (--font-family-base); headings
+ * use --font-family-display, which resolves to the same Inter stack.
  */
 
 /* ==========================================================================
@@ -42,8 +43,9 @@
 }
 
 /* ==========================================================================
-   2. HERO BANNER (CSS-only government look: layered greens with a warm
-      saffron glow and a faint dot texture — no image asset required)
+   2. HERO BANNER (government building photograph on the right, fading into
+      a deep forest-green overlay on the left behind the heading, search
+      bar and popular chips — all of which stay real HTML elements)
    ========================================================================== */
 
 .gov-hero {
@@ -51,17 +53,36 @@
   color: var(--color-text-inverse);
   background-color: #0a3226;
   background-image:
+    /* 1) Forest-green fade: opaque behind the heading/search on the left,
+          transparent on the right so the building stays visible. */
+    linear-gradient(
+      100deg,
+      #062519 0%,
+      rgba(6, 37, 25, 0.97) 32%,
+      rgba(6, 37, 25, 0.86) 44%,
+      rgba(6, 37, 25, 0.55) 58%,
+      rgba(6, 37, 25, 0.22) 72%,
+      rgba(6, 37, 25, 0.04) 88%,
+      rgba(6, 37, 25, 0) 100%
+    ),
+    /* 2) Bottom scrim keeps the popular chips legible over the photo. */
+    linear-gradient(
+      to top,
+      rgba(6, 37, 25, 0.55) 0%,
+      rgba(6, 37, 25, 0.18) 26%,
+      rgba(6, 37, 25, 0) 48%
+    ),
+    /* 3) Warm saffron glow over the building (sunset accent). */
     radial-gradient(
       110% 130% at 88% 12%,
-      rgba(242, 169, 59, 0.26) 0%,
+      rgba(242, 169, 59, 0.22) 0%,
       rgba(242, 169, 59, 0) 45%
     ),
-    radial-gradient(
-      90% 120% at 6% 100%,
-      rgba(14, 122, 68, 0.4) 0%,
-      rgba(14, 122, 68, 0) 55%
-    ),
-    linear-gradient(102deg, #062519 0%, #0a3226 52%, #0d3a2a 100%);
+    /* 4) Hero photograph (frontend/public/images/, copied verbatim). */
+    url('/images/policygpt-hero.png');
+  background-repeat: no-repeat;
+  background-position: center, center, center, right center;
+  background-size: cover;
   border-bottom: 1px solid var(--color-gov-line);
 }
 
@@ -71,6 +92,9 @@
   inset: 0;
   background-image: radial-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1.5px);
   background-size: 24px 24px;
+  /* Texture only over the dark left side; the photograph stays clean. */
+  -webkit-mask-image: linear-gradient(100deg, #000 0%, #000 40%, transparent 72%);
+  mask-image: linear-gradient(100deg, #000 0%, #000 40%, transparent 72%);
   pointer-events: none;
 }
 
@@ -282,7 +306,7 @@
 
 .gov-stat-label {
   font-size: var(--font-size-sm);
-  color: var(--color-text-secondary);
+  color: #373d3f;
 }
 
 /* ==========================================================================
@@ -489,13 +513,52 @@
   color: var(--color-gov-ink);
 }
 
-/* Serif display headings for the dashboard live in _theme-gov.css (global)
+/* Display headings for the dashboard live in _theme-gov.css (global)
    and in the owning components (dashboard.component.css, quick-actions);
    they are intentionally not repeated here.
 
    ==========================================================================
    6. RESPONSIVE
    ========================================================================== */
+
+@media (max-width: 1280px) {
+  /* Below desktop width the heading and subtitle stretch across most of the
+     hero, so a top scrim holds them at AA contrast over the bright sky while
+     the horizontal fade eases off at the right, keeping the building visible. */
+  .gov-hero {
+    background-image:
+      linear-gradient(
+        to bottom,
+        rgba(6, 37, 25, 0.85) 0%,
+        rgba(6, 37, 25, 0.5) 38%,
+        rgba(6, 37, 25, 0.12) 62%,
+        rgba(6, 37, 25, 0) 78%
+      ),
+      linear-gradient(
+        100deg,
+        #062519 0%,
+        rgba(6, 37, 25, 0.97) 40%,
+        rgba(6, 37, 25, 0.82) 58%,
+        rgba(6, 37, 25, 0.6) 75%,
+        rgba(6, 37, 25, 0.32) 90%,
+        rgba(6, 37, 25, 0.18) 100%
+      ),
+      linear-gradient(
+        to top,
+        rgba(6, 37, 25, 0.6) 0%,
+        rgba(6, 37, 25, 0.2) 30%,
+        rgba(6, 37, 25, 0) 55%
+      ),
+      radial-gradient(
+        110% 130% at 88% 12%,
+        rgba(242, 169, 59, 0.22) 0%,
+        rgba(242, 169, 59, 0) 45%
+      ),
+      url('/images/policygpt-hero.png');
+    background-position: center, center, center, center, right center;
+    background-size: cover;
+  }
+}
 
 @media (max-width: 1024px) {
   .gov-feature-grid {
@@ -504,6 +567,40 @@
 }
 
 @media (max-width: 768px) {
+  /* Phones: text wraps over the full height of the hero, so the green
+     overlay covers nearly the whole width for guaranteed readability. */
+  .gov-hero {
+    background-image:
+      linear-gradient(
+        to bottom,
+        rgba(6, 37, 25, 0.6) 0%,
+        rgba(6, 37, 25, 0.3) 38%,
+        rgba(6, 37, 25, 0.08) 62%,
+        rgba(6, 37, 25, 0) 78%
+      ),
+      linear-gradient(
+        100deg,
+        #062519 0%,
+        rgba(6, 37, 25, 0.97) 55%,
+        rgba(6, 37, 25, 0.9) 78%,
+        rgba(6, 37, 25, 0.72) 100%
+      ),
+      linear-gradient(
+        to top,
+        rgba(6, 37, 25, 0.6) 0%,
+        rgba(6, 37, 25, 0.2) 30%,
+        rgba(6, 37, 25, 0) 55%
+      ),
+      radial-gradient(
+        110% 130% at 88% 12%,
+        rgba(242, 169, 59, 0.22) 0%,
+        rgba(242, 169, 59, 0) 45%
+      ),
+      url('/images/policygpt-hero.png');
+    background-position: center, center, center, center, right center;
+    background-size: cover;
+  }
+
   .gov-hero-inner {
     padding: var(--space-8) var(--page-padding-x-sm);
     border-left-width: 3px;

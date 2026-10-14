@@ -1,3 +1,10 @@
+.content-section {
+  /* Match the shared page container so the card lines up with every other
+     dashboard section and stays inside the viewport (same rule as
+     profile-completion / pending-approvals; see styles/_layout.css). */
+  padding: 0 max(var(--page-padding-x), (100% - var(--content-max-width)) / 2) var(--space-8);
+}
+
 .approvals-card {
   background-color: var(--color-bg-surface);
   border: 1px solid var(--color-border-subtle);
@@ -5,6 +12,20 @@
   padding: var(--space-4, 1rem) var(--space-5, 1.25rem);
   margin-bottom: var(--space-4, 1rem);
   box-shadow: var(--shadow-sm);
+  /* Never let long scheme names or a wide badge widen the card past its
+     container. */
+  min-width: 0;
+}
+
+@media (max-width: 768px) {
+  .approvals-card {
+    padding: var(--space-4, 1rem);
+  }
+
+  .recent-row {
+    flex-wrap: wrap;
+    gap: var(--space-2, 0.5rem);
+  }
 }
 
 .card-header {

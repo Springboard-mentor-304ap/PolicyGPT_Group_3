@@ -198,7 +198,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     {
       label: 'Business Support',
       value: 'business_support',
-      icon: 'briefcase',
+      icon: 'trending-up',
       tone: 'blue',
     },
     { label: 'Environment', value: 'environment', icon: 'globe', tone: 'green' },
@@ -255,7 +255,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         link: '/finder',
       },
       {
-        icon: 'bookmark',
+        icon: 'columns',
         tone: 'navy',
         label: 'Compare Schemes',
         hint: 'Compare benefits side by side',
@@ -384,7 +384,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         link: '/eligibility',
       },
       {
-        icon: 'bookmark',
+        icon: 'columns',
         tone: 'green',
         label: 'Compare & Apply',
         hint: 'Make informed decisions',
@@ -937,7 +937,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       { id: 'eligibility', label: 'Eligibility Checker', icon: 'check-circle' },
       { id: 'finder', label: 'Scheme Finder', icon: 'compass' },
       { id: 'helpdesk', label: 'AI Helpdesk', icon: 'helpdesk' },
-      { id: 'compare', label: 'Compare Schemes', icon: 'bookmark' },
+      { id: 'compare', label: 'Compare Schemes', icon: 'columns' },
       { id: 'feedback', label: 'Feedback', icon: 'chat' },
       { id: 'faq', label: 'FAQ', icon: 'help-circle' },
     ];

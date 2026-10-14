@@ -5,11 +5,10 @@
  * accents) come from the shared tokens in _variables.css, so this file only
  * carries the two rules that cannot live in tokens:
  *
- *   1. Playfair Display for page titles and major section headings.
- *      Body copy, forms, navigation, tables, buttons and metadata keep
- *      Inter (--font-family-base). Only heading families are listed here —
- *      sizes, weights and colors stay with _typography.css and the owning
- *      components.
+ *   1. Heading font family: Inter for page titles and major section
+ *      headings — the same sans-serif as body copy (no serif anywhere).
+ *      Only heading families are listed here — sizes, weights and colors
+ *      stay with _typography.css and the owning components.
  *   2. A clearly visible 3px keyboard focus ring (WCAG 2.4.7), with a
  *      saffron variant on the dark surfaces where blue would not contrast.
  *
