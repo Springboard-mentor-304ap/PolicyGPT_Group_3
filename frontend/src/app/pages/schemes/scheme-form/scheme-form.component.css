@@ -116,7 +116,7 @@
 .form-select:focus {
   outline: none;
   border-color: var(--color-primary, #3b82f6);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  box-shadow: 0 0 0 3px rgba(82, 109, 138, 0.1);
 }
 
 .form-textarea {

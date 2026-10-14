@@ -12,6 +12,7 @@ import {
 import { UserRole } from '../../../core/models/auth.models';
 import { ButtonComponent } from '../../../shared/components/button/button.component';
 import { DepartmentSelectComponent } from '../../../shared/components/department-select/department-select.component';
+import { StateSelectComponent } from '../../../shared/components/state-select/state-select.component';
 import { BackToDashboardComponent } from '../../../shared/components/back-to-dashboard/back-to-dashboard.component';
 
 @Component({
@@ -22,6 +23,7 @@ import { BackToDashboardComponent } from '../../../shared/components/back-to-das
     ReactiveFormsModule,
     ButtonComponent,
     DepartmentSelectComponent,
+    StateSelectComponent,
     BackToDashboardComponent,
   ],
   templateUrl: './policy-form.component.html',

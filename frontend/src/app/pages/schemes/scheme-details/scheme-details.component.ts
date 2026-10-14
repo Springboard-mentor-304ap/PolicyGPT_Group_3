@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Router, ActivatedRoute, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { SchemeService } from '../../../core/services/scheme.service';
+import { PolicyService } from '../../../core/services/policy.service';
 import { ApplicationService } from '../../../core/services/application.service';
 import { AuthService } from '../../../core/services/auth.service';
 import {
@@ -39,12 +40,16 @@ import { BackToDashboardComponent } from '../../../shared/components/back-to-das
 })
 export class SchemeDetailsComponent implements OnInit {
   private readonly schemeService = inject(SchemeService);
+  private readonly policyService = inject(PolicyService);
   private readonly applicationService = inject(ApplicationService);
   readonly authService = inject(AuthService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
 
   readonly scheme = signal<Scheme | null>(null);
+  /** Parent policy's display name (the scheme only stores `policy_id`). */
+  readonly policyName = signal<string | null>(null);
+  readonly policyNameLoading = signal(false);
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
   readonly actionLoading = signal(false);
@@ -179,12 +184,39 @@ export class SchemeDetailsComponent implements OnInit {
     this.schemeService.getScheme(id).subscribe({
       next: (scheme) => {
         this.scheme.set(scheme);
+        this.loadPolicyName(scheme.policy_id);
         this.loadEligibilityRules(scheme.id);
         this.loading.set(false);
       },
       error: (err) => {
         this.error.set(err.error?.detail || 'Failed to load scheme');
         this.loading.set(false);
+      },
+    });
+  }
+
+  /**
+   * Resolve the parent policy's name through the existing policy detail
+   * endpoint. If the policy cannot be read (deleted or not visible to this
+   * caller) the row shows an "unavailable" state instead of the raw ID.
+   */
+  loadPolicyName(policyId: string): void {
+    this.policyName.set(null);
+
+    if (!policyId) {
+      this.policyNameLoading.set(false);
+      return;
+    }
+
+    this.policyNameLoading.set(true);
+    this.policyService.getPolicy(policyId).subscribe({
+      next: (policy) => {
+        this.policyName.set(policy.title || null);
+        this.policyNameLoading.set(false);
+      },
+      error: () => {
+        this.policyName.set(null);
+        this.policyNameLoading.set(false);
       },
     });
   }

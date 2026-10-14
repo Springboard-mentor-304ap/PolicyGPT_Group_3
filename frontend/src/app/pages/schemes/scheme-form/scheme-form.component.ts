@@ -26,6 +26,7 @@ import {
 } from '../../../core/models/scheme.models';
 import { ButtonComponent } from '../../../shared/components/button/button.component';
 import { DepartmentSelectComponent } from '../../../shared/components/department-select/department-select.component';
+import { StateSelectComponent } from '../../../shared/components/state-select/state-select.component';
 import { BackToDashboardComponent } from '../../../shared/components/back-to-dashboard/back-to-dashboard.component';
 
 @Component({
@@ -36,6 +37,7 @@ import { BackToDashboardComponent } from '../../../shared/components/back-to-das
     ReactiveFormsModule,
     ButtonComponent,
     DepartmentSelectComponent,
+    StateSelectComponent,
     BackToDashboardComponent,
   ],
   templateUrl: './scheme-form.component.html',
@@ -74,15 +76,6 @@ export class SchemeFormComponent implements OnInit {
   }));
   readonly eligibilityParameters = Object.values(EligibilityParameter).map((value) => ({ value, label: ELIGIBILITY_PARAMETER_LABELS[value] }));
   readonly eligibilityOperators = Object.values(EligibilityOperator).map((value) => ({ value, label: ELIGIBILITY_OPERATOR_LABELS[value] }));
-  readonly states = [
-    'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh', 'Goa',
-    'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka', 'Kerala',
-    'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram', 'Nagaland',
-    'Odisha', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu', 'Telangana', 'Tripura',
-    'Uttar Pradesh', 'Uttarakhand', 'West Bengal', 'Andaman and Nicobar Islands',
-    'Chandigarh', 'Dadra and Nagar Haveli and Daman and Diu', 'Delhi', 'Jammu and Kashmir',
-    'Ladakh', 'Lakshadweep', 'Puducherry',
-  ];
 
   schemeForm: FormGroup = this.fb.group({
     policy_id: ['', Validators.required],

@@ -53,12 +53,25 @@ export interface CriterionResult {
   failureReason?: string;
 }
 
+/**
+ * Backend verdict for a scheme check (`EligibilityCheckResponse.status`).
+ * `more_information_required` means eligibility could NOT be established
+ * because profile data is missing — it is not a failed match.
+ */
+export type EligibilityStatus =
+  | 'eligible'
+  | 'not_eligible'
+  | 'more_information_required';
+
 export interface EligibilityResult {
   scheme_id: string;
   scheme_title: string;
   category: string;
   is_eligible: boolean;
+  status: EligibilityStatus;
   match_percentage: number;
+  /** Profile parameters the check could not evaluate (missing data). */
+  missing_information?: string[];
   criteria_results: CriterionResult[];
   benefits_summary?: string | null;
   application_process?: string | null;

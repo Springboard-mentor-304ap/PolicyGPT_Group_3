@@ -1,0 +1,95 @@
+<div
+  class="state-select"
+  [class.has-error]="!!error"
+  [class.is-disabled]="disabled"
+>
+  @if (label) {
+    <label [for]="id" class="select-label">
+      {{ label }}
+      @if (required) {
+        <span class="required-asterisk">*</span>
+      }
+    </label>
+  }
+
+  <div class="select-control">
+    <input
+      #searchInput
+      [id]="id"
+      [name]="name"
+      class="select-input"
+      type="text"
+      role="combobox"
+      autocomplete="off"
+      [attr.aria-expanded]="open()"
+      [attr.aria-controls]="id ? id + '-listbox' : null"
+      aria-autocomplete="list"
+      [placeholder]="placeholder"
+      [value]="display"
+      [disabled]="disabled"
+      (input)="onInput($event)"
+      (focus)="openList()"
+      (blur)="onBlur()"
+      (keydown)="onKeydown($event)"
+    />
+
+    @if (selected() && !disabled) {
+      <button
+        type="button"
+        class="select-clear"
+        aria-label="Clear state selection"
+        (mousedown)="keepFocus($event)"
+        (click)="clear($event)"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    }
+
+    <button
+      type="button"
+      class="select-toggle"
+      tabindex="-1"
+      aria-hidden="true"
+      (mousedown)="keepFocus($event)"
+      (click)="toggleOpen()"
+    >
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="6 9 12 15 18 9"></polyline>
+      </svg>
+    </button>
+  </div>
+
+  @if (open() && !disabled) {
+    <ul class="select-options" role="listbox" [attr.id]="id ? id + '-listbox' : null">
+      @for (option of filtered; track option; let i = $index) {
+        <li
+          role="option"
+          class="select-option"
+          [class.active]="i === highlightIndex"
+          [class.selected]="option === selected()"
+          (mousedown)="keepFocus($event)"
+          (mouseenter)="highlightIndex = i"
+          (click)="select(option)"
+        >
+          <span>{{ option }}</span>
+          @if (option === selected()) {
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          }
+        </li>
+      } @empty {
+        <li class="select-empty">No matching state or Union Territory</li>
+      }
+    </ul>
+  }
+
+  @if (error) {
+    <p class="error-message" role="alert">{{ error }}</p>
+  } @else if (hint) {
+    <p class="hint-message">{{ hint }}</p>
+  }
+</div>

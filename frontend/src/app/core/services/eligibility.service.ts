@@ -4,6 +4,7 @@ import { Observable, forkJoin, of, switchMap, map, catchError } from 'rxjs';
 import {
   EligibilityCheckRequest,
   EligibilityResult,
+  EligibilityStatus,
   CriterionResult,
 } from '../models/eligibility.models';
 
@@ -81,18 +82,34 @@ export class EligibilityService {
     const rules: any[] = res.rules || [];
     const totalRules = rules.length;
     const satisfiedRules = rules.filter((r: any) => r.satisfied).length;
-    const matchPct =
-      totalRules > 0 ? Math.round((satisfiedRules / totalRules) * 100) : 100;
 
-    const isEligible = res.status === 'eligible';
+    const status: EligibilityStatus =
+      res.status ??
+      (res.missing_information?.length
+        ? 'more_information_required'
+        : 'not_eligible');
+    const isEligible = status === 'eligible';
+
+    // A percentage is only meaningful when rules were actually evaluated.
+    // The backend returns no rules when the profile is missing, and a
+    // "not eligible / more info required" verdict with zero evaluated rules
+    // must never be reported as a perfect 100% match.
+    const matchPct =
+      totalRules > 0
+        ? Math.round((satisfiedRules / totalRules) * 100)
+        : isEligible
+          ? 100
+          : 0;
 
     return {
       scheme_id: String(res.scheme_id),
       scheme_title: res.scheme_title || '',
       category: '',
       is_eligible: isEligible,
+      status,
       match_percentage: matchPct,
       criteria_results: rules.map(mapRule),
+      missing_information: res.missing_information || [],
       benefits_summary: res.summary || null,
       application_process: null,
       document_url: null,

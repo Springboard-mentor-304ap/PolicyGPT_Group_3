@@ -197,8 +197,16 @@
             <span class="info-value">{{ s.state || '—' }}</span>
           </div>
           <div class="info-row">
-            <span class="info-label">Policy ID</span>
-            <span class="info-value mono">{{ s.policy_id }}</span>
+            <span class="info-label">Policy</span>
+            <span class="info-value">
+              @if (policyNameLoading()) {
+                <span class="info-unavailable">Loading…</span>
+              } @else if (policyName()) {
+                {{ policyName() }}
+              } @else {
+                <span class="info-unavailable">Policy name unavailable</span>
+              }
+            </span>
           </div>
           <div class="info-row">
             <span class="info-label">Launch Date</span>

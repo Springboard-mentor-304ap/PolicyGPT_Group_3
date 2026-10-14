@@ -149,17 +149,13 @@
           ></app-department-select>
         </div>
         <div class="form-group">
-          <label for="state" class="form-label">State</label>
-          <select
+          <app-state-select
             id="state"
             formControlName="state"
-            class="form-select"
-          >
-            <option value="">Select state or Union Territory</option>
-            @for (state of states; track state) {
-              <option [value]="state">{{ state }}</option>
-            }
-          </select>
+            label="State"
+            name="state"
+            placeholder="Select state or Union Territory"
+          />
         </div>
       </div>
 

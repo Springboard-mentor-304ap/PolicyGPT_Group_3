@@ -8,6 +8,7 @@ import { CardComponent } from '../../shared/components/card/card.component';
 import { InputComponent } from '../../shared/components/input/input.component';
 import { ButtonComponent } from '../../shared/components/button/button.component';
 import { BackToDashboardComponent } from '../../shared/components/back-to-dashboard/back-to-dashboard.component';
+import { StateSelectComponent } from '../../shared/components/state-select/state-select.component';
 
 interface RoleOption {
   id: string;
@@ -23,6 +24,7 @@ interface RoleOption {
     CommonModule,
     ReactiveFormsModule,
     InputComponent,
+    StateSelectComponent,
     ButtonComponent,
     BackToDashboardComponent,
   ],
@@ -238,11 +240,10 @@ interface RoleOption {
                     />
                   </div>
                   <div class="form-row">
-                    <app-input
+                    <app-state-select
                       formControlName="state"
-                      type="text"
                       label="State"
-                      placeholder="e.g., Maharashtra"
+                      placeholder="Select a state or Union Territory"
                       id="org_state"
                       name="state"
                     />
@@ -343,11 +344,10 @@ interface RoleOption {
                 <div class="form-section">
                   <h3>Location</h3>
                   <div class="form-row">
-                    <app-input
+                    <app-state-select
                       formControlName="state"
-                      type="text"
                       label="State"
-                      placeholder="e.g., Delhi"
+                      placeholder="Select a state or Union Territory"
                       id="govt_state"
                       name="state"
                       [required]="true"
@@ -502,7 +502,7 @@ interface RoleOption {
 
     .role-card:hover {
       border-color: var(--primary-color, #3b82f6);
-      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+      box-shadow: 0 4px 12px rgba(82, 109, 138, 0.15);
     }
 
     .role-icon {

@@ -14,6 +14,7 @@ import { ButtonComponent } from '../../shared/components/button/button.component
 import { CardComponent } from '../../shared/components/card/card.component';
 import { InputComponent } from '../../shared/components/input/input.component';
 import { SelectComponent, SelectOption } from '../../shared/components/select/select.component';
+import { StateSelectComponent } from '../../shared/components/state-select/state-select.component';
 import {
   FinderBadgeVariant,
   FinderMatchCardComponent,
@@ -107,6 +108,7 @@ const RESULT_GROUPS: FinderResultGroup[] = [
     CardComponent,
     InputComponent,
     SelectComponent,
+    StateSelectComponent,
     FinderMatchCardComponent,
   ],
   templateUrl: './finder.component.html',
