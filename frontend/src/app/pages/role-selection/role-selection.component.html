@@ -1,0 +1,89 @@
+<div class="auth-page">
+  <app-card variant="auth" [padding]="'lg'">
+    <div class="auth-header">
+      <div class="step-indicator">
+        <span class="step-dot active"></span>
+        <span class="step-line"></span>
+        <span class="step-dot"></span>
+      </div>
+      <h1 class="auth-title">Select Your Role</h1>
+      <p class="auth-subtitle">Choose how you'll use PolicyGPT</p>
+    </div>
+
+    @if (errorMessage()) {
+      <div class="alert alert-error" role="alert">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="15" y1="9" x2="9" y2="15"></line>
+          <line x1="9" y1="9" x2="15" y2="15"></line>
+        </svg>
+        <span>{{ errorMessage() }}</span>
+      </div>
+    }
+
+    <div class="role-grid">
+      @for (role of roles; track role.id) {
+        <button
+          type="button"
+          class="role-card"
+          [class.selected]="selectedRole() === role.id"
+          (click)="selectRole(role.id)"
+        >
+          <div class="role-icon" [attr.data-role]="role.icon">
+            @if (role.icon === 'citizen') {
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+              </svg>
+            } @else if (role.icon === 'researcher') {
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <path d="m21 21-4.35-4.35"></path>
+              </svg>
+            } @else if (role.icon === 'government') {
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 21h18"></path>
+                <path d="M5 21V7l7-4 7 4v14"></path>
+                <path d="M9 21v-4h6v4"></path>
+                <path d="M10 9h4"></path>
+                <path d="M10 13h4"></path>
+              </svg>
+            } @else {
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+              </svg>
+            }
+          </div>
+          <div class="role-content">
+            <h3 class="role-title">{{ role.title }}</h3>
+          </div>
+          <div class="role-check">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          </div>
+        </button>
+      }
+    </div>
+
+    <app-button
+      type="button"
+      variant="primary"
+      [fullWidth]="true"
+      [loading]="loading()"
+      [disabled]="loading() || !selectedRole()"
+      (btnClick)="onConfirm()"
+    >
+      Continue
+    </app-button>
+
+    <div class="auth-footer">
+      <p class="text-sm text-muted">
+        <a routerLink="/login" class="text-link">Back to Sign In</a>
+      </p>
+    </div>
+  </app-card>
+</div>

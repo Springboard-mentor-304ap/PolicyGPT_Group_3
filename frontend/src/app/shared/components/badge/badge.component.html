@@ -1,0 +1,8 @@
+<span [ngClass]="['badge', 'badge-' + variant, 'badge-' + size]">
+  @if (dot) {
+    <span class="badge-dot" aria-hidden="true"></span>
+  }
+  <span class="badge-label">
+    <ng-content></ng-content>
+  </span>
+</span>

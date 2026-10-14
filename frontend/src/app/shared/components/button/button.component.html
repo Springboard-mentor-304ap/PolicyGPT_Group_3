@@ -1,0 +1,19 @@
+<button
+  [type]="type"
+  [disabled]="disabled || loading"
+  [ngClass]="[
+    'btn',
+    'btn-' + variant,
+    'btn-' + size,
+    fullWidth ? 'btn-block' : '',
+    loading ? 'btn-loading' : ''
+  ]"
+  (click)="handleClick($event)"
+>
+  @if (loading) {
+    <span class="spinner" aria-hidden="true"></span>
+  }
+  <span class="btn-content" [class.invisible]="loading">
+    <ng-content></ng-content>
+  </span>
+</button>

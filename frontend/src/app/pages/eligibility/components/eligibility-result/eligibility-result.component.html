@@ -1,0 +1,109 @@
+<div class="eligibility-result-card" [class.is-eligible]="result.is_eligible" [class.not-eligible]="!result.is_eligible">
+  <!-- Status Banner -->
+  <div class="status-banner">
+    <div class="status-icon-wrapper">
+      @if (result.is_eligible) {
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+          <polyline points="22 4 12 14.01 9 11.01"></polyline>
+        </svg>
+      } @else {
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="15" y1="9" x2="9" y2="15"></line>
+          <line x1="9" y1="9" x2="15" y2="15"></line>
+        </svg>
+      }
+    </div>
+
+    <div class="status-content">
+      <div class="status-top">
+        <h4 class="scheme-title">{{ result.scheme_title }}</h4>
+        <span class="match-score" [class.high]="result.match_percentage === 100" [class.partial]="result.match_percentage < 100">
+          {{ result.match_percentage }}% Match
+        </span>
+      </div>
+
+      <p class="status-message">
+        @if (result.is_eligible) {
+          You fulfill all the eligibility criteria specified for this scheme!
+        } @else {
+          You do not currently meet all the prerequisite criteria for this scheme.
+        }
+      </p>
+    </div>
+  </div>
+
+  <!-- Detailed Criteria Checklist -->
+  <div class="criteria-section">
+    <h5 class="section-heading">Evaluation Breakdown</h5>
+    <div class="criteria-list">
+      @for (c of result.criteria_results; track c.parameter) {
+        <div class="criterion-row" [class.passed]="c.passed" [class.failed]="!c.passed">
+          <div class="criterion-status-icon">
+            @if (c.passed) {
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+            } @else {
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            }
+          </div>
+
+          <div class="criterion-details">
+            <div class="criterion-main">
+              <span class="criterion-label">{{ c.label }}</span>
+              <span class="criterion-rule">{{ c.ruleDescription }}</span>
+            </div>
+            <div class="criterion-user-val">
+              <span>Your Input: <strong>{{ c.userValue }}</strong></span>
+            </div>
+            @if (!c.passed && c.failureReason) {
+              <p class="failure-reason">{{ c.failureReason }}</p>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+
+  <!-- Benefits & Application Process -->
+  @if (result.benefits_summary || result.application_process) {
+    <div class="benefits-section">
+      @if (result.benefits_summary) {
+        <div class="benefit-box">
+          <h6>Scheme Benefits</h6>
+          <p>{{ result.benefits_summary }}</p>
+        </div>
+      }
+      @if (result.application_process) {
+        <div class="benefit-box">
+          <h6>How to Apply</h6>
+          <p>{{ result.application_process }}</p>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Actions -->
+  <div class="result-actions">
+    <app-button variant="outline" size="sm" (btnClick)="onModifyProfile()">
+      Modify Profile
+    </app-button>
+    @if (result.is_eligible && result.document_url) {
+      <a
+        [href]="result.document_url"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="apply-btn-link"
+      >
+        <app-button variant="primary" size="sm">
+          Proceed to Apply
+        </app-button>
+      </a>
+    }
+  </div>
+</div>

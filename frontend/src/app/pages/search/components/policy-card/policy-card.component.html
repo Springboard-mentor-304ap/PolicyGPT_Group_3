@@ -1,0 +1,120 @@
+<article class="policy-card" [class.is-comparing]="isComparing">
+  <!-- Card Header with Badges & Compare Toggle -->
+  <div class="card-header">
+    <div class="badge-group">
+      <app-badge
+        [variant]="item.itemType === 'scheme' ? 'primary' : 'info'"
+        size="sm"
+      >
+        {{ item.itemType === 'scheme' ? 'Welfare Scheme' : 'National Policy' }}
+      </app-badge>
+
+      <app-badge variant="neutral" size="sm">
+        {{ item.categoryLabel }}
+      </app-badge>
+
+      <app-badge [variant]="statusVariant" size="sm">
+        {{ item.status }}
+      </app-badge>
+    </div>
+
+    <label class="compare-toggle-label" [title]="isComparing ? 'Remove from comparison' : 'Add to comparison'">
+      <input
+        type="checkbox"
+        class="compare-checkbox"
+        [checked]="isComparing"
+        (change)="onToggleCompare()"
+      />
+      <span class="compare-text">Compare</span>
+    </label>
+  </div>
+
+  <!-- Title & Description -->
+  <div class="card-body">
+    <h3 class="card-title" (click)="onViewDetails()" role="button" tabindex="0">{{ item.title }}</h3>
+    <p class="card-desc">{{ item.description }}</p>
+
+    <!-- Key Benefits Preview -->
+    @if (item.benefits) {
+      <div class="benefits-callout">
+        <div class="benefits-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+        </div>
+        <p class="benefits-text"><strong>Key Benefit:</strong> {{ item.benefits }}</p>
+      </div>
+    }
+  </div>
+
+  <!-- Metadata Tags -->
+  <div class="card-meta">
+    @if (item.department || item.ministry) {
+      <div class="meta-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 21h18"></path>
+          <path d="M5 21V7l7-4 7 4v14"></path>
+        </svg>
+        <span>{{ item.department || item.ministry }}</span>
+      </div>
+    }
+
+    @if (item.state) {
+      <div class="meta-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+          <circle cx="12" cy="10" r="3"></circle>
+        </svg>
+        <span>{{ item.state }}</span>
+      </div>
+    }
+
+    @if (item.deadline_date) {
+      <div class="meta-item deadline-meta">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <polyline points="12 6 12 12 16 14"></polyline>
+        </svg>
+        <span>Deadline: {{ item.deadline_date }}</span>
+      </div>
+    }
+  </div>
+
+  <!-- Card Footer Actions -->
+  <div class="card-footer">
+    @if (item.document_url) {
+      <a
+        [href]="item.document_url"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="official-link"
+      >
+        <span>Official Portal</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+          <polyline points="15 3 21 3 21 9"></polyline>
+          <line x1="10" y1="14" x2="21" y2="3"></line>
+        </svg>
+      </a>
+    }
+
+    <div class="footer-actions">
+      <app-button
+        variant="secondary"
+        size="sm"
+        (btnClick)="onViewDetails()"
+      >
+        View Details
+      </app-button>
+      @if (item.itemType === 'scheme') {
+        <app-button
+          variant="primary"
+          size="sm"
+          (btnClick)="onCheckEligibility()"
+        >
+          Check Eligibility
+        </app-button>
+      }
+    </div>
+  </div>
+</article>

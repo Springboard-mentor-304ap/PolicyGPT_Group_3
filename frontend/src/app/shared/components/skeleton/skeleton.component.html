@@ -1,0 +1,27 @@
+<div class="skeleton-container" [attr.data-type]="type">
+  @for (item of countArray; track $index) {
+    @if (type === 'card') {
+      <div class="skeleton-card">
+        <div class="skeleton-line skeleton-badge"></div>
+        <div class="skeleton-line skeleton-title"></div>
+        <div class="skeleton-line skeleton-desc"></div>
+        <div class="skeleton-line skeleton-desc short"></div>
+        <div class="skeleton-footer">
+          <div class="skeleton-line skeleton-meta"></div>
+          <div class="skeleton-line skeleton-btn"></div>
+        </div>
+      </div>
+    } @else if (type === 'table-row') {
+      <div class="skeleton-table-row">
+        <div class="skeleton-line cell-label"></div>
+        <div class="skeleton-line cell-val"></div>
+        <div class="skeleton-line cell-val"></div>
+        <div class="skeleton-line cell-val"></div>
+      </div>
+    } @else if (type === 'text') {
+      <div class="skeleton-line skeleton-text-line"></div>
+    } @else if (type === 'badge') {
+      <div class="skeleton-line skeleton-badge-only"></div>
+    }
+  }
+</div>

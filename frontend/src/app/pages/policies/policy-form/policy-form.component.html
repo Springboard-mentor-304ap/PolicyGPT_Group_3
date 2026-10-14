@@ -1,0 +1,206 @@
+<div class="policy-form-page">
+  <!-- Back Button -->
+  <button class="back-btn" (click)="goBack()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+      <path d="m15 18-6-6 6-6"></path>
+    </svg>
+    Back to Policies
+  </button>
+
+  <!-- Page Header -->
+  <div class="page-header">
+    <h1 class="page-title">{{ isEditMode() ? 'Edit Policy' : 'Create New Policy' }}</h1>
+    <p class="page-subtitle">
+      {{ isEditMode() ? 'Update the policy details below' : 'Fill in the details to create a new policy' }}
+    </p>
+  </div>
+
+  <!-- Loading State -->
+  @if (loading()) {
+    <div class="state-container">
+      <div class="loading-spinner"></div>
+      <p class="state-text">Loading policy data...</p>
+    </div>
+  }
+
+  <!-- Form -->
+  @if (!loading()) {
+    <div class="form-card">
+      <!-- Error Banner -->
+      @if (error()) {
+        <div class="error-banner">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+          {{ error() }}
+        </div>
+      }
+
+      <!-- Success Banner -->
+      @if (successMessage()) {
+        <div class="success-banner">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+          </svg>
+          {{ successMessage() }}
+        </div>
+      }
+
+      <form [formGroup]="form" (ngSubmit)="onSubmit()" class="policy-form">
+        <!-- Title -->
+        <div class="form-field">
+          <label class="form-label" for="title">
+            Title <span class="required">*</span>
+          </label>
+          <input
+            id="title"
+            type="text"
+            class="form-control"
+            formControlName="title"
+            placeholder="Enter policy title"
+            [class.has-error]="getFieldError('title')"
+          />
+          @if (getFieldError('title')) {
+            <p class="field-error">{{ getFieldError('title') }}</p>
+          }
+        </div>
+
+        <!-- Description -->
+        <div class="form-field">
+          <label class="form-label" for="description">
+            Description <span class="required">*</span>
+          </label>
+          <textarea
+            id="description"
+            class="form-control form-textarea"
+            formControlName="description"
+            placeholder="Enter policy description"
+            rows="5"
+            [class.has-error]="getFieldError('description')"
+          ></textarea>
+          @if (getFieldError('description')) {
+            <p class="field-error">{{ getFieldError('description') }}</p>
+          }
+        </div>
+
+        <!-- Category & Department Row -->
+        <div class="form-row">
+          <div class="form-field">
+            <label class="form-label" for="category">
+              Category <span class="required">*</span>
+            </label>
+            <select
+              id="category"
+              class="form-control form-select"
+              formControlName="category"
+              [class.has-error]="getFieldError('category')"
+            >
+              <option value="">Select category</option>
+              @for (opt of categoryOptions; track opt.value) {
+                <option [value]="opt.value">{{ opt.label }}</option>
+              }
+            </select>
+            @if (getFieldError('category')) {
+              <p class="field-error">{{ getFieldError('category') }}</p>
+            }
+          </div>
+
+          <div class="form-field">
+            <label class="form-label" for="department">
+              Department <span class="required">*</span>
+            </label>
+            <input
+              id="department"
+              type="text"
+              class="form-control"
+              formControlName="department"
+              placeholder="e.g. Ministry of Education"
+              [class.has-error]="getFieldError('department')"
+            />
+            @if (getFieldError('department')) {
+              <p class="field-error">{{ getFieldError('department') }}</p>
+            }
+          </div>
+        </div>
+
+        <!-- Ministry & State Row -->
+        <div class="form-row">
+          <div class="form-field">
+            <label class="form-label" for="ministry">Ministry</label>
+            <input
+              id="ministry"
+              type="text"
+              class="form-control"
+              formControlName="ministry"
+              placeholder="e.g. Ministry of Health"
+            />
+          </div>
+
+          <div class="form-field">
+            <label class="form-label" for="state">State</label>
+            <input
+              id="state"
+              type="text"
+              class="form-control"
+              formControlName="state"
+              placeholder="e.g. Maharashtra"
+            />
+          </div>
+        </div>
+
+        <!-- Document URL & Published Date Row -->
+        <div class="form-row">
+          <div class="form-field">
+            <label class="form-label" for="document_url">Document URL</label>
+            <input
+              id="document_url"
+              type="url"
+              class="form-control"
+              formControlName="document_url"
+              placeholder="https://example.com/policy.pdf"
+            />
+          </div>
+
+          <div class="form-field">
+            <label class="form-label" for="published_date">Published Date</label>
+            <input
+              id="published_date"
+              type="date"
+              class="form-control"
+              formControlName="published_date"
+            />
+          </div>
+        </div>
+
+        <!-- Required Documents -->
+        <div class="form-field">
+          <label class="form-label" for="required_documents">Required Documents</label>
+          <input
+            id="required_documents"
+            type="text"
+            class="form-control"
+            formControlName="required_documents"
+            placeholder="e.g. Aadhaar Card, Income Certificate (comma-separated)"
+          />
+          <p class="field-hint">Separate multiple documents with commas</p>
+        </div>
+
+        <!-- Actions -->
+        <div class="form-actions">
+          <app-button variant="ghost" type="button" (btnClick)="goBack()">Cancel</app-button>
+          <app-button
+            variant="primary"
+            type="submit"
+            [loading]="submitting()"
+            [disabled]="submitting()"
+          >
+            {{ isEditMode() ? 'Update Policy' : 'Create Policy' }}
+          </app-button>
+        </div>
+      </form>
+    </div>
+  }
+</div>

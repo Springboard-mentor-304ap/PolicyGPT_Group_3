@@ -1,0 +1,17 @@
+/**
+ * PolicyGPT Global Stylesheet
+ * Integrates Design Tokens, CSS Reset, Typography, Layout, and Utility Classes.
+ *
+ * Load order matters:
+ *   1. Variables  — CSS custom properties (tokens)
+ *   2. Reset      — Browser normalization & base element styles
+ *   3. Typography — Heading hierarchy & text utility classes
+ *   4. Layout     — Structural utilities (flex, grid, spacing, surfaces)
+ *   5. Utilities  — Atomic helpers (text-align, cursor, opacity, animations)
+ */
+
+@import './styles/_variables.css';
+@import './styles/_reset.css';
+@import './styles/_typography.css';
+@import './styles/_layout.css';
+@import './styles/_utilities.css';

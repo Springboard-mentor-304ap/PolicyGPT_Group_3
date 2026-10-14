@@ -1,0 +1,16 @@
+# Python virtual environment
+.venv/
+
+.freebuff/
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Environment Variables
+.env
+
+.vscode/
+
+.DS_Store
+
+/docs
