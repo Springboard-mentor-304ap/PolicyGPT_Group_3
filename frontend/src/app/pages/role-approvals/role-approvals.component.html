@@ -1,0 +1,39 @@
+<div class="role-approvals-page">
+  <div class="page-container">
+    <app-back-to-dashboard></app-back-to-dashboard>
+
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Role Approvals</h1>
+        <p class="page-subtitle">
+          Review pending role upgrade requests and approve or reject them.
+        </p>
+      </div>
+    </div>
+
+    @if (loading()) {
+      <div class="state-card">Loading pending requests…</div>
+    }
+
+    @if (loadError()) {
+      <div class="state-card state-error">
+        <span>{{ loadError() }}</span>
+        <button type="button" class="retry-btn" (click)="load()">Retry</button>
+      </div>
+    }
+
+    @if (!loading() && !loadError() && requests().length === 0) {
+      <div class="state-card">
+        No role requests are waiting for review.
+      </div>
+    }
+  </div>
+
+  @if (!loading() && !loadError() && requests().length > 0) {
+    <app-pending-approvals
+      [requests]="requests()"
+      (approve)="approveRequest($event)"
+      (reject)="rejectRequest($event)">
+    </app-pending-approvals>
+  }
+</div>

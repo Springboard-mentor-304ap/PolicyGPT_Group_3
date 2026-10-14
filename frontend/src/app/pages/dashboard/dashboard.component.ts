@@ -829,7 +829,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.router.navigate(['/reports']);
         break;
       case 'approvals':
-        this.scrollToSection('pending-approvals');
+        // Role approvals live on their own admin-only page so the item
+        // always navigates somewhere, even with an empty pending queue.
+        this.router.navigate(['/role-approvals']);
         break;
       case 'analytics':
         this.scrollToSection('notification-analytics');

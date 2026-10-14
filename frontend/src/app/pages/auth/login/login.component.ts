@@ -6,6 +6,7 @@ import { AuthService } from '../../../core/services/auth.service';
 import { CardComponent } from '../../../shared/components/card/card.component';
 import { InputComponent } from '../../../shared/components/input/input.component';
 import { ButtonComponent } from '../../../shared/components/button/button.component';
+import { BackToDashboardComponent } from '../../../shared/components/back-to-dashboard/back-to-dashboard.component';
 
 @Component({
   selector: 'app-login',
@@ -17,6 +18,7 @@ import { ButtonComponent } from '../../../shared/components/button/button.compon
     CardComponent,
     InputComponent,
     ButtonComponent,
+    BackToDashboardComponent,
   ],
   templateUrl: './login.component.html',
   styleUrl: './login.component.css',

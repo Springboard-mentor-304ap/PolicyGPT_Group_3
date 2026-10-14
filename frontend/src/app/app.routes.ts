@@ -35,6 +35,21 @@ export const routes: Routes = [
         (m) => m.RoleRequestComponent
       ),
   },
+  // Administrator role-request approvals: reuses the dashboard's
+  // PendingApprovalsComponent and the existing role-requests API.
+  // Admin-only — roleGuard mirrors the backend RBAC on the pending,
+  // approve and reject endpoints.
+  {
+    path: 'role-approvals',
+    canActivate: [authGuard, roleGuard],
+    data: {
+      roles: [UserRole.ADMINISTRATOR, UserRole.SUPER_ADMIN],
+    },
+    loadComponent: () =>
+      import('./pages/role-approvals/role-approvals.component').then(
+        (m) => m.RoleApprovalsComponent
+      ),
+  },
   // Policy Management Routes
   {
     path: 'policies',
