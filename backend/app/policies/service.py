@@ -7,6 +7,10 @@ from fastapi import HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from backend.app.audit.service import client_ip, log_action
+from backend.app.content_views import (
+    CONTENT_TYPE_POLICY,
+    record_content_view,
+)
 from backend.app.models.policy import Policy, PolicyStatus
 from backend.app.models.scheme import Scheme, SchemeStatus
 from backend.app.models.user import User, UserRole
@@ -307,17 +311,29 @@ def _count_policy_view(
     policy: Policy,
     current_user: User,
 ) -> None:
-    """Bump `view_count` for a visit that is actually counted.
+    """Bump `view_count` once per (user, policy), for a counted visit.
 
-    The increment happens in SQL (``view_count = view_count + 1``) so
-    concurrent readers cannot lose an update. Views by the policy's owner and
-    by administrators are ignored, and callers only reach this after the
-    visibility check, so requests that end in 403/404 never count.
+    A user contributes at most one view: the dedup row in `content_views`
+    (composite primary key) is flushed in the same transaction as the
+    increment, so repeat visits, refreshes and concurrent requests can never
+    double-count. The increment itself stays an SQL
+    ``view_count = view_count + 1`` so concurrent readers cannot lose an
+    update. Views by the policy's owner and by administrators are ignored,
+    and callers only reach this after the visibility check, so requests that
+    end in 403/404 never count.
     """
     if current_user.role in (UserRole.ADMINISTRATOR, UserRole.SUPER_ADMIN):
         return
 
     if policy.uploaded_by == current_user.id:
+        return
+
+    if not record_content_view(
+        db,
+        current_user.id,
+        CONTENT_TYPE_POLICY,
+        policy.id,
+    ):
         return
 
     (

@@ -19,7 +19,7 @@ from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.orm import Mapper, Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from backend.app.auth.dependencies import get_current_user
+from backend.app.auth.dependencies import get_current_user, get_current_user_optional
 from backend.app.db.database import Base, get_db
 from backend.app.main import app
 from backend.app.models.government_official_profile import (
@@ -129,8 +129,19 @@ def api(session_factory):
     def override_current_user(db: Session = Depends(get_db)):
         return db.get(User, current["user_id"])
 
+    # Detail routes depend on `get_current_user_optional` (they allow guest
+    # reads); without overriding it too, those endpoints silently fall back
+    # to the real auth stack and every test request looks anonymous.
+    def override_current_user_optional(db: Session = Depends(get_db)):
+        if "user_id" not in current:
+            return None
+        return db.get(User, current["user_id"])
+
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[get_current_user] = override_current_user
+    app.dependency_overrides[
+        get_current_user_optional
+    ] = override_current_user_optional
 
     with TestClient(app, raise_server_exceptions=False) as client:
         yield SimpleNamespace(
@@ -139,6 +150,7 @@ def api(session_factory):
         )
 
     app.dependency_overrides.pop(get_current_user, None)
+    app.dependency_overrides.pop(get_current_user_optional, None)
     app.dependency_overrides.pop(get_db, None)
 
 

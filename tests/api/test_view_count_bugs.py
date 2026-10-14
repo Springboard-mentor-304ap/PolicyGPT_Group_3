@@ -1,8 +1,10 @@
 """view_count bugs (item 1).
 
-Views are counted with an atomic SQL increment for every counted visit, and
-are never counted for the record's owner, for administrators, or for
-requests that end in 403/404.
+One user contributes at most one view per policy or scheme: repeat visits
+and refreshes never double-count (deduplicated through the `content_views`
+table), while a different user still adds their own view. Views are counted
+with an atomic SQL increment and are never counted for the record's owner,
+for administrators, or for requests that end in 403/404.
 """
 
 import uuid
@@ -70,7 +72,7 @@ def peer_official(seed):
     return _seed_user(seed, UserRole.GOVERNMENT_OFFICIAL, department="Health")
 
 
-def test_view_count_increments_once_per_visit_and_skips_owner_and_admin(
+def test_view_count_is_once_per_user_and_skips_owner_and_admin(
     api, seed, session_factory, citizen, official, admin,
     approved_policy, draft_policy,
 ):
@@ -82,36 +84,52 @@ def test_view_count_increments_once_per_visit_and_skips_owner_and_admin(
         )
     )
 
-    # ── Policy ────────────────────────────────────────────────────────────
-    # Bug: view_count was never incremented anywhere in the codebase.
+    second_citizen = _seed_user(seed, UserRole.CITIZEN)
+
+    # ---- Policy ------------------------------------------------------------
+    # One increment for the first visit ...
     api.login(citizen)
     response = api.client.get(f"/api/policies/{approved_policy.id}")
     assert response.status_code == 200
     assert response.json()["view_count"] == 1
 
-    # One increment per visit.
+    # ... and repeat visits by the same user never double-count.
+    response = api.client.get(f"/api/policies/{approved_policy.id}")
+    assert response.status_code == 200
+    assert response.json()["view_count"] == 1
+    response = api.client.get(f"/api/policies/{approved_policy.id}")
+    assert response.status_code == 200
+    assert response.json()["view_count"] == 1
+
+    # A different user still contributes their own view.
+    api.login(second_citizen)
     response = api.client.get(f"/api/policies/{approved_policy.id}")
     assert response.status_code == 200
     assert response.json()["view_count"] == 2
 
-    # The owner's own visit is not counted …
+    # The owner's own visit is not counted ...
     api.login(official)
     response = api.client.get(f"/api/policies/{approved_policy.id}")
     assert response.status_code == 200
     assert response.json()["view_count"] == 2
 
-    # … nor an administrator's.
+    # ... nor an administrator's.
     api.login(admin)
     response = api.client.get(f"/api/policies/{approved_policy.id}")
     assert response.status_code == 200
     assert response.json()["view_count"] == 2
 
-    # ── Scheme ────────────────────────────────────────────────────────────
+    # ---- Scheme ------------------------------------------------------------
     api.login(citizen)
     response = api.client.get(f"/api/schemes/{scheme.id}")
     assert response.status_code == 200
     assert response.json()["view_count"] == 1
 
+    response = api.client.get(f"/api/schemes/{scheme.id}")
+    assert response.status_code == 200
+    assert response.json()["view_count"] == 1
+
+    api.login(second_citizen)
     response = api.client.get(f"/api/schemes/{scheme.id}")
     assert response.status_code == 200
     assert response.json()["view_count"] == 2
