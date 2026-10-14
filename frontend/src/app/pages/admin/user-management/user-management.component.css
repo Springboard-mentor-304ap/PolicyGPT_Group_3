@@ -1,0 +1,336 @@
+.admin-page {
+  padding-block: var(--space-6);
+}
+
+.page-container {
+  padding: 0 max(var(--page-padding-x), (100% - var(--content-max-width)) / 2) var(--space-6);
+}
+
+.page-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-5);
+}
+
+.page-title {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.page-subtitle {
+  margin: var(--space-1) 0 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+/* Filters */
+.filters {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-4);
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+}
+
+.filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 170px;
+}
+
+.filter-field.filter-search {
+  flex: 1;
+  min-width: 220px;
+}
+
+.filter-field label {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+}
+
+.filter-field input,
+.filter-field select {
+  height: 42px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  background-color: var(--color-bg-surface);
+  color: var(--color-text-primary);
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-sm);
+}
+
+.filter-field input:focus,
+.filter-field select:focus {
+  outline: none;
+  border-color: var(--color-primary-blue);
+  box-shadow: var(--shadow-focus-ring);
+}
+
+/* Banners & states */
+.banner {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  margin-bottom: var(--space-4);
+}
+
+.banner-error {
+  background-color: var(--color-danger-subtle);
+  color: var(--color-danger-text);
+  border: 1px solid var(--color-danger-border);
+}
+
+.state-card {
+  padding: var(--space-6);
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.state-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  color: var(--color-danger-text);
+  border-color: var(--color-danger-border);
+}
+
+.retry-btn {
+  border: 1px solid var(--color-danger-border);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-danger-text);
+  cursor: pointer;
+  padding: var(--space-1) var(--space-3);
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-sm);
+}
+
+/* User list — the container scrolls horizontally when the viewport is
+   narrower than the table, so the page itself never overflows. */
+.user-list {
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  overflow-x: auto;
+  box-shadow: var(--shadow-sm);
+}
+
+.list-head,
+.list-row {
+  display: grid;
+  grid-template-columns:
+    minmax(150px, 1.3fr) minmax(220px, 2fr) minmax(130px, 0.9fr)
+    minmax(110px, 0.8fr) 100px minmax(200px, auto);
+  gap: var(--space-3);
+  align-items: center;
+  min-width: 960px;
+  padding: var(--space-3) var(--space-4);
+}
+
+.list-head {
+  background-color: var(--color-bg-muted);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+}
+
+.list-row {
+  border-top: 1px solid var(--color-border-subtle);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+}
+
+.cell-name {
+  font-weight: var(--font-weight-semibold);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.cell-email {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-text-secondary);
+  min-width: 0;
+}
+
+.tag {
+  display: inline-block;
+  margin-left: var(--space-2);
+  padding: 0 0.4rem;
+  border-radius: var(--radius-full);
+  font-size: 0.65rem;
+  font-weight: var(--font-weight-semibold);
+  vertical-align: middle;
+}
+
+.tag-unverified {
+  background-color: var(--color-warning-subtle);
+  color: var(--color-warning-text);
+}
+
+.role-chip {
+  display: inline-block;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  padding: 0.15rem 0.6rem;
+  border-radius: var(--radius-full);
+  background-color: var(--color-bg-muted);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.status-chip {
+  display: inline-block;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  padding: 0.15rem 0.6rem;
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+}
+
+.status-chip[data-status='active'] {
+  background-color: var(--color-success-subtle);
+  color: var(--color-success-text);
+}
+
+.status-chip[data-status='inactive'] {
+  background-color: var(--color-danger-subtle);
+  color: var(--color-danger-text);
+}
+
+.cell-date {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.cell-actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.confirm-group {
+  display: inline-flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.action-btn {
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  background-color: var(--color-bg-surface);
+  color: var(--color-primary-blue);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  font-family: var(--font-family-base);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.action-btn:hover:not(:disabled) {
+  background-color: var(--color-bg-subtle);
+}
+
+.action-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus-ring);
+}
+
+.action-btn.danger {
+  border-color: var(--color-danger-border);
+  color: var(--color-danger-text);
+}
+
+.action-btn.danger:hover:not(:disabled) {
+  background-color: var(--color-danger-subtle);
+}
+
+.action-btn.ghost {
+  color: var(--color-text-secondary);
+}
+
+.action-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.muted {
+  color: var(--color-text-muted);
+}
+
+/* Pager */
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  margin-top: var(--space-4);
+}
+
+.pager-info {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.pager-buttons {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.pager-btn {
+  height: 38px;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  background-color: var(--color-bg-surface);
+  color: var(--color-text-primary);
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+}
+
+.pager-btn:hover:not(:disabled) {
+  background-color: var(--color-bg-subtle);
+}
+
+.pager-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Below the table's minimum width the row stays a single scrollable grid
+   (see .user-list); only the filter bar needs to stack. */
+@media (max-width: 700px) {
+  .filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filter-field,
+  .filter-field.filter-search {
+    min-width: 0;
+  }
+}

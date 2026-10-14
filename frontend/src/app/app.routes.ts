@@ -50,6 +50,30 @@ export const routes: Routes = [
         (m) => m.RoleApprovalsComponent
       ),
   },
+  // ── Administrative pages (administrator / super admin only; the API
+  // enforces the same RBAC server-side) ──────────────────────────────────
+  {
+    path: 'admin/users',
+    canActivate: [authGuard, roleGuard],
+    data: {
+      roles: [UserRole.ADMINISTRATOR, UserRole.SUPER_ADMIN],
+    },
+    loadComponent: () =>
+      import('./pages/admin/user-management/user-management.component').then(
+        (m) => m.UserManagementComponent
+      ),
+  },
+  {
+    path: 'admin/audit-logs',
+    canActivate: [authGuard, roleGuard],
+    data: {
+      roles: [UserRole.ADMINISTRATOR, UserRole.SUPER_ADMIN],
+    },
+    loadComponent: () =>
+      import('./pages/admin/audit-logs/audit-logs.component').then(
+        (m) => m.AuditLogsComponent
+      ),
+  },
   // Policy Management Routes
   {
     path: 'policies',
