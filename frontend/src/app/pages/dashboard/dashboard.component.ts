@@ -1208,9 +1208,18 @@ export class DashboardComponent implements OnInit, OnDestroy {
         { id: 'overview', label: 'Overview', icon: 'home' },
         { id: 'users', label: 'User Management', icon: 'users' },
         { id: 'approvals', label: 'Role Approvals', icon: 'folder' },
+        // One destination per content type (replaces the combined item).
+        // Both lists keep the admin-only "Pending Approval" status filter
+        // leading to the detail-page Approve/Reject actions (backend:
+        // administrators only), so the approval workflow is unchanged.
+        { id: 'policies', label: 'Policy Management', icon: 'document' },
+        { id: 'schemes', label: 'Scheme Management', icon: 'gift' },
         { id: 'analytics', label: 'Platform Analytics', icon: 'chart' },
         { id: 'reports', label: 'Reports', icon: 'document' },
         { id: 'feedback', label: 'Feedback', icon: 'chat' },
+        // FAQ management (create / edit / deactivate) is already built into
+        // the /faq page and gated to administrators by the API.
+        { id: 'faq', label: 'FAQ Management', icon: 'help-circle' },
         { id: 'audit-logs', label: 'Audit Logs', icon: 'shield' },
         { id: 'notifications', label: 'Notifications', icon: 'bell' },
       ];
