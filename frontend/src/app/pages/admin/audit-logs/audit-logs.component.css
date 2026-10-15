@@ -2,8 +2,13 @@
   padding-block: var(--space-6);
 }
 
+/* Horizontal sizing comes from the shared .page-container rules
+   (styles/_layout.css): the --wide modifier centres a 1400px container with
+   consistent side margins. The local full-bleed centering formula double-
+   applied the gutters against the container's cap and squeezed the content
+   box on wide viewports — only the extra bottom spacing is set here. */
 .page-container {
-  padding: 0 max(var(--page-padding-x), (100% - var(--content-max-width)) / 2) var(--space-6);
+  padding-block-end: var(--space-6);
 }
 
 .page-header {

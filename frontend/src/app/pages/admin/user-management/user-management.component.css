@@ -2,8 +2,15 @@
   padding-block: var(--space-6);
 }
 
+/* Horizontal sizing comes from the shared .page-container rules
+   (styles/_layout.css): the --wide modifier centres a 1400px container with
+   consistent side margins. This local rule used to re-centre as a full-bleed
+   element against --content-max-width (1200px), which double-applied the
+   gutters and squeezed the content box to ~690px on 1920px screens — leaving
+   huge empty margins and clipping the table. Only the extra bottom spacing
+   is set here. */
 .page-container {
-  padding: 0 max(var(--page-padding-x), (100% - var(--content-max-width)) / 2) var(--space-6);
+  padding-block-end: var(--space-6);
 }
 
 .page-header {
@@ -132,15 +139,21 @@
   box-shadow: var(--shadow-sm);
 }
 
+/* min-width mirrors the tracks' minimums + gaps + row padding
+   (930 + 60 + 32 = 1022px) so rows never under-size their own grid: below
+   that the row scrolls inside .user-list instead of clipping columns.
+   The Actions track is fr (not auto) so its width never depends on how many
+   buttons a row shows — header and every row keep identical column
+   positions, including while a row shows its inline confirm buttons. */
 .list-head,
 .list-row {
   display: grid;
   grid-template-columns:
-    minmax(150px, 1.3fr) minmax(220px, 2fr) minmax(130px, 0.9fr)
-    minmax(110px, 0.8fr) 100px minmax(200px, auto);
+    minmax(150px, 1.3fr) minmax(220px, 2fr) minmax(150px, 0.9fr)
+    minmax(110px, 0.8fr) 100px minmax(200px, 1.3fr);
   gap: var(--space-3);
   align-items: center;
-  min-width: 960px;
+  min-width: 1022px;
   padding: var(--space-3) var(--space-4);
 }
 
