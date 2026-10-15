@@ -1035,19 +1035,13 @@ def create_eligibility_rule(
             detail="You can only manage rules for schemes you created",
         )
 
-    if scheme.status == SchemeStatus.ARCHIVED:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot add rules to an archived scheme",
-        )
-
     if scheme.status in (
         SchemeStatus.ACTIVE,
-        SchemeStatus.PENDING_APPROVAL,
+        SchemeStatus.ARCHIVED,
     ):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot add rules to an active or pending approval scheme",
+            detail="Cannot add rules to an active or archived scheme",
         )
 
     _validate_rule_operator(parameter, operator)
@@ -1117,19 +1111,13 @@ def update_eligibility_rule(
             detail="You can only manage rules for schemes you created",
         )
 
-    if scheme.status == SchemeStatus.ARCHIVED:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot update rules of an archived scheme",
-        )
-
     if scheme.status in (
         SchemeStatus.ACTIVE,
-        SchemeStatus.PENDING_APPROVAL,
+        SchemeStatus.ARCHIVED,
     ):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot update rules of an active or pending approval scheme",
+            detail="Cannot update rules of an active or archived scheme",
         )
 
     # Validate the state the rule will end up in: the fields being changed
@@ -1195,19 +1183,13 @@ def delete_eligibility_rule(
             detail="You can only manage rules for schemes you created",
         )
 
-    if scheme.status == SchemeStatus.ARCHIVED:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot delete rules from an archived scheme",
-        )
-
     if scheme.status in (
         SchemeStatus.ACTIVE,
-        SchemeStatus.PENDING_APPROVAL,
+        SchemeStatus.ARCHIVED,
     ):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot delete rules from an active or pending approval scheme",
+            detail="Cannot delete rules from an active or archived scheme",
         )
 
     target_scheme_id = rule.scheme_id

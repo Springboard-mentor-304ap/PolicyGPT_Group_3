@@ -153,9 +153,9 @@ def test_application_blocked_after_deadline(api, seed, citizen, official, approv
     assert response.status_code == 201
 
 
-# ─── Item 3: rule changes allowed on ACTIVE/PENDING schemes ────────────────
+# ─── Item 3: rule changes blocked on ACTIVE/ARCHIVED schemes ────────────────
 
-def test_rule_changes_blocked_on_active_and_pending_schemes(
+def test_rule_changes_blocked_on_active_schemes_and_allowed_on_pending(
     api, seed, session_factory, official, approved_policy, draft_policy,
 ):
     api.login(official)
@@ -175,8 +175,10 @@ def test_rule_changes_blocked_on_active_and_pending_schemes(
         json=rule_payload,
     )
     assert response.status_code == 400
-    assert "active or pending" in response.json()["detail"]
+    assert "active or archived" in response.json()["detail"]
 
+    # A scheme is created directly in PENDING_APPROVAL, so the creator must
+    # be able to attach its eligibility rules while it awaits approval.
     pending = seed(
         _scheme(
             policy_id=approved_policy.id,
@@ -188,7 +190,7 @@ def test_rule_changes_blocked_on_active_and_pending_schemes(
         f"/api/schemes/{pending.id}/eligibility-rules",
         json=rule_payload,
     )
-    assert response.status_code == 400
+    assert response.status_code == 201
 
     # Create a rule while DRAFT, then flip the scheme to ACTIVE and try to
     # change and delete the rule (both used to succeed).
@@ -209,7 +211,7 @@ def test_rule_changes_blocked_on_active_and_pending_schemes(
         json={"value": "21"},
     )
     assert response.status_code == 400
-    assert "active or pending" in response.json()["detail"]
+    assert "active or archived" in response.json()["detail"]
 
     response = api.client.delete(
         f"/api/schemes/eligibility-rules/{rule_id}",
