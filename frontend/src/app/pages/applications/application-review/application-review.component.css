@@ -292,6 +292,10 @@
   color: var(--color-text-secondary);
 }
 
+/* Advisory verdict chip styles live in styles/_advisory.css (global) to
+   stay within the per-component style budget. */
+
+
 .note-rejection { color: var(--color-danger-text); }
 
 /* Update form */

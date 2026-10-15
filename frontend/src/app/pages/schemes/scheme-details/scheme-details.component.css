@@ -388,3 +388,6 @@
   color: var(--color-danger-text);
   border: 1px solid var(--color-danger-border);
 }
+
+/* Advisory eligibility step styles live in styles/_advisory.css (global) to
+   stay within the per-component style budget. */

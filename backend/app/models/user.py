@@ -2,7 +2,7 @@ from enum import Enum
 from datetime import datetime
 
 import sqlalchemy as sa
-from sqlalchemy import Boolean, DateTime, Enum as SQLEnum, String, Index, func, text
+from sqlalchemy import Boolean, DateTime, Enum as SQLEnum, Integer, String, Index, func, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -61,6 +61,22 @@ class User(Base):
 
     email_verification_token: Mapped[str | None] = mapped_column(
         String(500),
+    )
+
+    # Wrong-guess counter for the pending 6-digit verification code. Incremented
+    # atomically in SQL on every verification attempt; reset to NULL whenever a
+    # new code is issued. After MAX_VERIFICATION_ATTEMPTS wrong guesses the code
+    # itself is invalidated (token cleared) and a new one must be requested.
+    email_verification_attempts: Mapped[int | None] = mapped_column(
+        Integer,
+    )
+
+    # When the pending verification code was issued (UTC). Backs the resend
+    # cooldown: a new code can be issued at most once per RESEND_COOLDOWN
+    # seconds, and a resend inside the window is silently ignored so the
+    # response cannot be used to probe whether an account exists.
+    email_verification_sent_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
     )
 
     # Single-use password reset token: stores `<sha256(jti)>:<unix-expiry>`.

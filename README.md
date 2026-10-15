@@ -1,5 +1,9 @@
 # PolicyGPT_Group_3
 
+Eligibility checks in PolicyGPT are advisory only: applications are never
+blocked on the eligibility verdict, and final eligibility decisions are made
+by the reviewing official.
+
 ## Deploying
 
 ### 1. Environment variables

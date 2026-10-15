@@ -3,6 +3,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 
+from backend.app.dates import utc_today
+
 from backend.app.models.scheme import SchemeCategory, SchemeStatus
 from backend.app.models.eligibility_rule import (
     EligibilityParameter,
@@ -75,7 +77,9 @@ class SchemeResponse(BaseModel):
         The database status is left alone — an expired scheme is still ACTIVE
         (or whatever it was), its application window has simply closed.
         """
-        return self.deadline_date is not None and self.deadline_date < date.today()
+        # UTC today, shared with the application cutoff — host-local time
+        # must not shift the expiry boundary.
+        return self.deadline_date is not None and self.deadline_date < utc_today()
 
 
 class EligibilityRuleCreate(BaseModel):

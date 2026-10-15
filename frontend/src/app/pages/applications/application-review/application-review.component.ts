@@ -6,6 +6,7 @@ import { ApplicationService } from '../../../core/services/application.service';
 import {
   ApplicationReviewItem,
   ApplicationStatus,
+  EligibilityVerdict,
 } from '../../../core/models/application.models';
 import { BackToDashboardComponent } from '../../../shared/components/back-to-dashboard/back-to-dashboard.component';
 
@@ -247,6 +248,36 @@ export class ApplicationReviewComponent implements OnInit {
 
   departmentLabel(item: ApplicationReviewItem): string {
     return item.scheme_department ?? item.policy_ministry ?? '—';
+  }
+
+  /**
+   * Advisory eligibility snapshot recorded server-side at submission. It is
+   * informational for the reviewer — the final decision stays theirs.
+   */
+  verdictLabel(verdict: EligibilityVerdict | null): string {
+    switch (verdict) {
+      case 'eligible':
+        return 'Eligible (profile)';
+      case 'not_eligible':
+        return 'Not eligible (profile)';
+      case 'more_information_required':
+        return 'Profile incomplete';
+      default:
+        return '—';
+    }
+  }
+
+  verdictTone(verdict: EligibilityVerdict | null): string {
+    switch (verdict) {
+      case 'eligible':
+        return 'verdict-positive';
+      case 'not_eligible':
+        return 'verdict-negative';
+      case 'more_information_required':
+        return 'verdict-unknown';
+      default:
+        return 'verdict-none';
+    }
   }
 
   formatDate(value: string): string {

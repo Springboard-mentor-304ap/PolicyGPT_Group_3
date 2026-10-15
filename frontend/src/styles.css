@@ -13,6 +13,8 @@
  *   7. Dashboard  — Government-portal theme for the dashboard (hero, stats,
  *                   feature grid, categories); kept global to stay within
  *                   Angular's per-component style budget.
+ *   8. Advisory   — Eligibility advisory banners and verdict chips (apply
+ *                   dialog + application review), same budget reason.
  */
 
 @import './styles/_variables.css';
@@ -22,3 +24,4 @@
 @import './styles/_utilities.css';
 @import './styles/_theme-gov.css';
 @import './styles/_dashboard-gov.css';
+@import './styles/_advisory.css';

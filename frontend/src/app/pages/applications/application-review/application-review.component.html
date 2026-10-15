@@ -121,9 +121,17 @@
                 {{ item.scheme_title }}
               </span>
               <span role="cell">{{ formatDate(item.submitted_at) }}</span>
-              <span role="cell">
+              <span role="cell" class="cell-status">
                 <span class="status-chip" [attr.data-status]="item.status">
                   {{ statusLabel(item.status) }}
+                </span>
+                <!-- Advisory eligibility verdict recorded at submission -->
+                <span
+                  class="verdict-chip"
+                  [attr.data-tone]="verdictTone(item.eligibility_verdict)"
+                  [title]="'Eligibility at submission (advisory): ' + verdictLabel(item.eligibility_verdict)"
+                >
+                  {{ verdictLabel(item.eligibility_verdict) }}
                 </span>
               </span>
               <span role="cell" class="cell-action">
@@ -189,6 +197,29 @@
         <div class="detail">
           <dt>Current Status</dt>
           <dd>{{ statusLabel(app.status) }}</dd>
+        </div>
+        <div class="detail">
+          <dt>Eligibility at submission (advisory)</dt>
+          <dd>
+            <span class="verdict-chip" [attr.data-tone]="verdictTone(app.eligibility_verdict)">
+              {{ verdictLabel(app.eligibility_verdict) }}
+            </span>
+            @if (app.eligibility_verdict === 'not_eligible') {
+              <p class="verdict-note">
+                The applicant's profile did not meet the scheme criteria when
+                they applied. Final eligibility is your decision.
+              </p>
+            } @else if (app.eligibility_verdict === 'more_information_required') {
+              <p class="verdict-note">
+                The applicant's profile was incomplete at submission, so
+                eligibility could not be fully assessed.
+              </p>
+            } @else if (app.eligibility_verdict === null) {
+              <p class="verdict-note">
+                No eligibility verdict was recorded for this application.
+              </p>
+            }
+          </dd>
         </div>
         <div class="detail">
           <dt>Reviewed By</dt>

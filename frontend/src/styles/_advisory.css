@@ -1,0 +1,27 @@
+/*
+ * Advisory eligibility presentation, shared by the scheme-details apply
+ * dialog and the application review page. Kept global to stay within
+ * Angular's per-component style budget (same approach as _dashboard-gov.css).
+ */
+
+/* Apply dialog: advisory banners + "I understand" confirmation */
+.advisory-loading { color: var(--color-text-secondary); font-size: var(--font-size-sm); margin: 0; }
+.advisory-banner { padding: var(--space-3) var(--space-4); border-radius: var(--radius-md); font-size: var(--font-size-sm); margin-bottom: var(--space-3); }
+.advisory-banner p { margin: var(--space-1) 0 0; font-size: var(--font-size-sm); color: inherit; }
+.advisory-banner a { color: inherit; font-weight: 600; }
+.advisory-warning { background: var(--color-danger-subtle); color: var(--color-danger-text); border: 1px solid var(--color-danger-border); }
+.advisory-info { background: var(--color-info-subtle); color: var(--color-info-text); border: 1px solid var(--color-info-border); }
+.advisory-success { background: var(--color-success-subtle); color: var(--color-success-text); border: 1px solid var(--color-success-border); }
+.advisory-summary { color: var(--color-text-secondary); font-size: var(--font-size-sm); margin: 0 0 var(--space-3); }
+.advisory-ack { display: flex; align-items: flex-start; gap: var(--space-2); font-size: var(--font-size-sm); color: var(--color-text); cursor: pointer; }
+.advisory-ack input { margin-top: 2px; }
+.dialog-body .apply-banner { margin-top: 0; }
+
+/* Review page: verdict recorded server-side at submission (informational) */
+.cell-status { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+.verdict-chip { display: inline-block; font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); padding: 0.15rem 0.6rem; border-radius: var(--radius-full); }
+.verdict-chip[data-tone='verdict-positive'] { background-color: var(--color-success-subtle); color: var(--color-success-text); }
+.verdict-chip[data-tone='verdict-negative'] { background-color: var(--color-danger-subtle); color: var(--color-danger-text); }
+.verdict-chip[data-tone='verdict-unknown'] { background-color: var(--color-warning-subtle); color: var(--color-warning-text); }
+.verdict-chip[data-tone='verdict-none'] { background-color: var(--color-bg-muted); color: var(--color-text-muted); }
+.verdict-note { margin: var(--space-1) 0 0; font-size: var(--font-size-xs); color: var(--color-text-muted); }

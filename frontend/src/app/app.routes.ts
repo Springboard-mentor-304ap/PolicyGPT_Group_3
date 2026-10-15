@@ -155,8 +155,9 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./pages/comparison/comparison.component').then((m) => m.ComparisonComponent),
   },
-  // Natural-language scheme finder. The Finder API endpoints are public
-  // (no auth dependency), so the page stays open to guests as well.
+  // Natural-language scheme finder. The Finder API endpoints require
+  // authentication (and /extract is metered by the daily AI quota), so the
+  // page is guarded like the other signed-in features.
   {
     path: 'finder',
     canActivate: [authGuard],

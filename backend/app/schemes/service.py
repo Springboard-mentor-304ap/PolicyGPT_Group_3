@@ -1,5 +1,7 @@
 import logging
-from datetime import date, datetime, timezone
+from datetime import datetime, timezone
+
+from backend.app.dates import utc_today
 from decimal import Decimal, InvalidOperation
 from uuid import UUID
 
@@ -344,7 +346,9 @@ def create_scheme(
     scope = _get_official_ministry(db, current_user)
     _enforce_scope(policy, scheme_data.department, scope)
 
-    launch_date = scheme_data.launch_date or date.today()
+    # Default the launch date in UTC too — host-local time would shift the
+    # stored value around midnight.
+    launch_date = scheme_data.launch_date or utc_today()
 
     # A deadline before the launch date would make the scheme unapplicable
     # from day one.
@@ -556,7 +560,7 @@ def list_schemes(
         query = query.filter(
             or_(
                 Scheme.deadline_date.is_(None),
-                Scheme.deadline_date >= date.today(),
+                Scheme.deadline_date >= utc_today(),
             )
         )
 

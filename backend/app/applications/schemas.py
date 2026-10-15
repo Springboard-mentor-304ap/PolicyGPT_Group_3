@@ -16,6 +16,10 @@ class ApplicationResponse(BaseModel):
     remarks: str | None
     approved_by: UUID | None
     rejection_reason: str | None
+    # Advisory snapshot of the eligibility verdict at submission time
+    # ('eligible' | 'not_eligible' | 'more_information_required'); NULL when
+    # it could not be computed. Never blocks the application.
+    eligibility_verdict: str | None = None
     submitted_at: datetime
     updated_at: datetime
 

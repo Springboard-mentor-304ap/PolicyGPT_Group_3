@@ -6,6 +6,8 @@ import { SchemeService } from '../../../core/services/scheme.service';
 import { PolicyService } from '../../../core/services/policy.service';
 import { ApplicationService } from '../../../core/services/application.service';
 import { AuthService } from '../../../core/services/auth.service';
+import { EligibilityService } from '../../../core/services/eligibility.service';
+import { EligibilityStatus } from '../../../core/models/eligibility.models';
 import {
   Scheme,
   SchemeStatus,
@@ -42,6 +44,7 @@ export class SchemeDetailsComponent implements OnInit {
   private readonly schemeService = inject(SchemeService);
   private readonly policyService = inject(PolicyService);
   private readonly applicationService = inject(ApplicationService);
+  private readonly eligibilityService = inject(EligibilityService);
   readonly authService = inject(AuthService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
@@ -129,6 +132,17 @@ export class SchemeDetailsComponent implements OnInit {
   readonly applySuccess = signal(false);
   readonly applyError = signal<string | null>(null);
 
+  // Advisory eligibility step: opening the apply action shows what the
+  // eligibility engine says about the applicant's profile. It never blocks
+  // the submission server-side; a NOT_ELIGIBLE verdict only requires an
+  // explicit confirmation here.
+  readonly showApplyDialog = signal(false);
+  readonly advisoryLoading = signal(false);
+  readonly advisoryStatus = signal<EligibilityStatus | null>(null);
+  readonly advisorySummary = signal<string | null>(null);
+  readonly advisoryError = signal<string | null>(null);
+  readonly advisoryAcknowledged = signal(false);
+
   readonly canApply = computed(() => {
     const s = this.scheme();
     if (!s || s.status !== SchemeStatus.ACTIVE) return false;
@@ -140,6 +154,14 @@ export class SchemeDetailsComponent implements OnInit {
     const s = this.scheme();
     if (!s || this.applying()) return;
 
+    // A not-eligible verdict needs an explicit "I understand" first.
+    if (
+      this.advisoryStatus() === 'not_eligible' &&
+      !this.advisoryAcknowledged()
+    ) {
+      return;
+    }
+
     this.applying.set(true);
     this.applyError.set(null);
     this.applySuccess.set(false);
@@ -148,6 +170,7 @@ export class SchemeDetailsComponent implements OnInit {
       next: () => {
         this.applying.set(false);
         this.applySuccess.set(true);
+        this.showApplyDialog.set(false);
       },
       error: (error: unknown) => {
         this.applying.set(false);
@@ -165,6 +188,45 @@ export class SchemeDetailsComponent implements OnInit {
         }
       },
     });
+  }
+
+  /**
+   * Open the apply confirmation. Loads the applicant's advisory eligibility
+   * verdict through the existing eligibility check (GET
+   * /api/eligibility/schemes/{id}) — no eligibility logic is duplicated in
+   * the frontend, and a failed check never blocks the apply.
+   */
+  openApplyDialog(): void {
+    const s = this.scheme();
+    if (!s) return;
+
+    this.showApplyDialog.set(true);
+    this.advisoryAcknowledged.set(false);
+    this.advisoryError.set(null);
+    this.advisorySummary.set(null);
+    this.advisoryStatus.set(null);
+    this.advisoryLoading.set(true);
+
+    this.eligibilityService.checkSchemeEligibility(s.id).subscribe({
+      next: (result) => {
+        this.advisoryStatus.set(result.status ?? null);
+        this.advisorySummary.set(result.benefits_summary ?? null);
+        this.advisoryLoading.set(false);
+      },
+      error: () => {
+        // Advisory only: if the verdict cannot be loaded the user can still
+        // apply — the backend decides eligibility, not this dialog.
+        this.advisoryStatus.set(null);
+        this.advisoryLoading.set(false);
+        this.advisoryError.set(
+          'We could not check your eligibility right now, but you can still apply.'
+        );
+      },
+    });
+  }
+
+  closeApplyDialog(): void {
+    this.showApplyDialog.set(false);
   }
 
   ngOnInit(): void {

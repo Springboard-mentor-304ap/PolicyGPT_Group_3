@@ -2,7 +2,7 @@ import secrets
 import uuid
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
-from sqlalchemy import func
+from sqlalchemy import func, update
 from sqlalchemy.orm import Session
 
 from jose import JWTError, jwt
@@ -48,8 +48,10 @@ from backend.app.auth.password_reset import (
 )
 from backend.app.auth.email_verification import (
     CODE_LENGTH,
+    MAX_VERIFICATION_ATTEMPTS,
     VerificationCodeError,
     generate_verification_code,
+    resend_cooldown_active,
     send_verification_code,
     store_verification_code,
     verification_code_matches,
@@ -168,13 +170,22 @@ def _verify_email_code(
     email: str,
     code: str,
 ) -> dict:
-    """Verify the 6-digit code against the stored hash and expiry."""
+    """Verify the 6-digit code against the stored hash and expiry.
+
+    Every failure returns the same generic message so the response never
+    reveals whether the code was wrong, expired, or absent. Each guess is
+    counted with one atomic ``UPDATE ... RETURNING`` (never read-modify-
+    write in Python), so concurrent guesses cannot slip past the limit;
+    after MAX_VERIFICATION_ATTEMPTS wrong guesses the code is invalidated
+    and a new one must be requested.
+    """
+    generic_error = "Invalid or expired verification code"
     submitted = code.strip()
 
     if not submitted.isdigit() or len(submitted) != CODE_LENGTH:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid or expired verification code",
+            detail=generic_error,
         )
 
     user = find_user_by_email(db, email)
@@ -182,31 +193,70 @@ def _verify_email_code(
     if not user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid or expired verification code",
+            detail=generic_error,
         )
 
     if user.email_verified:
         return {"message": "Email already verified"}
 
-    try:
-        code_is_valid = verification_code_matches(user, submitted)
-    except VerificationCodeError as error:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(error),
+    # Count this guess before checking it. The guard on a still-pending code
+    # means attempts against an invalidated (or never-issued) code do not
+    # resurrect anything: they simply find no row and fail generically.
+    attempts = db.execute(
+        update(User)
+        .where(
+            User.id == user.id,
+            User.email_verification_token.is_not(None),
         )
-
-    if not code_is_valid:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid or expired verification code",
+        .values(
+            email_verification_attempts=(
+                func.coalesce(User.email_verification_attempts, 0) + 1
+            )
         )
-
-    user.email_verified = True
-    user.email_verification_token = None
+        .returning(User.email_verification_attempts)
+    ).scalar_one_or_none()
     db.commit()
 
-    return {"message": "Email verified successfully"}
+    if attempts is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=generic_error,
+        )
+
+    try:
+        code_is_valid = verification_code_matches(user, submitted)
+    except VerificationCodeError:
+        # Expired (or an unreadable stored value): same generic failure as a
+        # wrong code, so responses reveal nothing extra.
+        code_is_valid = False
+
+    if code_is_valid:
+        user.email_verified = True
+        user.email_verification_token = None
+        user.email_verification_attempts = None
+        db.commit()
+
+        return {"message": "Email verified successfully"}
+
+    if attempts >= MAX_VERIFICATION_ATTEMPTS:
+        # Lockout: burn the code so even a correct guess can no longer use
+        # it, and tell the user how to recover.
+        user.email_verification_token = None
+        user.email_verification_attempts = None
+        db.commit()
+
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                f"{generic_error}. Too many incorrect attempts — this code "
+                "is no longer valid. Request a new verification code."
+            ),
+        )
+
+    raise HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail=generic_error,
+    )
 
 
 def _verify_email_token(
@@ -246,6 +296,7 @@ def _verify_email_token(
 
     user.email_verified = True
     user.email_verification_token = None
+    user.email_verification_attempts = None
     db.commit()
 
     return {"message": "Email verified successfully"}
@@ -263,6 +314,13 @@ def resend_verification(
 
     if user.email_verified:
         return {"message": "Email already verified"}
+
+    # Per-account cooldown: a resend inside the window returns the exact
+    # success message a real send would, without issuing a new code and
+    # without resetting the attempt counter — so it reveals nothing and
+    # cannot be used to stretch a guess window.
+    if resend_cooldown_active(user):
+        return {"message": "Verification code sent"}
 
     verification_code = generate_verification_code()
     store_verification_code(user, verification_code)

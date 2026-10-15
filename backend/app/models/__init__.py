@@ -14,3 +14,4 @@ from backend.app.models.report import Report
 from backend.app.models.audit_log import AuditLog
 from backend.app.models.content_view import ContentView
 from backend.app.models.knowledge_chunk import KnowledgeChunk
+from backend.app.models.ai_daily_usage import AIDailyUsage

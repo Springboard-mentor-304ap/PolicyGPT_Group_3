@@ -14,6 +14,7 @@ import logging
 import os
 import secrets
 import time
+from datetime import datetime, timezone
 
 from backend.app.auth.security import hash_password, verify_password
 from backend.app.notifications.service import send_email
@@ -21,11 +22,50 @@ from backend.app.models.user import User
 
 logger = logging.getLogger(__name__)
 
-# Same lifetime the previous verification JWT had.
-EMAIL_VERIFICATION_CODE_TTL_HOURS = 24
+# A 6-digit code must not stay valid for long: 5 digits of entropy is only
+# safe with a short lifetime and an attempt limit (both enforced below and
+# in backend/app/auth/router.py). Env-configurable for tests/ops.
+def _code_ttl_minutes() -> int:
+    raw = os.getenv("EMAIL_VERIFICATION_CODE_TTL_MINUTES", "").strip()
+    try:
+        minutes = int(raw) if raw else 15
+    except ValueError:
+        minutes = 15
+    return max(1, minutes)
+
+
 CODE_LENGTH = 6
 
+# Wrong guesses a single pending code tolerates. The router increments the
+# counter atomically in SQL; on the fifth wrong guess the code is invalidated
+# and a new one must be requested.
+MAX_VERIFICATION_ATTEMPTS = 5
+
+# A new code may be issued at most once per this many seconds per account.
+# A resend inside the window returns the normal success message without
+# issuing (or resetting) anything, so the response cannot be used to probe
+# whether an account exists.
+RESEND_COOLDOWN_SECONDS = 60
+
 _SEPARATOR = ":"
+
+
+def resend_cooldown_active(user: User) -> bool:
+    """True when a code was issued for this account less than a cooldown ago."""
+
+    sent_at = user.email_verification_sent_at
+
+    if sent_at is None:
+        return False
+
+    # SQLite hands naive datetimes back for tz-aware columns; treat them as
+    # UTC so the cooldown cannot be bypassed by a host-TZ quirk.
+    if sent_at.tzinfo is None:
+        sent_at = sent_at.replace(tzinfo=timezone.utc)
+
+    age = (datetime.now(timezone.utc) - sent_at).total_seconds()
+
+    return age < RESEND_COOLDOWN_SECONDS
 
 
 class VerificationCodeError(Exception):
@@ -40,14 +80,19 @@ def generate_verification_code() -> str:
 
 
 def store_verification_code(user: User, code: str) -> None:
-    """Persist the hashed code plus its expiry on the user row."""
-    expires_at = int(
-        time.time() + EMAIL_VERIFICATION_CODE_TTL_HOURS * 60 * 60
-    )
+    """Persist the hashed code plus its expiry on the user row.
+
+    Issuing a new code also resets the wrong-guess counter and stamps the
+    resend cooldown — a fresh code must not inherit the previous code's
+    failed attempts.
+    """
+    expires_at = int(time.time() + _code_ttl_minutes() * 60)
 
     user.email_verification_token = (
         f"{hash_password(code)}{_SEPARATOR}{expires_at}"
     )
+    user.email_verification_attempts = 0
+    user.email_verification_sent_at = datetime.now(timezone.utc)
 
 
 def verification_code_matches(user: User, code: str) -> bool:
@@ -87,7 +132,7 @@ def send_verification_code(email: str, code: str) -> bool:
     subject = "Your PolicyGPT verification code"
     body = (
         f"Your PolicyGPT email verification code is {code}.\n\n"
-        f"It expires in {EMAIL_VERIFICATION_CODE_TTL_HOURS} hours. "
+        f"It expires in {_code_ttl_minutes()} minutes. "
         "If you did not create this account you can ignore this email."
     )
 

@@ -38,9 +38,9 @@
           </div>
         </div>
         <div class="header-actions">
-          @if (canApply()) {
-            <app-button variant="primary" [disabled]="applying()" (btnClick)="applyToScheme()">
-              {{ applying() ? 'Applying…' : 'Apply for this Scheme' }}
+          @if (canApply() && !applySuccess()) {
+            <app-button variant="primary" (btnClick)="openApplyDialog()">
+              Apply for this Scheme
             </app-button>
           }
           @if (canEdit()) {
@@ -254,6 +254,77 @@
               <span class="info-value">{{ formatDateTime(s.archived_at) }}</span>
             </div>
           }
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Apply confirmation dialog with advisory eligibility -->
+  @if (showApplyDialog()) {
+    <div class="dialog-overlay" (click)="closeApplyDialog()">
+      <div class="dialog" (click)="$event.stopPropagation()">
+        <div class="dialog-header">
+          <h3>Apply for this Scheme</h3>
+          <button class="dialog-close" (click)="closeApplyDialog()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        <div class="dialog-body">
+          @if (advisoryLoading()) {
+            <p class="advisory-loading">Checking your eligibility against this scheme's criteria…</p>
+          } @else if (advisoryStatus() === 'not_eligible') {
+            <div class="advisory-banner advisory-warning">
+              <strong>Based on your profile you may not meet the criteria.</strong>
+              <p>Final eligibility is decided by the reviewing official.</p>
+            </div>
+            @if (advisorySummary()) {
+              <p class="advisory-summary">{{ advisorySummary() }}</p>
+            }
+            <label class="advisory-ack">
+              <input
+                type="checkbox"
+                [checked]="advisoryAcknowledged()"
+                (change)="advisoryAcknowledged.set($any($event.target).checked)"
+              />
+              <span>I understand my profile may not meet the criteria and want to submit anyway.</span>
+            </label>
+          } @else if (advisoryStatus() === 'more_information_required') {
+            <div class="advisory-banner advisory-info">
+              <strong>We could not fully assess your eligibility.</strong>
+              <p>
+                Completing your
+                <a routerLink="/citizen-profile">citizen profile</a>
+                will help you and the reviewing official see a clearer eligibility picture.
+              </p>
+            </div>
+          } @else if (advisoryStatus() === 'eligible') {
+            <div class="advisory-banner advisory-success">
+              <strong>Based on your profile you appear to meet this scheme's criteria.</strong>
+              <p>Final eligibility is still decided by the reviewing official.</p>
+            </div>
+          } @else if (advisoryError()) {
+            <p class="advisory-summary">{{ advisoryError() }}</p>
+          }
+
+          @if (applyError()) {
+            <div class="apply-banner apply-banner-error">{{ applyError() }}</div>
+          }
+        </div>
+        <div class="dialog-actions">
+          <app-button variant="secondary" (btnClick)="closeApplyDialog()">Cancel</app-button>
+          <app-button
+            variant="primary"
+            [disabled]="
+              applying() ||
+              (advisoryStatus() === 'not_eligible' && !advisoryAcknowledged())
+            "
+            (btnClick)="applyToScheme()"
+          >
+            {{ applying() ? 'Applying…' : 'Submit Application' }}
+          </app-button>
         </div>
       </div>
     </div>
