@@ -1,4 +1,3 @@
-from datetime import date
 from uuid import UUID
 from fastapi import HTTPException, Request, status
 from sqlalchemy import or_
@@ -6,13 +5,16 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from backend.app.audit.service import client_ip, log_action
+from backend.app.dates import utc_today
 from backend.app.models.application import Application, ApplicationStatus
+from backend.app.models.eligibility_rule import EligibilityRule
 from backend.app.models.government_official_profile import (
     GovernmentOfficialProfile,
 )
 from backend.app.models.policy import Policy
 from backend.app.models.scheme import Scheme, SchemeStatus
 from backend.app.models.user import User, UserRole
+from backend.app.models.user_profile import UserProfile
 from backend.app.models.notification import NotificationType
 from backend.app.notifications.service import queue_notifications, send_notification
 from backend.app.applications.schemas import (
@@ -23,6 +25,12 @@ from backend.app.pagination import DEFAULT_LIMIT, clamp_limit
 # Reuses the exact department-scope logic the analytics module applies to
 # government officials (profile department, 403 when the profile is missing).
 from backend.app.analytics.service import _get_official_ministry
+# The advisory verdict reuses the eligibility engine itself — no rule
+# evaluation is duplicated here.
+from backend.app.eligibility.service import (
+    build_eligibility_profile,
+    evaluate_profile_against_rules,
+)
 # One canonical scope rule shared with policies, schemes, search, analytics
 # and reports — see backend/app/scope.py.
 from backend.app.scope import (
@@ -65,11 +73,69 @@ WITHDRAWABLE_STATUSES = {
 
 # Staff roles allowed to view/update application status (mirrors the
 # authorization check previously inlined in update_application_status).
+# Application approvals belong to government officials only: administrators
+# and super administrators are deliberately excluded so they never see,
+# receive or process citizen application work.
 APPLICATION_REVIEW_ROLES = {
     UserRole.GOVERNMENT_OFFICIAL,
-    UserRole.ADMINISTRATOR,
-    UserRole.SUPER_ADMIN,
 }
+
+def _advisory_eligibility_verdict(
+    db: Session,
+    current_user: User,
+    scheme_id: UUID,
+) -> str | None:
+    """What the eligibility engine says about this applicant, right now.
+
+    Advisory only: the value is recorded on the application so reviewing
+    officials can see what the applicant's profile showed at submission
+    time. It NEVER blocks or gates the application, and it is computed
+    here from the engine — never accepted from the client.
+
+    Returns NULL when no verdict can be recorded: the scheme defines no
+    rules, the applicant has no profile yet, or the check raised. An
+    application must always go through regardless.
+    """
+    try:
+        has_rules = (
+            db.query(EligibilityRule.id)
+            .filter(EligibilityRule.scheme_id == scheme_id)
+            .first()
+            is not None
+        )
+        if not has_rules:
+            return None
+
+        profile_row = (
+            db.query(UserProfile)
+            .filter(UserProfile.user_id == current_user.id)
+            .first()
+        )
+        if profile_row is None:
+            return None
+
+        scheme = (
+            db.query(Scheme)
+            .filter(Scheme.id == scheme_id)
+            .first()
+        )
+        rules = (
+            db.query(EligibilityRule)
+            .filter(EligibilityRule.scheme_id == scheme_id)
+            .all()
+        )
+
+        result = evaluate_profile_against_rules(
+            build_eligibility_profile(profile_row),
+            scheme,
+            rules,
+        )
+
+        return result.status.value
+    except Exception:
+        # Advisory only — a failed check must never block a submission.
+        return None
+
 
 def create_application(
     db: Session,
@@ -104,10 +170,11 @@ def create_application(
         )
 
     # A scheme may still be ACTIVE after its application window closed — the
-    # deadline is the authoritative cutoff for submissions.
+    # deadline is the authoritative cutoff for submissions, compared in UTC
+    # so the host's timezone cannot shift the boundary.
     if (
         scheme.deadline_date is not None
-        and scheme.deadline_date < date.today()
+        and scheme.deadline_date < utc_today()
     ):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -133,6 +200,13 @@ def create_application(
         user_id = current_user.id,
         scheme_id = scheme_id,
         status = ApplicationStatus.SUBMITTED,
+        # Advisory snapshot for the reviewers. Server-computed above; a
+        # missing/failed verdict stores NULL and never blocks the apply.
+        eligibility_verdict=_advisory_eligibility_verdict(
+            db,
+            current_user,
+            scheme_id,
+        ),
     )
 
     db.add(application)
@@ -247,7 +321,9 @@ def list_applications_for_review(
 
     - Government officials only see applications in their own
       department/ministry (server-side scope, same rules as analytics).
-    - Administrators / super admins see everything.
+    - Administrators / super admins are not part of this workflow: the
+      role check below rejects them (application approvals are official-only
+      work).
     - Applicants and scheme context are joined in so the UI does not need
       extra round-trips.
     """
@@ -298,6 +374,7 @@ def list_applications_for_review(
             remarks=application.remarks,
             approved_by=application.approved_by,
             rejection_reason=application.rejection_reason,
+            eligibility_verdict=application.eligibility_verdict,
             submitted_at=application.submitted_at,
             updated_at=application.updated_at,
             applicant_name=applicant_name or None,
@@ -331,14 +408,11 @@ def get_application(
             detail="Application not found",
         )
 
+    # Only the applicant and government officials may open an application:
+    # administrators are deliberately outside the approval workflow.
     if (
         application.user_id != current_user.id
-        and current_user.role
-        not in {
-            UserRole.GOVERNMENT_OFFICIAL,
-            UserRole.ADMINISTRATOR,
-            UserRole.SUPER_ADMIN,
-        }
+        and current_user.role != UserRole.GOVERNMENT_OFFICIAL
     ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -400,6 +474,7 @@ def list_my_applications(
             remarks=application.remarks,
             approved_by=application.approved_by,
             rejection_reason=application.rejection_reason,
+            eligibility_verdict=application.eligibility_verdict,
             submitted_at=application.submitted_at,
             updated_at=application.updated_at,
             scheme_title=scheme_title,

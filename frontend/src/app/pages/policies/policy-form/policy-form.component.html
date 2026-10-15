@@ -142,13 +142,12 @@
           </div>
 
           <div class="form-field">
-            <label class="form-label" for="state">State</label>
-            <input
+            <app-state-select
               id="state"
-              type="text"
-              class="form-control"
               formControlName="state"
-              placeholder="e.g. Maharashtra"
+              label="State"
+              placeholder="Select a state or Union Territory"
+              name="state"
             />
           </div>
         </div>

@@ -13,8 +13,8 @@ import {
  *
  * Relative URLs are used on purpose: the dev server proxies `/api` to the
  * backend (see proxy.conf.json) and the JWT interceptor attaches the access
- * token when the visitor is signed in. Both Finder endpoints are public, so
- * guests can use the page without an account.
+ * token. Both Finder endpoints require authentication on the backend, and
+ * /extract is metered against the caller's daily AI quota (429 when used up).
  */
 @Injectable({ providedIn: 'root' })
 export class FinderService {

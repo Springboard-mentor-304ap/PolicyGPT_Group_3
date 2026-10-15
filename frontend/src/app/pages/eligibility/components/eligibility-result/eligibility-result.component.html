@@ -1,4 +1,9 @@
-<div class="eligibility-result-card" [class.is-eligible]="result.is_eligible" [class.not-eligible]="!result.is_eligible">
+<div
+  class="eligibility-result-card"
+  [class.is-eligible]="result.is_eligible"
+  [class.needs-info]="!result.is_eligible && result.status === 'more_information_required'"
+  [class.not-eligible]="!result.is_eligible && result.status !== 'more_information_required'"
+>
   <!-- Status Banner -->
   <div class="status-banner">
     <div class="status-icon-wrapper">
@@ -6,6 +11,13 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
           <polyline points="22 4 12 14.01 9 11.01"></polyline>
+        </svg>
+      } @else if (result.status === 'more_information_required') {
+        <!-- Incomplete profile: information is missing, eligibility unknown -->
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
         </svg>
       } @else {
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -19,14 +31,20 @@
     <div class="status-content">
       <div class="status-top">
         <h4 class="scheme-title">{{ result.scheme_title }}</h4>
-        <span class="match-score" [class.high]="result.match_percentage === 100" [class.partial]="result.match_percentage < 100">
-          {{ result.match_percentage }}% Match
-        </span>
+        @if (!result.is_eligible && result.status === 'more_information_required') {
+          <span class="match-score incomplete">More Info Required</span>
+        } @else {
+          <span class="match-score" [class.high]="result.match_percentage === 100" [class.partial]="result.match_percentage < 100">
+            {{ result.match_percentage }}% Match
+          </span>
+        }
       </div>
 
       <p class="status-message">
         @if (result.is_eligible) {
           You fulfill all the eligibility criteria specified for this scheme!
+        } @else if (result.status === 'more_information_required') {
+          More information is required to determine your eligibility for this scheme. Complete your profile so we can check the criteria.
         } @else {
           You do not currently meet all the prerequisite criteria for this scheme.
         }

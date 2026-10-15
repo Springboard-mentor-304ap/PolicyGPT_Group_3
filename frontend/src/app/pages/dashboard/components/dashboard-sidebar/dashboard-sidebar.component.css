@@ -7,7 +7,9 @@
 
 .sidebar {
   width: 260px;
-  background-color: var(--color-primary-navy);
+  /* Deep-teal rail (color reference); page background and controls keep
+     their existing warm-ivory / slate-blue theme. */
+  background-color: #0f3d3e;
   color: var(--color-text-inverse);
   display: flex;
   flex-direction: column;
@@ -44,8 +46,10 @@
 }
 
 .logo-text {
+  font-family: var(--font-family-display);
   font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-bold);
+  font-weight: 700;
+  letter-spacing: 0.01em;
   white-space: nowrap;
 }
 
@@ -60,9 +64,15 @@
   transition: all var(--transition-fast);
 }
 
-.sidebar-toggle:hover,
-.nav-item:hover {
+.sidebar-toggle:hover {
   background-color: rgba(255, 255, 255, 0.1);
+  color: var(--color-text-inverse);
+}
+
+/* Row hover/focus tint (color reference). */
+.nav-item:hover,
+.nav-item:focus-visible {
+  background-color: #165254;
   color: var(--color-text-inverse);
 }
 
@@ -95,7 +105,17 @@
 }
 
 .nav-item.active {
-  background-color: var(--color-primary-blue);
+  /* Teal row tint on the teal rail; white text stays readable at AA. */
+  background-color: #165254;
+  color: var(--color-text-inverse);
+  /* Thin saffron indicator along the left edge of the active item. */
+  box-shadow: inset 3px 0 0 #f0a23a;
+}
+
+/* Keep the tint (never the ivory) when the active row is hovered. */
+.nav-item.active:hover,
+.nav-item.active:focus-visible {
+  background-color: #165254;
   color: var(--color-text-inverse);
 }
 
@@ -117,24 +137,28 @@
   border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.logout-btn {
-  color: rgba(255, 255, 255, 0.7);
-}
-
-.logout-btn:hover {
-  background-color: rgba(239, 68, 68, 0.2);
-  color: #fca5a5;
-}
-
+/* Sign In / Sign Out: warm-ivory buttons on the deep-teal rail — the only
+   sidebar rows with a filled surface. Ivory bg + deep-teal text is well
+   past AA contrast; saffron outlines keyboard focus for every state. */
 .sidebar-footer .nav-item {
-  color: #ffffff;
-  background-color: var(--color-primary-blue);
+  color: #0f3d3e;
+  background-color: var(--color-gov-cream);
   font-weight: var(--font-weight-semibold);
 }
 
 .sidebar-footer .nav-item:hover {
-  background-color: var(--color-primary-hover);
-  color: #ffffff;
+  background-color: var(--color-gov-cream-deep);
+  color: var(--color-primary-navy);
+}
+
+.sidebar-footer .nav-item:focus-visible {
+  outline: 2px solid var(--color-gov-saffron-bright);
+  outline-offset: 2px;
+}
+
+.sidebar-footer .nav-item:active {
+  background-color: var(--color-gov-cream-deep);
+  color: var(--color-primary-navy);
 }
 
 @media (max-width: 768px) {

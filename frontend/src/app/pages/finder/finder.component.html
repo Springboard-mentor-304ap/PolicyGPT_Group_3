@@ -176,13 +176,12 @@
             </div>
 
             <div class="form-field">
-              <app-input
+              <app-state-select
                 formControlName="state"
-                type="text"
                 label="State"
                 id="finder-state"
                 name="state"
-                placeholder="Not provided"
+                placeholder="Select a state or Union Territory"
               />
               @if (isBlank('state')) {
                 <p class="missing-note">Not provided</p>

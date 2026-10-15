@@ -1,3 +1,10 @@
+.content-section {
+  /* Match the dashboard's wide container so the banner lines up with every
+     other dashboard section and stays inside the viewport (same rule as
+     role-request-cards / pending-approvals; see styles/_variables.css). */
+  padding: 0 max(var(--page-padding-x), (100% - var(--content-max-width-wide)) / 2) var(--space-8);
+}
+
 .completion-card {
   display: flex;
   align-items: center;
@@ -29,8 +36,12 @@
 }
 
 .completion-body {
-  flex: 1;
-  min-width: 220px;
+  /* flex-basis 220px (not 0) so the wrap decision accounts for the text
+     column before the button is placed, and min-width: 0 so the copy can
+     shrink and wrap instead of pushing the action button outside the
+     banner on narrow screens. */
+  flex: 1 1 220px;
+  min-width: 0;
 }
 
 .completion-title {
@@ -44,4 +55,27 @@
   margin: 0.25rem 0 0;
   font-size: 0.875rem;
   color: var(--color-text-secondary, #64748b);
+}
+
+.completion-card app-button {
+  /* The label never wraps, so the action keeps its intrinsic width instead
+     of being squeezed by the flex row. */
+  flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  .completion-card {
+    padding: 1rem;
+    align-items: flex-start;
+  }
+
+  .completion-body {
+    /* Icon (2.75rem) + gap (1rem) share the first row; the copy takes the
+       rest of it so the button stacks neatly on its own row below. */
+    flex: 1 1 calc(100% - 3.75rem);
+  }
+
+  .completion-card app-button {
+    flex: 1 1 auto;
+  }
 }

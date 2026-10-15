@@ -9,6 +9,7 @@ import { isCitizenProfileComplete } from '../../core/services/profile-completion
 import { InputComponent } from '../../shared/components/input/input.component';
 import { ButtonComponent } from '../../shared/components/button/button.component';
 import { BackToDashboardComponent } from '../../shared/components/back-to-dashboard/back-to-dashboard.component';
+import { StateSelectComponent } from '../../shared/components/state-select/state-select.component';
 
 @Component({
   selector: 'app-citizen-profile',
@@ -17,6 +18,7 @@ import { BackToDashboardComponent } from '../../shared/components/back-to-dashbo
     CommonModule,
     ReactiveFormsModule,
     InputComponent,
+    StateSelectComponent,
     ButtonComponent,
     BackToDashboardComponent,
   ],
@@ -252,11 +254,10 @@ import { BackToDashboardComponent } from '../../shared/components/back-to-dashbo
           <div class="form-section">
             <h2>Location</h2>
             <div class="form-row">
-              <app-input
+              <app-state-select
                 formControlName="state"
-                type="text"
                 label="State"
-                placeholder="e.g., Maharashtra"
+                placeholder="Select your state or Union Territory"
                 id="state"
                 name="state"
               />
@@ -456,7 +457,7 @@ import { BackToDashboardComponent } from '../../shared/components/back-to-dashbo
     .form-select:focus {
       outline: none;
       border-color: var(--color-primary-blue, #3b82f6);
-      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+      box-shadow: 0 0 0 3px rgba(82, 109, 138, 0.1);
     }
 
     .checkbox-label {
@@ -513,20 +514,20 @@ import { BackToDashboardComponent } from '../../shared/components/back-to-dashbo
       padding: 1rem 1.25rem;
       border-radius: 0.75rem;
       margin-bottom: 1.5rem;
-      background: #eff6ff;
-      border: 1px solid #bfdbfe;
+      background: #eff1f4;
+      border: 1px solid #c3ccd8;
     }
 
     .official-banner .banner-icon {
-      color: #2563eb;
+      color: #526d8a;
     }
 
     .official-banner .banner-content h3 {
-      color: #1e3a8a;
+      color: #35475a;
     }
 
     .official-banner .banner-content p {
-      color: #1d4ed8;
+      color: #405873;
     }
 
     .official-card {

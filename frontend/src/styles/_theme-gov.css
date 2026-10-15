@@ -1,0 +1,36 @@
+/**
+ * PolicyGPT — global government-portal theme layer.
+ *
+ * Colors (warm ivory surfaces, deep navy text, blue actions, saffron/green
+ * accents) come from the shared tokens in _variables.css, so this file only
+ * carries the two rules that cannot live in tokens:
+ *
+ *   1. Heading font family: Inter for page titles and major section
+ *      headings — the same sans-serif as body copy (no serif anywhere).
+ *      Only heading families are listed here — sizes, weights and colors
+ *      stay with _typography.css and the owning components.
+ *   2. A clearly visible 3px keyboard focus ring (WCAG 2.4.7), with a
+ *      saffron variant on the dark surfaces where blue would not contrast.
+ *
+ * Imported once from styles.css; do not repeat these rules per component.
+ */
+
+/* Every page title in the app is an <h1> (page-title, auth-title,
+   scheme-title, policy-title, or a bare h1), so one element rule covers
+   them; the two classes catch major section headings that stay <h2>. */
+h1,
+.section-title,
+.section-heading {
+  font-family: var(--font-family-display);
+}
+
+:focus-visible {
+  outline: 3px solid var(--color-primary-blue);
+  outline-offset: 2px;
+}
+
+/* Dark surfaces: navy sidebar rail and the dashboard hero banner */
+.sidebar :focus-visible,
+.gov-hero :focus-visible {
+  outline-color: var(--color-gov-saffron-bright);
+}

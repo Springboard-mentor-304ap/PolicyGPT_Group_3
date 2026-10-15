@@ -56,9 +56,7 @@ export class AuthService {
 
   // ─── REGISTER ────────────────────────────────────────────────────────────
   register(data: RegisterRequest): Observable<TokenResponse> {
-    return this.http.post<TokenResponse>('/api/auth/register', data).pipe(
-      tap((response) => this.saveTokens(response))
-    );
+    return this.http.post<TokenResponse>('/api/auth/register', data);
   }
 
   // ─── LOGIN ───────────────────────────────────────────────────────────────

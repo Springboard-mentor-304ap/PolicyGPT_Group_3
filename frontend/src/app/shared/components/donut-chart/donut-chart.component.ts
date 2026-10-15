@@ -18,7 +18,7 @@ export interface DonutSlice {
 })
 export class DonutChartComponent {
   private readonly defaultColors = [
-    '#0062d2', // Primary Blue
+    '#526d8a', // Slate blue (primary)
     '#10b981', // Emerald Green
     '#f59e0b', // Amber
     '#8b5cf6', // Violet

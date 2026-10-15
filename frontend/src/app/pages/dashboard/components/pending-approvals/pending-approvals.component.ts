@@ -19,6 +19,13 @@ import { humanize } from '../../../../core/services/analytics.mappers';
 export class PendingApprovalsComponent {
   @Input({ required: true }) requests: RoleRequestResponse[] = [];
 
+  /**
+   * On the standalone Role Approvals page the section already sits inside a
+   * `.page-container`, so the dashboard's full-bleed gutters would double
+   * up; `compact` keeps only the bottom spacing.
+   */
+  @Input() compact = false;
+
   @Output() approve = new EventEmitter<string>();
   @Output() reject = new EventEmitter<string>();
 

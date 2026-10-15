@@ -13,6 +13,9 @@ import pytest
 
 from backend.app.models.application import Application, ApplicationStatus
 from backend.app.models.faq import FAQ
+from backend.app.models.government_official_profile import (
+    GovernmentOfficialProfile,
+)
 from backend.app.models.feedback import Feedback, FeedbackStatus, FeedbackType
 from backend.app.models.notification import (
     Notification,
@@ -260,7 +263,16 @@ def test_applications_own_list_is_paginated(api, seed):
 
 def test_applications_review_list_is_paginated(api, seed):
     official = _user(seed, UserRole.GOVERNMENT_OFFICIAL)
-    administrator = _user(seed, UserRole.ADMINISTRATOR)
+    # Review work requires the official profile (department scope).
+    seed(
+        GovernmentOfficialProfile(
+            user_id=official.id,
+            department="Health",
+            designation="Director",
+            official_id="GOV-1234",
+            state="Karnataka",
+        )
+    )
     applicant = _user(seed)
     policy = _seed_policies(seed, 1, official.id)[0]
     schemes = _seed_schemes(seed, 3, policy.id, official.id)
@@ -276,7 +288,9 @@ def test_applications_review_list_is_paginated(api, seed):
             )
         )
 
-    api.login(administrator)
+    # Review work is government-official only — administrators are
+    # rejected with 403 (asserted in test_application_and_scheme_bugs).
+    api.login(official)
     _assert_paged(api.client, "/api/applications/review", {}, 3)
 
 

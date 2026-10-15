@@ -25,4 +25,5 @@ def chat(
     return answer_helpdesk_question(
         db,
         request.question,
+        user_id=current_user.id,
     )

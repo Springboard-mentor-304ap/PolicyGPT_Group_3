@@ -61,7 +61,8 @@ export class ApplicationService {
   /**
    * Staff review list (GET /api/applications/review).
    * Server-side department-scoped: officials only receive applications in
-   * their own ministry/department; admins receive all.
+   * their own ministry/department. Administrators are excluded — application
+   * approvals are government-official work, and the API enforces it.
    */
   reviewApplications(
     status?: ApplicationStatus
@@ -76,17 +77,11 @@ export class ApplicationService {
     });
   }
 
-  /** Mirrors the backend staff-only roles for application review. */
+  /** Mirrors the backend staff-only roles for application review:
+   *  government officials only (administrators are excluded). */
   static canReviewApplications(
     role: UserRole | string | null | undefined
   ): boolean {
-    return (
-      !!role &&
-      [
-        UserRole.GOVERNMENT_OFFICIAL,
-        UserRole.ADMINISTRATOR,
-        UserRole.SUPER_ADMIN,
-      ].includes(role as UserRole)
-    );
+    return !!role && role === UserRole.GOVERNMENT_OFFICIAL;
   }
 }

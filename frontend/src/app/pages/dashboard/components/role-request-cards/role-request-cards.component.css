@@ -4,9 +4,9 @@
 }
 
 .content-section {
-  /* Match the shared page container so dashboard sections line up with
-     every other page (see styles/_layout.css .page-container). */
-  padding: 0 max(var(--page-padding-x), (100% - var(--content-max-width)) / 2) var(--space-8);
+  /* Match the dashboard's wide container so sections line up with each
+     other (see styles/_variables.css). */
+  padding: 0 max(var(--page-padding-x), (100% - var(--content-max-width-wide)) / 2) var(--space-8);
 }
 
 .section-header {

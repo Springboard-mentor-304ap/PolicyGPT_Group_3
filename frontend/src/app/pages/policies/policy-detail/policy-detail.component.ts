@@ -206,7 +206,12 @@ export class PolicyDetailComponent implements OnInit {
   }
 
   private updatePolicyDetails(policy: Policy): void {
-    const schemes = this.policy()?.schemes;
+    // The detail endpoint returns the policy WITH its schemes, but the action
+    // endpoints (archive/approve/reject/update) return the scheme-less
+    // summary. Keep the already-loaded list in that case — and never drop
+    // the one the detail response provides, which used to zero the
+    // "Available Schemes" count on first load.
+    const schemes = policy.schemes ?? this.policy()?.schemes;
     this.policy.set({ ...policy, schemes });
   }
 

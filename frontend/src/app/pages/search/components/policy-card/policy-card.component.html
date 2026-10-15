@@ -18,11 +18,15 @@
       </app-badge>
     </div>
 
-    <label class="compare-toggle-label" [title]="isComparing ? 'Remove from comparison' : 'Add to comparison'">
+    <label
+      class="compare-toggle-label"
+      [title]="compareToggleTitle"
+    >
       <input
         type="checkbox"
         class="compare-checkbox"
         [checked]="isComparing"
+        [disabled]="!canAddToCompare"
         (change)="onToggleCompare()"
       />
       <span class="compare-text">Compare</span>

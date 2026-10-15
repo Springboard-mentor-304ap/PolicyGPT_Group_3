@@ -1,18 +1,21 @@
+/* Floating comparison dock — deep-teal surface with warm-ivory text to match
+   the sidebar rail; the Compare action keeps the slate-blue button, saffron
+   only accents the count badge and focus rings. */
 .floating-dock-container {
   position: fixed;
   bottom: var(--space-6);
   left: 50%;
   transform: translateX(-50%);
   z-index: var(--z-sticky);
-  width: 90%;
-  max-width: 960px;
+  /* Never wider than the viewport minus a gutter: no horizontal overflow. */
+  width: min(960px, calc(100vw - 2rem));
   animation: slideUpDock var(--transition-normal) cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .dock-inner {
-  background-color: var(--color-primary-navy-dark);
-  color: var(--color-text-inverse);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background-color: #0f3d3e;
+  color: var(--color-gov-cream);
+  border: 1px solid rgba(247, 243, 235, 0.16);
   border-radius: var(--radius-xl);
   padding: var(--space-3) var(--space-5);
   box-shadow: var(--shadow-xl);
@@ -20,6 +23,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-4);
+  min-width: 0;
   backdrop-filter: blur(12px);
 }
 
@@ -30,9 +34,11 @@
   flex-shrink: 0;
 }
 
+/* Restrained saffron accent: outline + tint instead of a filled chip. */
 .dock-count-badge {
-  background-color: var(--color-primary-blue);
-  color: var(--color-text-inverse);
+  background-color: rgba(242, 169, 59, 0.16);
+  border: 1px solid var(--color-gov-saffron-bright);
+  color: var(--color-gov-cream);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-bold);
   padding: 0.25rem 0.625rem;
@@ -47,35 +53,41 @@
 .dock-title {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-bold);
+  color: var(--color-gov-cream);
   margin: 0;
 }
 
 .dock-sub {
   font-size: var(--font-size-xs);
-  color: var(--color-text-muted);
+  color: rgba(247, 243, 235, 0.72);
   margin: 0;
 }
 
 .dock-chips {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: var(--space-2);
-  overflow-x: auto;
-  flex: 1;
+  flex: 1 1 auto;
+  /* min-width: 0 keeps a long chip row inside the bar instead of pushing the
+     page wider than the viewport. */
+  min-width: 0;
   padding: 0 var(--space-2);
 }
 
 .dock-chip {
-  background-color: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background-color: rgba(247, 243, 235, 0.1);
+  border: 1px solid rgba(247, 243, 235, 0.22);
   border-radius: var(--radius-full);
   padding: 0.25rem 0.625rem;
   display: flex;
   align-items: center;
   gap: var(--space-1);
   font-size: var(--font-size-xs);
+  color: var(--color-gov-cream);
   white-space: nowrap;
   max-width: 180px;
+  min-width: 0;
 }
 
 .chip-text {
@@ -87,7 +99,7 @@
 .chip-remove-btn {
   background: none;
   border: none;
-  color: var(--color-text-muted);
+  color: rgba(247, 243, 235, 0.75);
   cursor: pointer;
   padding: 0;
   display: flex;
@@ -97,7 +109,13 @@
 }
 
 .chip-remove-btn:hover {
-  color: var(--color-danger);
+  color: var(--color-gov-saffron-bright);
+}
+
+.chip-remove-btn:focus-visible {
+  outline: 2px solid var(--color-gov-saffron-bright);
+  outline-offset: 2px;
+  border-radius: var(--radius-full);
 }
 
 .chip-remove-btn svg {
@@ -112,20 +130,28 @@
   flex-shrink: 0;
 }
 
+/* Ghost control in warm ivory so the slate-blue Compare button stays the
+   primary action. */
 .clear-dock-btn {
   background: none;
-  border: none;
-  color: var(--color-text-muted);
+  border: 1px solid rgba(247, 243, 235, 0.45);
+  border-radius: var(--radius-md);
+  color: var(--color-gov-cream);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-medium);
   cursor: pointer;
-  padding: var(--space-1) var(--space-2);
-  transition: color var(--transition-fast);
+  padding: var(--space-1) var(--space-3);
+  transition: background-color var(--transition-fast), border-color var(--transition-fast);
 }
 
 .clear-dock-btn:hover {
-  color: var(--color-text-inverse);
-  text-decoration: underline;
+  background-color: rgba(247, 243, 235, 0.12);
+  border-color: rgba(247, 243, 235, 0.7);
+}
+
+.clear-dock-btn:focus-visible {
+  outline: 2px solid var(--color-gov-saffron-bright);
+  outline-offset: 2px;
 }
 
 @keyframes slideUpDock {
@@ -140,12 +166,37 @@
 }
 
 @media (max-width: 768px) {
+  .floating-dock-container {
+    bottom: var(--space-4);
+    width: calc(100vw - 1rem);
+  }
+
   .dock-inner {
     flex-wrap: wrap;
+    justify-content: center;
     gap: var(--space-2);
+    padding: var(--space-3);
   }
+
+  .dock-info {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
   .dock-chips {
     width: 100%;
     order: 3;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .dock-chip {
+    max-width: 45vw;
+  }
+
+  .dock-actions {
+    order: 4;
+    width: 100%;
+    justify-content: center;
   }
 }

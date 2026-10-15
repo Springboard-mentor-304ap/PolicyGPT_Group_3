@@ -1,0 +1,138 @@
+<div class="admin-page">
+  <div class="page-container page-container--wide">
+    <app-back-to-dashboard></app-back-to-dashboard>
+
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Audit Logs</h1>
+        <p class="page-subtitle">
+          Recorded administrative events — who did what, to which record, and when.
+        </p>
+      </div>
+    </div>
+
+    @if (unauthorized()) {
+      <div class="state-card state-error">
+        <span>
+          Your account does not have permission to read audit logs. This page
+          is limited to administrators.
+        </span>
+      </div>
+    }
+
+    @if (loadError()) {
+      <div class="state-card state-error">
+        <span>{{ loadError() }}</span>
+        <button type="button" class="retry-btn" (click)="load()">Retry</button>
+      </div>
+    }
+
+    <form class="filters" (ngSubmit)="applyFilters()">
+      <div class="filter-field">
+        <label for="audit-action">Action</label>
+        <input
+          id="audit-action"
+          type="text"
+          placeholder="e.g. admin.user_deactivate"
+          [(ngModel)]="actionFilter"
+          name="action" />
+      </div>
+
+      <div class="filter-field">
+        <label for="audit-target">Target table</label>
+        <input
+          id="audit-target"
+          type="text"
+          placeholder="e.g. users, policies"
+          [(ngModel)]="targetTableFilter"
+          name="target_table" />
+      </div>
+
+      <div class="filter-field">
+        <label for="audit-from">From date</label>
+        <input id="audit-from" type="date" [(ngModel)]="dateFromFilter" name="date_from" />
+      </div>
+
+      <div class="filter-field">
+        <label for="audit-to">To date</label>
+        <input id="audit-to" type="date" [(ngModel)]="dateToFilter" name="date_to" />
+      </div>
+
+      <div class="filter-actions">
+        <button type="submit" class="apply-btn">Apply filters</button>
+        <button type="button" class="clear-btn" (click)="clearFilters()">Clear</button>
+      </div>
+    </form>
+
+    <div class="log-list">
+      <div class="list-head">
+        <span>Timestamp</span>
+        <span>Action</span>
+        <span>Actor</span>
+        <span>Target</span>
+        <span>IP</span>
+        <span>Details</span>
+      </div>
+
+      @if (loading()) {
+        <div class="state-card">Loading audit logs…</div>
+      } @else if (!loadError() && !unauthorized() && logs().length === 0) {
+        <div class="state-card">No audit entries match the current filters.</div>
+      } @else {
+        @for (entry of logs(); track entry.id) {
+          <div class="list-row">
+            <span class="cell-time">{{ formatTimestamp(entry.created_at) }}</span>
+            <span class="cell-action">
+              <span class="action-chip">{{ entry.action }}</span>
+            </span>
+            <span class="cell-id mono" title="Full actor ID: {{ entry.actor_id }}">
+              {{ shortId(entry.actor_id) }}
+            </span>
+            <span class="cell-id">
+              {{ entry.target_table }}
+              <span class="mono" title="Full ID: {{ entry.target_id }}">{{ shortId(entry.target_id) }}</span>
+            </span>
+            <span class="cell-ip">{{ entry.ip_address || '—' }}</span>
+            <span class="cell-details">
+              @if (hasChanges(entry)) {
+                <button type="button" class="details-btn" (click)="toggleChanges(entry)">
+                  {{ expandedId() === entry.id ? 'Hide' : 'View' }}
+                </button>
+              } @else {
+                <span class="muted">—</span>
+              }
+            </span>
+          </div>
+
+          @if (expandedId() === entry.id) {
+            <div class="changes-row">
+              <pre class="changes-json">{{ formatChanges(entry.changes) }}</pre>
+            </div>
+          }
+        }
+      }
+    </div>
+
+    @if (!loading() && !loadError() && !unauthorized() && total() > 0) {
+      <div class="pager">
+        <span class="pager-info">{{ pageStart }}–{{ pageEnd }} of {{ total() }}</span>
+        <div class="pager-buttons">
+          <button
+            type="button"
+            class="pager-btn"
+            [disabled]="page === 0"
+            (click)="prevPage()">
+            Previous
+          </button>
+          <button
+            type="button"
+            class="pager-btn"
+            [disabled]="page + 1 >= totalPages"
+            (click)="nextPage()">
+            Next
+          </button>
+        </div>
+      </div>
+    }
+  </div>
+</div>

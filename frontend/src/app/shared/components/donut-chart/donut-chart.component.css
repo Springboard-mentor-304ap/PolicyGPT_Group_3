@@ -57,8 +57,8 @@
 .total-badge {
   font-size: 0.75rem;
   font-weight: 600;
-  background: var(--color-primary-subtle, #eef4ff);
-  color: var(--color-primary-blue, #0062d2);
+  background: var(--color-primary-subtle, #eff1f4);
+  color: var(--color-primary-blue, #526d8a);
   padding: 0.25rem 0.625rem;
   border-radius: 20px;
   white-space: nowrap;
@@ -160,7 +160,7 @@
 .center-pct {
   font-size: 0.75rem;
   font-weight: 700;
-  color: var(--color-primary-blue, #0062d2);
+  color: var(--color-primary-blue, #526d8a);
 }
 
 .chart-legend {

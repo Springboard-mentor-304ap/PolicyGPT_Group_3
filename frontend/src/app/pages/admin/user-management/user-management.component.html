@@ -1,0 +1,189 @@
+<div class="admin-page">
+  <div class="page-container page-container--wide">
+    <app-back-to-dashboard></app-back-to-dashboard>
+
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">User Management</h1>
+        <p class="page-subtitle">
+          Search accounts, review their role and status, and deactivate or
+          demote accounts that violate platform policy.
+        </p>
+      </div>
+    </div>
+
+    @if (unauthorized()) {
+      <div class="state-card state-error">
+        <span>
+          Your account does not have permission to manage users. This page is
+          limited to administrators.
+        </span>
+      </div>
+    }
+
+    @if (loadError()) {
+      <div class="state-card state-error">
+        <span>{{ loadError() }}</span>
+        <button type="button" class="retry-btn" (click)="load()">Retry</button>
+      </div>
+    }
+
+    <div class="filters">
+      <div class="filter-field filter-search">
+        <label for="user-search">Search</label>
+        <input
+          id="user-search"
+          type="search"
+          placeholder="Name or email…"
+          [ngModel]="searchTerm"
+          (ngModelChange)="onSearchInput($event)" />
+      </div>
+
+      <div class="filter-field">
+        <label for="user-role-filter">Role</label>
+        <select
+          id="user-role-filter"
+          [ngModel]="roleFilter"
+          (ngModelChange)="onRoleFilterChange($event)">
+          @for (option of roleOptions; track option.value) {
+            <option [value]="option.value">{{ option.label }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="filter-field">
+        <label for="user-status-filter">Status</label>
+        <select
+          id="user-status-filter"
+          [ngModel]="statusFilter"
+          (ngModelChange)="onStatusFilterChange($event)">
+          @for (option of statusOptions; track option.value) {
+            <option [value]="option.value">{{ option.label }}</option>
+          }
+        </select>
+      </div>
+    </div>
+
+    @if (actionError()) {
+      <div class="banner banner-error">{{ actionError() }}</div>
+    }
+
+    <div class="user-list">
+      <div class="list-head">
+        <span>Name</span>
+        <span>Email</span>
+        <span>Role</span>
+        <span>Status</span>
+        <span>Joined</span>
+        <span>Actions</span>
+      </div>
+
+      @if (loading()) {
+        <div class="state-card">Loading users…</div>
+      } @else if (!loadError() && !unauthorized() && users().length === 0) {
+        <div class="state-card">No users match the current filters.</div>
+      } @else {
+        @for (user of users(); track user.id) {
+          <div class="list-row">
+            <span class="cell-name" title="{{ user.full_name }}">{{ user.full_name }}</span>
+            <span class="cell-email" title="{{ user.email }}">
+              {{ user.email }}
+              @if (!user.email_verified) {
+                <span class="tag tag-unverified">unverified</span>
+              }
+            </span>
+            <span class="cell-role">
+              <span class="role-chip">{{ formatRole(user.role) }}</span>
+            </span>
+            <span class="cell-status">
+              <span class="status-chip" [attr.data-status]="user.is_active ? 'active' : 'inactive'">
+                {{ user.is_active ? 'Active' : 'Deactivated' }}
+              </span>
+            </span>
+            <span class="cell-date">{{ formatDate(user.created_at) }}</span>
+            <span class="cell-actions">
+              @if (confirmingId() === user.id) {
+                <span class="confirm-group">
+                  @if (user.is_active) {
+                    <button
+                      type="button"
+                      class="action-btn danger"
+                      [disabled]="actionBusyId() === user.id"
+                      (click)="confirmDeactivate(user)">
+                      {{ actionBusyId() === user.id ? 'Working…' : 'Confirm deactivate' }}
+                    </button>
+                  } @else {
+                    <button
+                      type="button"
+                      class="action-btn"
+                      [disabled]="actionBusyId() === user.id"
+                      (click)="confirmReactivate(user)">
+                      {{ actionBusyId() === user.id ? 'Working…' : 'Confirm reactivate' }}
+                    </button>
+                  }
+                  <button
+                    type="button"
+                    class="action-btn ghost"
+                    [disabled]="actionBusyId() === user.id"
+                    (click)="cancelConfirm()">
+                    Cancel
+                  </button>
+                </span>
+              } @else if (canManage(user)) {
+                @if (user.is_active) {
+                  <button
+                    type="button"
+                    class="action-btn"
+                    (click)="requestConfirm(user)">
+                    Deactivate
+                  </button>
+                } @else {
+                  <button
+                    type="button"
+                    class="action-btn"
+                    (click)="requestConfirm(user)">
+                    Reactivate
+                  </button>
+                }
+                @if (user.role !== 'citizen') {
+                  <button
+                    type="button"
+                    class="action-btn danger"
+                    (click)="confirmRevokeRole(user)">
+                    Revoke role
+                  </button>
+                }
+              } @else {
+                <span class="muted" title="Accounts outside your permission scope cannot be managed here.">
+                  —
+                </span>
+              }
+            </span>
+          </div>
+        }
+      }
+    </div>
+
+    @if (!loading() && !loadError() && !unauthorized() && total() > 0) {
+      <div class="pager">
+        <span class="pager-info">{{ pageStart }}–{{ pageEnd }} of {{ total() }}</span>
+        <div class="pager-buttons">
+          <button
+            type="button"
+            class="pager-btn"
+            [disabled]="page === 0"
+            (click)="prevPage()">
+            Previous
+          </button>
+          <button
+            type="button"
+            class="pager-btn"
+            [disabled]="page + 1 >= totalPages"
+            (click)="nextPage()">
+            Next
+          </button>
+        </div>
+      </div>
+    }
+  </div>
+</div>

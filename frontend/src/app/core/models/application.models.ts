@@ -14,6 +14,15 @@ export type ApplicationStatus =
   | 'approved'
   | 'rejected';
 
+/**
+ * Advisory eligibility verdict recorded server-side at submission time.
+ * NULL means it could not be computed. Never blocks an application.
+ */
+export type EligibilityVerdict =
+  | 'eligible'
+  | 'not_eligible'
+  | 'more_information_required';
+
 export interface Application {
   id: string;
   user_id: string;
@@ -22,6 +31,7 @@ export interface Application {
   remarks: string | null;
   approved_by: string | null;
   rejection_reason: string | null;
+  eligibility_verdict: EligibilityVerdict | null;
   submitted_at: string;
   updated_at: string;
 }

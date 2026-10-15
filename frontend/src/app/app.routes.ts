@@ -35,10 +35,48 @@ export const routes: Routes = [
         (m) => m.RoleRequestComponent
       ),
   },
+  // Administrator role-request approvals: reuses the dashboard's
+  // PendingApprovalsComponent and the existing role-requests API.
+  // Admin-only — roleGuard mirrors the backend RBAC on the pending,
+  // approve and reject endpoints.
+  {
+    path: 'role-approvals',
+    canActivate: [authGuard, roleGuard],
+    data: {
+      roles: [UserRole.ADMINISTRATOR, UserRole.SUPER_ADMIN],
+    },
+    loadComponent: () =>
+      import('./pages/role-approvals/role-approvals.component').then(
+        (m) => m.RoleApprovalsComponent
+      ),
+  },
+  // ── Administrative pages (administrator / super admin only; the API
+  // enforces the same RBAC server-side) ──────────────────────────────────
+  {
+    path: 'admin/users',
+    canActivate: [authGuard, roleGuard],
+    data: {
+      roles: [UserRole.ADMINISTRATOR, UserRole.SUPER_ADMIN],
+    },
+    loadComponent: () =>
+      import('./pages/admin/user-management/user-management.component').then(
+        (m) => m.UserManagementComponent
+      ),
+  },
+  {
+    path: 'admin/audit-logs',
+    canActivate: [authGuard, roleGuard],
+    data: {
+      roles: [UserRole.ADMINISTRATOR, UserRole.SUPER_ADMIN],
+    },
+    loadComponent: () =>
+      import('./pages/admin/audit-logs/audit-logs.component').then(
+        (m) => m.AuditLogsComponent
+      ),
+  },
   // Policy Management Routes
   {
     path: 'policies',
-    canActivate: [authGuard],
     loadComponent: () =>
       import('./pages/policies/policy-list/policy-list.component').then(
         (m) => m.PolicyListComponent
@@ -54,7 +92,6 @@ export const routes: Routes = [
   },
   {
     path: 'policies/:id',
-    canActivate: [authGuard],
     loadComponent: () =>
       import('./pages/policies/policy-detail/policy-detail.component').then(
         (m) => m.PolicyDetailComponent
@@ -71,7 +108,6 @@ export const routes: Routes = [
   // Scheme Management Routes
   {
     path: 'schemes',
-    canActivate: [authGuard],
     loadComponent: () =>
       import('./pages/schemes/scheme-list/scheme-list.component').then(
         (m) => m.SchemeListComponent
@@ -87,7 +123,6 @@ export const routes: Routes = [
   },
   {
     path: 'schemes/:id',
-    canActivate: [authGuard],
     loadComponent: () =>
       import('./pages/schemes/scheme-details/scheme-details.component').then(
         (m) => m.SchemeDetailsComponent
@@ -120,10 +155,12 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./pages/comparison/comparison.component').then((m) => m.ComparisonComponent),
   },
-  // Natural-language scheme finder. The Finder API endpoints are public
-  // (no auth dependency), so the page stays open to guests as well.
+  // Natural-language scheme finder. The Finder API endpoints require
+  // authentication (and /extract is metered by the daily AI quota), so the
+  // page is guarded like the other signed-in features.
   {
     path: 'finder',
+    canActivate: [authGuard],
     loadComponent: () =>
       import('./pages/finder/finder.component').then((m) => m.FinderComponent),
   },
@@ -147,16 +184,13 @@ export const routes: Routes = [
         (m) => m.MyApplicationsComponent
       ),
   },
-  // Government-official application status review (staff roles only)
+  // Government-official application status review (officials only —
+  // the API rejects every other role, admins included)
   {
     path: 'applications/review',
     canActivate: [authGuard, roleGuard],
     data: {
-      roles: [
-        UserRole.GOVERNMENT_OFFICIAL,
-        UserRole.ADMINISTRATOR,
-        UserRole.SUPER_ADMIN,
-      ],
+      roles: [UserRole.GOVERNMENT_OFFICIAL],
     },
     loadComponent: () =>
       import(

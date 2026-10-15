@@ -1,5 +1,7 @@
 import logging
-from datetime import date, datetime, timezone
+from datetime import datetime, timezone
+
+from backend.app.dates import utc_today
 from decimal import Decimal, InvalidOperation
 from uuid import UUID
 
@@ -8,6 +10,10 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from backend.app.audit.service import client_ip, log_action
+from backend.app.content_views import (
+    CONTENT_TYPE_SCHEME,
+    record_content_view,
+)
 from backend.app.pagination import DEFAULT_LIMIT, clamp_limit
 from backend.app.models.eligibility_rule import (
     EligibilityOperator,
@@ -21,52 +27,35 @@ from backend.app.models.user import User, UserRole
 from backend.app.models.user_profile import Gender, SocialCategory
 from backend.app.notifications.service import queue_notifications, send_notification
 from backend.app.schemes.schemas import SchemeCreate, SchemeUpdate
-# Reuses the existing department-scope rule (profile department, 403 when the
-# profile is missing) the analytics, reports and applications modules already
-# apply to government officials.
 from backend.app.ai.sync_service import schedule_scheme_sync
 from backend.app.analytics.service import _get_official_ministry
-# One canonical scope rule (case-insensitive, trimmed, ministry first with
-# department fallback) shared with policies, applications, search, analytics
-# and reports — see backend/app/scope.py.
 from backend.app.scope import scheme_in_scope, scheme_scope_filter
 
 logger = logging.getLogger(__name__)
 
-# Audit log actions recorded for the schemes module.
 AUDIT_SCHEME_APPROVE = "scheme.approve"
 AUDIT_SCHEME_REJECT = "scheme.reject"
 AUDIT_SCHEME_ARCHIVE = "scheme.archive"
 AUDIT_SCHEME_UNARCHIVE = "scheme.unarchive"
 
-# Audience for SCHEME_UPDATE alerts: the same roles that receive NEW_POLICY
-# alerts when a policy is approved, so citizens/researchers/organizations are
-# informed about scheme changes without widening the existing audience.
 SCHEME_UPDATE_RECIPIENT_ROLES = (
     UserRole.CITIZEN,
     UserRole.RESEARCHER,
     UserRole.ORGANIZATION,
 )
+PUBLIC_SCHEME_ROLES = frozenset({
+    UserRole.CITIZEN,
+    UserRole.RESEARCHER,
+    UserRole.ORGANIZATION,
+})
 
-# Columns of `schemes` that are NOT NULL in the database. An explicit JSON
-# null for one of them would otherwise be written through and fail with an
-# IntegrityError (500) at commit; the API rejects it up front instead — the
-# same rule the FAQ module applies to its update endpoint.
 NON_NULLABLE_UPDATE_FIELDS = ("title", "description", "category")
 
-# Values the enumerated parameters accept. Numeric parameters are parsed and
-# the free-text ones only have to be non-empty, so every stored rule value is
-# valid for its parameter and evaluation can never crash on bad input.
 GENDER_RULE_VALUES = {gender.value for gender in Gender}
 SOCIAL_CATEGORY_RULE_VALUES = {
     category.value for category in SocialCategory
 }
 
-# ─── Operator / parameter compatibility ──────────────────────────────────
-# Ordering comparisons are only meaningful for numeric parameters and list
-# membership only for values drawn from a set. Enforced at rule create and
-# update so an incompatible pair is a 400 instead of a rule that can never
-# evaluate correctly.
 
 CATEGORICAL_RULE_OPERATORS = frozenset(
     {
@@ -77,9 +66,6 @@ CATEGORICAL_RULE_OPERATORS = frozenset(
     }
 )
 
-# Every comparison operator, plus "in" for a list of exact numeric values
-# (compared numerically). "not_in" is deliberately not offered for the
-# numeric parameters.
 NUMERIC_RULE_OPERATORS = frozenset(
     {
         EligibilityOperator.EQ,
@@ -360,7 +346,9 @@ def create_scheme(
     scope = _get_official_ministry(db, current_user)
     _enforce_scope(policy, scheme_data.department, scope)
 
-    launch_date = scheme_data.launch_date or date.today()
+    # Default the launch date in UTC too — host-local time would shift the
+    # stored value around midnight.
+    launch_date = scheme_data.launch_date or utc_today()
 
     # A deadline before the launch date would make the scheme unapplicable
     # from day one.
@@ -437,17 +425,29 @@ def _count_scheme_view(
     scheme: Scheme,
     current_user: User,
 ) -> None:
-    """Bump `view_count` for a visit that is actually counted.
+    """Bump `view_count` once per (user, scheme), for a counted visit.
 
-    The increment happens in SQL (``view_count = view_count + 1``) so
-    concurrent readers cannot lose an update. Views by the scheme's creator
-    and by administrators are ignored, and callers only reach this after the
-    visibility check, so requests that end in 403/404 never count.
+    A user contributes at most one view: the dedup row in `content_views`
+    (composite primary key) is flushed in the same transaction as the
+    increment, so repeat visits, refreshes and concurrent requests can never
+    double-count. The increment itself stays an SQL
+    ``view_count = view_count + 1`` so concurrent readers cannot lose an
+    update. Views by the scheme's creator and by administrators are ignored,
+    and callers only reach this after the visibility check, so requests that
+    end in 403/404 never count.
     """
     if current_user.role in (UserRole.ADMINISTRATOR, UserRole.SUPER_ADMIN):
         return
 
     if scheme.created_by == current_user.id:
+        return
+
+    if not record_content_view(
+        db,
+        current_user.id,
+        CONTENT_TYPE_SCHEME,
+        scheme.id,
+    ):
         return
 
     (
@@ -465,34 +465,34 @@ def _count_scheme_view(
 def get_scheme_details(
     db: Session,
     scheme_id: UUID,
-    current_user: User,
+    current_user: User | None,
 ) -> Scheme:
-    """Scheme detail for the read endpoint.
+    """Return scheme details for the read endpoint.
 
-    Hidden records (non-ACTIVE schemes the caller does not own) answer 404;
-    officials are additionally locked to their own department/ministry.
+    Guests can view ACTIVE schemes only.
+    Authenticated users retain their existing role-specific visibility rules.
+    View counts are updated only for authenticated users.
     """
     scheme = get_scheme(db, scheme_id)
-    _assert_scheme_is_visible(db, scheme, current_user)
-    _count_scheme_view(db, scheme, current_user)
+
+    if current_user is None:
+        # Guests can view active schemes only.
+        if scheme.status != SchemeStatus.ACTIVE:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Scheme not found",
+            )
+    else:
+        _assert_scheme_is_visible(db, scheme, current_user)
+        _count_scheme_view(db, scheme, current_user)
 
     return scheme
 
 
-# Roles that use the public discovery surface: for them a scheme whose
-# deadline has passed is hidden unless include_expired is asked for. Staff
-# (officials, administrators) manage and review those schemes, so they are
-# never filtered.
-PUBLIC_SCHEME_ROLES = frozenset({
-    UserRole.CITIZEN,
-    UserRole.RESEARCHER,
-    UserRole.ORGANIZATION,
-})
-
 
 def list_schemes(
     db: Session,
-    current_user: User,
+    current_user: User | None,
     include_archived: bool = False,
     by_me: bool = False,
     include_expired: bool = False,
@@ -501,44 +501,66 @@ def list_schemes(
 ) -> tuple[list[Scheme], int]:
     """Schemes the caller may see, newest first, paged.
 
-    Returns ``(rows, total)`` — `total` counts every matching row before
+    Guests can see active schemes. Authenticated users retain their
+    existing role-specific visibility rules.
+
+    Returns (rows, total), where total counts matching rows before
     LIMIT/OFFSET, for the X-Total-Count header.
     """
     query = db.query(Scheme)
 
-    if current_user.role in (UserRole.ADMINISTRATOR, UserRole.SUPER_ADMIN):
-        # Admins see all statuses from all users; `by_me` is only offered to
-        # officials, so their behaviour is unchanged.
+    if current_user is None:
+        # Guests can see active schemes only.
+        query = query.filter(
+            Scheme.status == SchemeStatus.ACTIVE
+        )
+
+    elif current_user.role in (
+        UserRole.ADMINISTRATOR,
+        UserRole.SUPER_ADMIN,
+    ):
+        # Admins see all statuses, excluding archived by default.
         if not include_archived:
-            query = query.filter(Scheme.status != SchemeStatus.ARCHIVED)
+            query = query.filter(
+                Scheme.status != SchemeStatus.ARCHIVED
+            )
+
     elif current_user.role == UserRole.GOVERNMENT_OFFICIAL:
-        # Officials are locked to their own department/ministry. Inside that
-        # scope they see their own records (all statuses) + ACTIVE records
-        # from others, or only their own records when "By Me" is selected.
+        # Officials are restricted to their own department/ministry.
         scope = _get_official_ministry(db, current_user)
         query = query.filter(scheme_scope_criteria(scope))
+
         if by_me:
-            query = query.filter(Scheme.created_by == current_user.id)
+            query = query.filter(
+                Scheme.created_by == current_user.id
+            )
         else:
             query = query.filter(
                 (Scheme.created_by == current_user.id)
                 | (Scheme.status == SchemeStatus.ACTIVE)
             )
-        if not include_archived:
-            query = query.filter(Scheme.status != SchemeStatus.ARCHIVED)
-    else:
-        # Citizens, researchers, organizations: ACTIVE only
-        query = query.filter(Scheme.status == SchemeStatus.ACTIVE)
 
-    # Expired schemes (deadline set and already past) are hidden from the
-    # public listing by default but stay reachable with include_expired=true.
-    # The status column is never touched: a scheme stays ACTIVE in the
-    # database, its window is simply over.
-    if not include_expired and current_user.role in PUBLIC_SCHEME_ROLES:
+        if not include_archived:
+            query = query.filter(
+                Scheme.status != SchemeStatus.ARCHIVED
+            )
+
+    else:
+        # Citizens, researchers, organizations: ACTIVE schemes only.
+        query = query.filter(
+            Scheme.status == SchemeStatus.ACTIVE
+        )
+
+    # Hide expired schemes by default from guests and public-facing roles.
+    # include_expired=True allows expired ACTIVE schemes to appear.
+    if not include_expired and (
+        current_user is None
+        or current_user.role in PUBLIC_SCHEME_ROLES
+    ):
         query = query.filter(
             or_(
                 Scheme.deadline_date.is_(None),
-                Scheme.deadline_date >= date.today(),
+                Scheme.deadline_date >= utc_today(),
             )
         )
 
@@ -552,6 +574,7 @@ def list_schemes(
     )
 
     return rows, total
+
 
 
 def _notify_scheme_published(
@@ -1012,19 +1035,13 @@ def create_eligibility_rule(
             detail="You can only manage rules for schemes you created",
         )
 
-    if scheme.status == SchemeStatus.ARCHIVED:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot add rules to an archived scheme",
-        )
-
     if scheme.status in (
         SchemeStatus.ACTIVE,
-        SchemeStatus.PENDING_APPROVAL,
+        SchemeStatus.ARCHIVED,
     ):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot add rules to an active or pending approval scheme",
+            detail="Cannot add rules to an active or archived scheme",
         )
 
     _validate_rule_operator(parameter, operator)
@@ -1094,19 +1111,13 @@ def update_eligibility_rule(
             detail="You can only manage rules for schemes you created",
         )
 
-    if scheme.status == SchemeStatus.ARCHIVED:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot update rules of an archived scheme",
-        )
-
     if scheme.status in (
         SchemeStatus.ACTIVE,
-        SchemeStatus.PENDING_APPROVAL,
+        SchemeStatus.ARCHIVED,
     ):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot update rules of an active or pending approval scheme",
+            detail="Cannot update rules of an active or archived scheme",
         )
 
     # Validate the state the rule will end up in: the fields being changed
@@ -1172,19 +1183,13 @@ def delete_eligibility_rule(
             detail="You can only manage rules for schemes you created",
         )
 
-    if scheme.status == SchemeStatus.ARCHIVED:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot delete rules from an archived scheme",
-        )
-
     if scheme.status in (
         SchemeStatus.ACTIVE,
-        SchemeStatus.PENDING_APPROVAL,
+        SchemeStatus.ARCHIVED,
     ):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot delete rules from an active or pending approval scheme",
+            detail="Cannot delete rules from an active or archived scheme",
         )
 
     target_scheme_id = rule.scheme_id

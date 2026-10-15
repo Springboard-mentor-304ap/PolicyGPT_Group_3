@@ -239,6 +239,48 @@ def test_role_request_rejection_notifies_requester_with_reason(
     assert "password" not in str(rows[-1].changes).lower()
 
 
+def test_submitting_role_request_notifies_reviewing_admins_once(
+    api, db_session, admin, citizen,
+):
+    """A new role-upgrade request alerts the reviewing administrators.
+
+    One submission stages exactly one notification per reviewing admin,
+    the requester hears nothing about their own submission, and a repeat
+    submission while the first request is still pending is refused — so a
+    single request can never fan out duplicate notifications.
+    """
+    payload = {
+        "requested_role": "government_official",
+        "details": {
+            "department_ministry": "Health",
+            "designation": "Director",
+            "official_id": "GOV-9999",
+            "state": "Karnataka",
+        },
+    }
+
+    api.login(citizen)
+    response = api.client.post("/api/role-requests", json=payload)
+    assert response.status_code == 201, response.text
+
+    notes = _notes(db_session, admin.id, NotificationType.ROLE_REQUEST_UPDATE)
+    assert len(notes) == 1
+    assert "government_official" in notes[0].message
+    assert notes[0].title == "Role Request Submitted"
+
+    # The requester is never notified about their own submission.
+    assert _notes(db_session, citizen.id) == []
+
+    # Duplicate submission for the same pending request: refused before
+    # any second notification can be staged.
+    response = api.client.post("/api/role-requests", json=payload)
+    assert response.status_code == 400
+    assert (
+        len(_notes(db_session, admin.id, NotificationType.ROLE_REQUEST_UPDATE))
+        == 1
+    )
+
+
 # ─── Item 3: create_application notifies in-scope officials ─────────────────
 def test_new_application_notifies_in_scope_officials(
     api, db_session, citizen, official, approved_policy,

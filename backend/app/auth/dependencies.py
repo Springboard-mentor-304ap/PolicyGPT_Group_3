@@ -92,17 +92,9 @@ def get_current_user_optional(
     ),
     db: Session = Depends(get_db),
 ) -> User | None:
-    """The authenticated user when a valid bearer token was sent, else None.
+    """Return None for guests; validate any supplied bearer token."""
 
-    Public endpoints keep working for guests and for citizens/researchers;
-    the returned user only narrows what a government official may see.
-    """
     if credentials is None:
         return None
 
-    try:
-        return get_current_user(credentials=credentials, db=db)
-    except HTTPException:
-        # An expired or unreadable token is treated as an anonymous caller,
-        # exactly like a missing header.
-        return None
+    return get_current_user(credentials=credentials, db=db)

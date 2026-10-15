@@ -3,7 +3,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query, Request, Response
 from sqlalchemy.orm import Session
 
-from backend.app.auth.dependencies import get_current_user
+from backend.app.auth.dependencies import get_current_user, get_current_user_optional
 from backend.app.db.database import get_db
 from backend.app.models.user import User
 from backend.app.pagination import DEFAULT_LIMIT
@@ -60,7 +60,7 @@ def list_policies_route(
     limit: int = Query(default=DEFAULT_LIMIT, ge=1),
     offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User | None = Depends(get_current_user_optional),
 ):
     rows, total = list_policies(
         db=db,
@@ -80,7 +80,7 @@ def list_policies_route(
 def get_policy_route(
     policy_id: UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User | None = Depends(get_current_user_optional),
 ):
     return get_policy_details(
         db=db,

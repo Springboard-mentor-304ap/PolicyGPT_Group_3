@@ -54,7 +54,7 @@
 }
 
 .pill-dot.blue {
-  background: var(--color-primary-blue, #0062d2);
+  background: var(--color-primary-blue, #526d8a);
 }
 
 .empty-chart {
@@ -101,7 +101,7 @@
 .trend-bar-fill {
   width: 28px;
   max-width: 80%;
-  background: linear-gradient(180deg, var(--color-primary-blue, #0062d2), #60a5fa);
+  background: linear-gradient(180deg, var(--color-primary-blue, #526d8a), #8ea0b7);
   border-radius: 6px 6px 0 0;
   transition: height 0.4s ease, filter 0.2s ease;
   min-height: 8px;
@@ -109,7 +109,7 @@
 
 .trend-col:hover .trend-bar-fill,
 .trend-col.active .trend-bar-fill {
-  filter: brightness(1.15) drop-shadow(0 2px 6px rgba(0, 98, 210, 0.35));
+  filter: brightness(1.15) drop-shadow(0 2px 6px rgba(82, 109, 138, 0.35));
 }
 
 .trend-x-label {

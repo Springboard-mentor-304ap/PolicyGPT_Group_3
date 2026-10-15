@@ -63,6 +63,16 @@ export class SchemeListComponent implements OnInit {
     return role === UserRole.ADMINISTRATOR || role === UserRole.SUPER_ADMIN;
   });
 
+  /**
+   * Status filtering and "Include Archived" only exist for roles that can
+   * see more than the public subset (active schemes). Guests, citizens,
+   * organizations and researchers only ever receive that subset — the
+   * backend enforces it — so both controls stay hidden from them.
+   */
+  readonly canFilterStatus = computed(
+    () => this.isGovernmentOfficial() || this.isAdmin()
+  );
+
   /** Only an official's listing has a "By Me" scope. */
   readonly isByMe = computed(
     () => this.isGovernmentOfficial() && this.ownerFilter() === 'mine'

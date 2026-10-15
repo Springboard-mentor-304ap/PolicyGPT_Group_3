@@ -6,6 +6,7 @@ import { AuthService } from '../../../core/services/auth.service';
 import { CardComponent } from '../../../shared/components/card/card.component';
 import { InputComponent } from '../../../shared/components/input/input.component';
 import { ButtonComponent } from '../../../shared/components/button/button.component';
+import { BackToDashboardComponent } from '../../../shared/components/back-to-dashboard/back-to-dashboard.component';
 
 @Component({
   selector: 'app-login',
@@ -17,6 +18,7 @@ import { ButtonComponent } from '../../../shared/components/button/button.compon
     CardComponent,
     InputComponent,
     ButtonComponent,
+    BackToDashboardComponent,
   ],
   templateUrl: './login.component.html',
   styleUrl: './login.component.css',
@@ -59,6 +61,7 @@ export class LoginComponent {
         this.authService.getMe().subscribe({
           next: (user) => {
             this.loading.set(false);
+            console.log('[LOGIN] Profile loaded:', user.email, user.email_verified, user.role);
             this.routeUserByRole(user.role);
           },
           error: () => {
@@ -76,9 +79,11 @@ export class LoginComponent {
   }
 
   private routeUserByRole(role: string | null): void {
+    console.log('[LOGIN] Routing user by role:', role);
+
     const returnUrl = this.route.snapshot.queryParams['returnUrl'];
 
-    if (returnUrl) {
+    if (returnUrl && !returnUrl.startsWith('/verify-email')) {
       this.router.navigateByUrl(returnUrl);
       return;
     }

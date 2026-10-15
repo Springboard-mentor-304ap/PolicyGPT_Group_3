@@ -14,6 +14,7 @@ import { ButtonComponent } from '../../shared/components/button/button.component
 import { CardComponent } from '../../shared/components/card/card.component';
 import { InputComponent } from '../../shared/components/input/input.component';
 import { SelectComponent, SelectOption } from '../../shared/components/select/select.component';
+import { StateSelectComponent } from '../../shared/components/state-select/state-select.component';
 import {
   FinderBadgeVariant,
   FinderMatchCardComponent,
@@ -107,6 +108,7 @@ const RESULT_GROUPS: FinderResultGroup[] = [
     CardComponent,
     InputComponent,
     SelectComponent,
+    StateSelectComponent,
     FinderMatchCardComponent,
   ],
   templateUrl: './finder.component.html',
@@ -234,10 +236,13 @@ export class FinderComponent {
         this.step.set('review');
         this.scrollToTop();
       },
-      error: () => {
+      error: (error) => {
         this.extracting.set(false);
         this.extractionError.set(
-          'We could not extract your information right now. Please try again.',
+          this.describeError(
+            error,
+            'We could not extract your information right now. Please try again.',
+          ),
         );
       },
     });
@@ -270,10 +275,13 @@ export class FinderComponent {
         this.step.set('results');
         this.scrollToTop();
       },
-      error: () => {
+      error: (error) => {
         this.matching.set(false);
         this.matchError.set(
-          'We could not check the schemes right now. Please try again.',
+          this.describeError(
+            error,
+            'We could not check the schemes right now. Please try again.',
+          ),
         );
       },
     });
@@ -487,5 +495,25 @@ export class FinderComponent {
 
   private scrollToTop(): void {
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  /**
+   * Clear, actionable message for the two API failures the user can
+   * actually resolve: an expired session (the interceptor has already
+   * cleared the tokens and sent them to /login) and the daily AI quota
+   * (429 from the backend's per-user LLM budget).
+   */
+  private describeError(error: unknown, fallback: string): string {
+    const status = (error as { status?: number } | null)?.status;
+
+    if (status === 401) {
+      return 'Your session has expired. Please sign in again.';
+    }
+    if (status === 429) {
+      return (
+        'You have used up your daily AI requests. Please try again tomorrow.'
+      );
+    }
+    return fallback;
   }
 }

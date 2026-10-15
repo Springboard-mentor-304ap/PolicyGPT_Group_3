@@ -1,7 +1,7 @@
 from datetime import datetime
 from enum import Enum
 
-from sqlalchemy import DateTime, Enum as SQLEnum, ForeignKey, Index, Text, func, text
+from sqlalchemy import DateTime, Enum as SQLEnum, ForeignKey, Index, String, Text, func, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -54,6 +54,16 @@ class Application(Base):
 
     rejection_reason: Mapped[str | None] = mapped_column(
         Text,
+    )
+
+    # Advisory-only snapshot of what the eligibility engine said about the
+    # applicant's profile when they submitted ('eligible', 'not_eligible',
+    # 'more_information_required'). Computed server-side at submission and
+    # never trusted from the client; it never blocks an application. NULL
+    # means no verdict could be computed (missing profile, no rules, or the
+    # check failed) — reviewers simply see "not available".
+    eligibility_verdict: Mapped[str | None] = mapped_column(
+        String(50),
     )
 
     submitted_at: Mapped[datetime] = mapped_column(

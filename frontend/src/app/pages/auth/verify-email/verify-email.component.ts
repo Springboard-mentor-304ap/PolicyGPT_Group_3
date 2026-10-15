@@ -87,9 +87,9 @@ import { ButtonComponent } from '../../../shared/components/button/button.compon
             <app-button
               variant="primary"
               [fullWidth]="true"
-              (btnClick)="goToDashboard()"
+              (btnClick)="goToLogin()"
             >
-              Go to Dashboard
+              Continue to Login
             </app-button>
           </div>
         }
@@ -336,8 +336,8 @@ export class VerifyEmailComponent implements OnInit {
     });
   }
 
-  goToDashboard(): void {
-    this.router.navigate(['/dashboard']);
+  goToLogin(): void {
+    this.router.navigate(['/login'], { replaceUrl: true });
   }
 
   get code() {

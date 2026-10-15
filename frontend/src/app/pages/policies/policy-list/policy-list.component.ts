@@ -63,6 +63,17 @@ export class PolicyListComponent implements OnInit {
     return role === UserRole.ADMINISTRATOR || role === UserRole.SUPER_ADMIN;
   });
 
+  /**
+   * Status filtering and "Include Archived" only exist for roles that can
+   * see more than the public subset (approved policies / active schemes).
+   * Guests, citizens, organizations and researchers only ever receive the
+   * public subset — the backend enforces that — so both controls are hidden
+   * from them instead of offering a filter that can never change the list.
+   */
+  readonly canFilterStatus = computed(
+    () => this.isGovernmentOfficial() || this.isAdmin()
+  );
+
   readonly filteredPolicies = computed(() => {
     let result = this.policies();
 

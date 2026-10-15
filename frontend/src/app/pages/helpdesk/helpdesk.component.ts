@@ -230,6 +230,12 @@ export class HelpdeskComponent {
       );
       return;
     }
+    if (status === 429) {
+      this.errorMessage.set(
+        'You have used up your daily AI Helpdesk quota. Please try again tomorrow.',
+      );
+      return;
+    }
 
     this.errorMessage.set(UNAVAILABLE_MESSAGE);
   }

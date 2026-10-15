@@ -1,0 +1,331 @@
+.admin-page {
+  padding-block: var(--space-6);
+}
+
+/* Horizontal sizing comes from the shared .page-container rules
+   (styles/_layout.css): the --wide modifier centres a 1400px container with
+   consistent side margins. The local full-bleed centering formula double-
+   applied the gutters against the container's cap and squeezed the content
+   box on wide viewports — only the extra bottom spacing is set here. */
+.page-container {
+  padding-block-end: var(--space-6);
+}
+
+.page-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-5);
+}
+
+.page-title {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.page-subtitle {
+  margin: var(--space-1) 0 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+/* Filters */
+.filters {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  align-items: flex-end;
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-4);
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+}
+
+.filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 160px;
+}
+
+.filter-field label {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+}
+
+.filter-field input {
+  height: 42px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  background-color: var(--color-bg-surface);
+  color: var(--color-text-primary);
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-sm);
+}
+
+.filter-field input:focus {
+  outline: none;
+  border-color: var(--color-primary-blue);
+  box-shadow: var(--shadow-focus-ring);
+}
+
+.filter-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.apply-btn {
+  height: 42px;
+  padding: 0 var(--space-4);
+  border: none;
+  border-radius: var(--radius-md);
+  background-color: var(--color-primary-blue);
+  color: var(--color-text-inverse);
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+}
+
+.apply-btn:hover {
+  background-color: var(--color-primary-hover);
+}
+
+.apply-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus-ring);
+}
+
+.clear-btn {
+  height: 42px;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+}
+
+.clear-btn:hover {
+  background-color: var(--color-bg-subtle);
+}
+
+/* States */
+.state-card {
+  padding: var(--space-6);
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.state-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  color: var(--color-danger-text);
+  border-color: var(--color-danger-border);
+}
+
+.retry-btn {
+  border: 1px solid var(--color-danger-border);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-danger-text);
+  cursor: pointer;
+  padding: var(--space-1) var(--space-3);
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-sm);
+}
+
+/* Log list — the container scrolls horizontally when the viewport is
+   narrower than the table, so the page itself never overflows. */
+.log-list {
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  overflow-x: auto;
+  box-shadow: var(--shadow-sm);
+}
+
+.list-head,
+.list-row {
+  display: grid;
+  grid-template-columns:
+    minmax(150px, 0.9fr) minmax(170px, 1.3fr) 90px
+    minmax(170px, 1.4fr) minmax(100px, 0.8fr) 90px;
+  gap: var(--space-3);
+  align-items: center;
+  min-width: 920px;
+  padding: var(--space-3) var(--space-4);
+}
+
+.list-head {
+  background-color: var(--color-bg-muted);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+}
+
+.list-row {
+  border-top: 1px solid var(--color-border-subtle);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+}
+
+.cell-time {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.action-chip {
+  display: inline-block;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  padding: 0.15rem 0.6rem;
+  border-radius: var(--radius-full);
+  background-color: var(--color-bg-muted);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.cell-id {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-primary);
+  overflow-wrap: anywhere;
+}
+
+.mono {
+  display: block;
+  font-family: var(--font-family-mono);
+  font-size: 0.65rem;
+  color: var(--color-text-muted);
+  /* IDs are truncated to their short form; the full value stays in the
+     native tooltip (title attribute). */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.cell-ip {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.details-btn {
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  background-color: var(--color-bg-surface);
+  color: var(--color-primary-blue);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  font-family: var(--font-family-base);
+  cursor: pointer;
+}
+
+.details-btn:hover {
+  background-color: var(--color-bg-subtle);
+}
+
+.details-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus-ring);
+}
+
+.muted {
+  color: var(--color-text-muted);
+}
+
+/* Expanded changes payload */
+.changes-row {
+  border-top: 1px solid var(--color-border-subtle);
+  background-color: var(--color-bg-muted);
+  padding: var(--space-3) var(--space-4);
+}
+
+.changes-json {
+  margin: 0;
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-primary);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* Pager */
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  margin-top: var(--space-4);
+}
+
+.pager-info {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.pager-buttons {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.pager-btn {
+  height: 38px;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  background-color: var(--color-bg-surface);
+  color: var(--color-text-primary);
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+}
+
+.pager-btn:hover:not(:disabled) {
+  background-color: var(--color-bg-subtle);
+}
+
+.pager-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Below the table's minimum width the rows stay a single scrollable grid
+   (see .log-list); only the filter bar needs to stack. */
+@media (max-width: 700px) {
+  .filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filter-field {
+    min-width: 0;
+  }
+
+  .filter-actions {
+    flex-wrap: wrap;
+  }
+}

@@ -8,6 +8,7 @@ import { InputComponent } from '../../../shared/components/input/input.component
 import { ButtonComponent } from '../../../shared/components/button/button.component';
 import { PasswordMeterComponent } from '../../../shared/components/password-meter/password-meter.component';
 import { ComplianceAuditComponent } from '../../../shared/components/compliance-audit/compliance-audit.component';
+import { BackToDashboardComponent } from '../../../shared/components/back-to-dashboard/back-to-dashboard.component';
 
 @Component({
   selector: 'app-register',
@@ -21,6 +22,7 @@ import { ComplianceAuditComponent } from '../../../shared/components/compliance-
     ButtonComponent,
     PasswordMeterComponent,
     ComplianceAuditComponent,
+    BackToDashboardComponent,
   ],
   templateUrl: './register.component.html',
   styleUrl: './register.component.css',

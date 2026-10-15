@@ -39,8 +39,8 @@
 .total-badge {
   font-size: 0.75rem;
   font-weight: 600;
-  background: var(--color-primary-subtle, #eef4ff);
-  color: var(--color-primary-blue, #0062d2);
+  background: var(--color-primary-subtle, #eff1f4);
+  color: var(--color-primary-blue, #526d8a);
   padding: 0.25rem 0.625rem;
   border-radius: 20px;
   white-space: nowrap;
@@ -118,5 +118,5 @@
   height: 100%;
   border-radius: 4px;
   transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  background: linear-gradient(90deg, var(--color-primary-blue, #0062d2), #38bdf8);
+  background: linear-gradient(90deg, var(--color-primary-blue, #526d8a), #8ea0b7);
 }

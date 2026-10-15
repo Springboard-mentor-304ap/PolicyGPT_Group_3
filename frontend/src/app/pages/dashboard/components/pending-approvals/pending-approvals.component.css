@@ -6,15 +6,23 @@
 }
 
 .content-section {
-  /* Match the shared page container so dashboard sections line up with
-     every other page (see styles/_layout.css .page-container). */
-  padding: 0 max(var(--page-padding-x), (100% - var(--content-max-width)) / 2) var(--space-8);
+  /* Match the dashboard's wide container so this section lines up with
+     the other dashboard sections (see styles/_variables.css). */
+  padding: 0 max(var(--page-padding-x), (100% - var(--content-max-width-wide)) / 2) var(--space-8);
+}
+
+/* Standalone pages wrap this section in their own .page-container. */
+.content-section--compact {
+  padding-inline: 0;
+  padding-bottom: var(--space-6);
 }
 
 .section-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
   margin-bottom: var(--space-4);
 }
 
@@ -58,6 +66,10 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  /* Details and buttons wrap onto their own row on narrow screens instead
+     of overflowing the card. */
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-4);
   padding: var(--space-4) var(--space-5);
   border-bottom: 1px solid var(--color-border-subtle);
 }
@@ -70,6 +82,10 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
+  /* Shrinkable text column so long submitted values cannot push the
+     Approve/Reject buttons out of the card. */
+  flex: 1 1 240px;
+  min-width: 0;
 }
 
 .approval-role {
@@ -96,12 +112,18 @@
   background-color: var(--color-bg-muted);
   border-radius: var(--radius-sm);
   color: var(--color-text-secondary);
+  /* Long submitted values truncate instead of stretching the row. */
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .approval-actions {
   display: flex;
   gap: var(--space-2);
   flex-shrink: 0;
+  margin-left: auto;
 }
 
 .approve-btn,
