@@ -13,6 +13,7 @@ from backend.app.models.government_official_profile import (
 from backend.app.models.notification import Notification
 from backend.app.models.policy import PolicyStatus
 from backend.app.models.scheme import Scheme, SchemeStatus
+from backend.app.models.user import User, UserRole
 from tests.api.conftest import _policy, _scheme
 
 
@@ -466,3 +467,64 @@ def test_withdraw_application(api, seed, session_factory, citizen, other_citizen
         json={"scheme_id": str(scheme2.id)},
     )
     assert response.status_code == 400
+
+
+# ─── Administrators are excluded from the approval workflow ─────────────────
+
+def test_administrators_cannot_review_update_or_view_applications(
+    api, seed, citizen, official, approved_policy,
+):
+    """Application approvals are government-official work, end to end."""
+    administrator = seed(
+        User(
+            id=uuid.uuid4(),
+            email=f"admin-{uuid.uuid4().hex[:8]}@example.gov",
+            password_hash="x",
+            full_name="Test Admin",
+            role=UserRole.ADMINISTRATOR,
+            email_verified=True,
+            is_active=True,
+        )
+    )
+    scheme = seed(
+        _scheme(
+            policy_id=approved_policy.id,
+            created_by=official.id,
+            status=SchemeStatus.ACTIVE,
+        )
+    )
+
+    api.login(citizen)
+    response = api.client.post(
+        "/api/applications",
+        json={"scheme_id": str(scheme.id)},
+    )
+    assert response.status_code == 201
+    application_id = response.json()["id"]
+
+    api.login(administrator)
+
+    # Review list: administrators must not see the approval queue.
+    assert api.client.get("/api/applications/review").status_code == 403
+
+    # Processing: administrators must not move an application along.
+    response = api.client.patch(
+        f"/api/applications/{application_id}/status",
+        json={"status": "under_review"},
+    )
+    assert response.status_code == 403
+
+    # Seeing: administrators must not open the application either.
+    assert (
+        api.client.get(f"/api/applications/{application_id}").status_code
+        == 403
+    )
+
+    # The in-scope government official keeps every capability.
+    api.login(official)
+    assert api.client.get("/api/applications/review").status_code == 200
+    response = api.client.patch(
+        f"/api/applications/{application_id}/status",
+        json={"status": "under_review"},
+    )
+    assert response.status_code == 200

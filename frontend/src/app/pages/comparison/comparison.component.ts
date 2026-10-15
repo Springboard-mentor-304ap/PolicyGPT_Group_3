@@ -65,7 +65,19 @@ export class ComparisonComponent implements OnInit {
     this.loading.set(true);
     this.searchService.getAllItems().subscribe({
       next: (allItems: SearchResultItem[]) => {
-        const matching = allItems.filter((i) => ids.includes(i.id));
+        // The shared service caps selections at MAX_ITEMS and one resource
+        // type per comparison (the backend compares policies or schemes,
+        // never a mix) — the matrix must honour both so a hand-edited
+        // ?ids= URL can't show more, or mix types. Group by type and keep
+        // the group that covers more of the requested ids.
+        const byType = {
+          policy: allItems.filter((i) => ids.includes(i.id) && i.itemType === 'policy'),
+          scheme: allItems.filter((i) => ids.includes(i.id) && i.itemType === 'scheme'),
+        };
+        const matching = (byType.policy.length >= byType.scheme.length ? byType.policy : byType.scheme).slice(
+          0,
+          this.comparisonService.MAX_ITEMS
+        );
         matching.forEach((item) => this.comparisonService.addItem(item));
         this.comparisonService.getComparisonMatrix(matching).subscribe((m: ComparisonMatrix) => {
           this.matrix.set(m);

@@ -379,7 +379,7 @@
         }
 
         <!-- Overview Stats Grid (role-filtered) -->
-        <section class="overview-section">
+        <section class="overview-section" id="analytics-overview">
           <div class="stats-grid">
             <!-- Total Users — administrators only (admin-only endpoint) -->
             @if (canViewUserAnalytics() && overview()?.total_users !== null) {
@@ -703,39 +703,45 @@
             </div>
           </section>
         }
-
-        <!-- Your notifications inbox (analytics roles can still use it) -->
-        @if (recentNotifications().length > 0) {
-          <section class="content-section" id="your-notifications">
-            <div class="section-header">
-              <div class="section-title-wrap">
-                <h2 class="section-title">Your Notifications</h2>
-                <p class="section-desc">Latest messages addressed to your account</p>
-              </div>
-              <span class="pending-badge">{{ unreadCount() }} Unread</span>
-            </div>
-            <div class="intel-card">
-              <div class="notification-list">
-                @for (note of recentNotifications(); track note.id) {
-                  <div class="notification-item" [class.unread]="!note.is_read">
-                    <span class="notification-dot"></span>
-                    <div class="notification-body">
-                      <div class="notification-line">
-                        <strong class="notification-title">{{ note.title }}</strong>
-                        <span class="actor-role-tag">{{ formatRole(note.type) }}</span>
-                      </div>
-                      <p class="notification-message">{{ note.message }}</p>
-                      <span class="notification-time">
-                        {{ formatDate(note.created_at) }} at {{ formatTime(note.created_at) }}
-                      </span>
-                    </div>
-                  </div>
-                }
-              </div>
-            </div>
-          </section>
-        }
       }
+
+      <!-- Your notifications inbox: rendered for every analytics role and
+           not gated on the list being non-empty, so the sidebar's
+           "Notifications" item always has a section to scroll to. -->
+      <section class="content-section" id="your-notifications">
+        <div class="section-header">
+          <div class="section-title-wrap">
+            <h2 class="section-title">Your Notifications</h2>
+            <p class="section-desc">Latest messages addressed to your account</p>
+          </div>
+          <span class="pending-badge">{{ unreadCount() }} Unread</span>
+        </div>
+        @if (recentNotifications().length === 0) {
+          <div class="intel-card">
+            <p class="empty-text">No notifications yet.</p>
+          </div>
+        } @else {
+          <div class="intel-card">
+            <div class="notification-list">
+              @for (note of recentNotifications(); track note.id) {
+                <div class="notification-item" [class.unread]="!note.is_read">
+                  <span class="notification-dot"></span>
+                  <div class="notification-body">
+                    <div class="notification-line">
+                      <strong class="notification-title">{{ note.title }}</strong>
+                      <span class="actor-role-tag">{{ formatRole(note.type) }}</span>
+                    </div>
+                    <p class="notification-message">{{ note.message }}</p>
+                    <span class="notification-time">
+                      {{ formatDate(note.created_at) }} at {{ formatTime(note.created_at) }}
+                    </span>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        }
+      </section>
     }
   </main>
 

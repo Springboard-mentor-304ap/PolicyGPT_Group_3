@@ -1,20 +1,57 @@
-import { Injectable, inject, computed, signal } from '@angular/core';
+import { Injectable, inject, computed, effect, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
 import { ComparisonMatrix, ComparisonMatrixRow } from '../models/comparison.models';
 import { SearchResultItem } from '../models/search.models';
+import { AuthService } from './auth.service';
 
 @Injectable({ providedIn: 'root' })
 export class ComparisonService {
   private readonly http = inject(HttpClient);
+  private readonly auth = inject(AuthService);
 
+  /** Hard cap: four items in total, enforced by every mutation below. */
   readonly MAX_ITEMS = 4;
 
-  // Global reactive state for selected comparison items
+  // Reactive selection state for the current session/account (in memory
+  // only — nothing survives a reload, and the owner check below drops it
+  // whenever the signed-in identity changes).
   readonly selectedItems = signal<SearchResultItem[]>([]);
   readonly selectedCount = computed(() => this.selectedItems().length);
   readonly isFull = computed(() => this.selectedCount() >= this.MAX_ITEMS);
   readonly hasItems = computed(() => this.selectedCount() > 0);
+
+  /** Selections are meaningful only inside a signed-in session: guests see
+   *  no comparison bar even if stale state somehow remained. */
+  readonly isVisible = computed(
+    () => this.auth.isAuthenticated() && this.hasItems()
+  );
+
+  constructor() {
+    // The selection is scoped to one account: clear it the moment the
+    // identity changes — sign-out, a different user signing in, or session
+    // expiry — so nothing leaks between users or to a guest.
+    let ownerId = this.auth.currentUser()?.id ?? null;
+
+    effect(() => {
+      const nextOwnerId = this.auth.currentUser()?.id ?? null;
+
+      if (nextOwnerId !== ownerId) {
+        ownerId = nextOwnerId;
+        this.selectedItems.set([]);
+      }
+    });
+  }
+
+  /**
+   * The backend compares one resource type per request
+   * (POST /comparison takes a single `type`), so a selection may only ever
+   * hold one type: policies with policies, schemes with schemes.
+   */
+  canAddType(itemType: 'policy' | 'scheme'): boolean {
+    const current = this.selectedItems();
+    return current.length === 0 || current[0].itemType === itemType;
+  }
 
   toggleItem(item: SearchResultItem): boolean {
     const current = this.selectedItems();
@@ -25,6 +62,7 @@ export class ComparisonService {
       return false;
     } else {
       if (current.length >= this.MAX_ITEMS) return false;
+      if (!this.canAddType(item.itemType)) return false;
       this.selectedItems.set([...current, item]);
       return true;
     }
@@ -35,6 +73,7 @@ export class ComparisonService {
     if (current.length >= this.MAX_ITEMS || current.some((i) => i.id === item.id)) {
       return false;
     }
+    if (!this.canAddType(item.itemType)) return false;
     this.selectedItems.set([...current, item]);
     return true;
   }
@@ -58,7 +97,12 @@ export class ComparisonService {
    * Response: { items: ComparisonItem[] }
    */
   getComparisonMatrix(itemsToCompare?: SearchResultItem[]): Observable<ComparisonMatrix> {
-    const items = itemsToCompare || this.selectedItems();
+    // Defensive cap: whatever a caller (or a hand-edited URL) supplies, the
+    // matrix never renders more than MAX_ITEMS items.
+    const items = (itemsToCompare || this.selectedItems()).slice(
+      0,
+      this.MAX_ITEMS
+    );
 
     if (items.length === 0) {
       return new Observable((obs) => {

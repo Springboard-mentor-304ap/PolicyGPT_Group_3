@@ -65,10 +65,11 @@ WITHDRAWABLE_STATUSES = {
 
 # Staff roles allowed to view/update application status (mirrors the
 # authorization check previously inlined in update_application_status).
+# Application approvals belong to government officials only: administrators
+# and super administrators are deliberately excluded so they never see,
+# receive or process citizen application work.
 APPLICATION_REVIEW_ROLES = {
     UserRole.GOVERNMENT_OFFICIAL,
-    UserRole.ADMINISTRATOR,
-    UserRole.SUPER_ADMIN,
 }
 
 def create_application(
@@ -247,7 +248,9 @@ def list_applications_for_review(
 
     - Government officials only see applications in their own
       department/ministry (server-side scope, same rules as analytics).
-    - Administrators / super admins see everything.
+    - Administrators / super admins are not part of this workflow: the
+      role check below rejects them (application approvals are official-only
+      work).
     - Applicants and scheme context are joined in so the UI does not need
       extra round-trips.
     """
@@ -331,14 +334,11 @@ def get_application(
             detail="Application not found",
         )
 
+    # Only the applicant and government officials may open an application:
+    # administrators are deliberately outside the approval workflow.
     if (
         application.user_id != current_user.id
-        and current_user.role
-        not in {
-            UserRole.GOVERNMENT_OFFICIAL,
-            UserRole.ADMINISTRATOR,
-            UserRole.SUPER_ADMIN,
-        }
+        and current_user.role != UserRole.GOVERNMENT_OFFICIAL
     ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

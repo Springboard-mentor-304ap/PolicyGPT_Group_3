@@ -183,16 +183,13 @@ export const routes: Routes = [
         (m) => m.MyApplicationsComponent
       ),
   },
-  // Government-official application status review (staff roles only)
+  // Government-official application status review (officials only —
+  // the API rejects every other role, admins included)
   {
     path: 'applications/review',
     canActivate: [authGuard, roleGuard],
     data: {
-      roles: [
-        UserRole.GOVERNMENT_OFFICIAL,
-        UserRole.ADMINISTRATOR,
-        UserRole.SUPER_ADMIN,
-      ],
+      roles: [UserRole.GOVERNMENT_OFFICIAL],
     },
     loadComponent: () =>
       import(

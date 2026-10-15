@@ -1,8 +1,8 @@
 .content-section {
-  /* Match the shared page container so the banner lines up with every other
-     dashboard section and stays inside the viewport (same rule as
-     role-request-cards / pending-approvals; see styles/_layout.css). */
-  padding: 0 max(var(--page-padding-x), (100% - var(--content-max-width)) / 2) var(--space-8);
+  /* Match the dashboard's wide container so the banner lines up with every
+     other dashboard section and stays inside the viewport (same rule as
+     role-request-cards / pending-approvals; see styles/_variables.css). */
+  padding: 0 max(var(--page-padding-x), (100% - var(--content-max-width-wide)) / 2) var(--space-8);
 }
 
 .completion-card {

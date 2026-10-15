@@ -101,7 +101,7 @@
 .gov-hero-inner {
   position: relative;
   z-index: 1;
-  max-width: var(--content-max-width);
+  max-width: var(--content-max-width-wide);
   margin: 0 auto;
   padding: var(--space-12) var(--page-padding-x) var(--space-10);
   border-left: 3px solid var(--color-gov-saffron);
@@ -238,7 +238,7 @@
 }
 
 .gov-stats-inner {
-  max-width: var(--content-max-width);
+  max-width: var(--content-max-width-wide);
   margin: 0 auto;
   padding: var(--space-5) var(--page-padding-x);
   display: flex;
@@ -314,7 +314,7 @@
    ========================================================================== */
 
 .gov-feature {
-  max-width: var(--content-max-width);
+  max-width: var(--content-max-width-wide);
   margin: 0 auto;
   padding: var(--space-10) var(--page-padding-x) 0;
 }
@@ -427,7 +427,7 @@
    ========================================================================== */
 
 .gov-categories {
-  max-width: var(--content-max-width);
+  max-width: var(--content-max-width-wide);
   margin: 0 auto;
   padding: var(--space-10) var(--page-padding-x) var(--space-8);
 }

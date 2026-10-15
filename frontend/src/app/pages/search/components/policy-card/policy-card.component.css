@@ -56,6 +56,18 @@
   color: var(--color-primary-navy);
 }
 
+/* Comparison already holds its four items: the control stays visible (so
+   selected items can still be unchecked) but is clearly not addable. */
+.compare-toggle-label:has(.compare-checkbox:disabled) {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.compare-toggle-label:has(.compare-checkbox:disabled):hover {
+  background-color: var(--color-bg-muted);
+  color: var(--color-text-secondary);
+}
+
 .compare-checkbox {
   accent-color: var(--color-primary-navy);
   cursor: pointer;

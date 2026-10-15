@@ -285,3 +285,98 @@ def test_archiving_stores_timezone_aware_utc_timestamps(
         if "utcnow" in path.read_text(encoding="utf-8")
     ]
     assert offenders == []
+
+
+# ─── Status-filter visibility rules are enforced server-side ──────────────
+def _user_with_role(seed, role: UserRole) -> User:
+    return seed(
+        User(
+            id=uuid.uuid4(),
+            email=f"{role.value}-{uuid.uuid4().hex[:8]}@example.gov",
+            password_hash="x",
+            full_name=f"Test {role.value}",
+            role=role,
+            email_verified=True,
+            is_active=True,
+        )
+    )
+
+
+def test_public_roles_list_only_approved_policies_and_active_schemes(
+    api, seed, official,
+):
+    """Guests, citizens and organizations stay on public records.
+
+    The list flags (`include_archived`, `by_me`) must not widen what these
+    roles can see — the UI hides those controls from them, and the backend
+    refuses the wider answer even when the flags are sent anyway. Staff
+    roles keep both controls.
+    """
+    approved = seed(
+        _policy(title="Approved", status=PolicyStatus.APPROVED,
+                uploaded_by=official.id)
+    )
+    rejected = seed(
+        _policy(title="Rejected", status=PolicyStatus.REJECTED,
+                uploaded_by=official.id)
+    )
+    archived = seed(
+        _policy(title="Archived", status=PolicyStatus.ARCHIVED,
+                uploaded_by=official.id)
+    )
+
+    public_policy = seed(
+        _policy(title="Public", status=PolicyStatus.APPROVED,
+                uploaded_by=official.id)
+    )
+    active = seed(
+        _scheme(policy_id=public_policy.id, created_by=official.id,
+                status=SchemeStatus.ACTIVE)
+    )
+    draft = seed(
+        _scheme(policy_id=public_policy.id, created_by=official.id,
+                status=SchemeStatus.DRAFT)
+    )
+    scheme_archived = seed(
+        _scheme(policy_id=public_policy.id, created_by=official.id,
+                status=SchemeStatus.ARCHIVED)
+    )
+
+    expected_policies = {str(approved.id), str(public_policy.id)}
+    expected_schemes = {str(active.id)}
+    flags = {"include_archived": "true", "by_me": "true"}
+
+    # Guest: no login yet — the widest flags still answer with public rows.
+    assert _ids(api.client.get("/api/policies", params=flags)) == expected_policies
+    assert _ids(api.client.get("/api/schemes", params=flags)) == expected_schemes
+
+    for role in (UserRole.CITIZEN, UserRole.ORGANIZATION):
+        api.login(_user_with_role(seed, role))
+        assert (
+            _ids(api.client.get("/api/policies", params=flags))
+            == expected_policies
+        )
+        assert (
+            _ids(api.client.get("/api/schemes", params=flags))
+            == expected_schemes
+        )
+
+    # Government official (owner): the flags do widen their own records …
+    api.login(official)
+    official_policies = _ids(
+        api.client.get("/api/policies", params={"include_archived": "true"})
+    )
+    assert str(rejected.id) in official_policies
+    assert str(archived.id) in official_policies
+    official_schemes = _ids(
+        api.client.get("/api/schemes", params={"include_archived": "true"})
+    )
+    assert str(draft.id) in official_schemes
+    assert str(scheme_archived.id) in official_schemes
+
+    # … and so does an administrator.
+    api.login(_user_with_role(seed, UserRole.ADMINISTRATOR))
+    admin_schemes = _ids(
+        api.client.get("/api/schemes", params={"include_archived": "true"})
+    )
+    assert str(scheme_archived.id) in admin_schemes

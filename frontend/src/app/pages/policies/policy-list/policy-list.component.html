@@ -63,15 +63,18 @@
           </button>
         </div>
       }
-      <select
-        class="filter-select"
-        [value]="statusFilter()"
-        (change)="onStatusFilter($event)"
-      >
-        @for (opt of getStatusOptions(); track opt.value) {
-          <option [value]="opt.value">{{ opt.label }}</option>
-        }
-      </select>
+      <!-- Status + archived controls: staff only (see canFilterStatus). -->
+      @if (canFilterStatus()) {
+        <select
+          class="filter-select"
+          [value]="statusFilter()"
+          (change)="onStatusFilter($event)"
+        >
+          @for (opt of getStatusOptions(); track opt.value) {
+            <option [value]="opt.value">{{ opt.label }}</option>
+          }
+        </select>
+      }
       <select
         class="filter-select"
         [value]="categoryFilter()"
@@ -81,15 +84,17 @@
           <option [value]="opt.value">{{ opt.label }}</option>
         }
       </select>
-      <label class="toggle-label">
-        <input
-          type="checkbox"
-          [checked]="includeArchived()"
-          (change)="toggleArchived()"
-          class="toggle-checkbox"
-        />
-        <span class="toggle-text">Include Archived</span>
-      </label>
+      @if (canFilterStatus()) {
+        <label class="toggle-label">
+          <input
+            type="checkbox"
+            [checked]="includeArchived()"
+            (change)="toggleArchived()"
+            class="toggle-checkbox"
+          />
+          <span class="toggle-text">Include Archived</span>
+        </label>
+      }
     </div>
   </div>
 

@@ -1,6 +1,9 @@
 .role-approvals-page {
   min-height: 100vh;
   background-color: var(--color-bg-app);
+  /* Same top breathing room as the other list pages (policy/scheme lists)
+     so the back link and heading are not flush with the top edge. */
+  padding-block: var(--space-6);
 }
 
 .page-header {

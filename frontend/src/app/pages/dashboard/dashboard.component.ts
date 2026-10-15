@@ -816,6 +816,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
 
     this.loadUnreadCount();
+    // Every signed-in role has an inbox section on the dashboard, so every
+    // signed-in role loads its list here — including analytics roles
+    // (officials, researchers, admins), whose sidebar "Notifications" item
+    // used to find an empty, unrendered section.
+    this.loadMyNotifications();
     if (this.isAdmin()) {
       this.loadPendingRequests();
       this.startPolling();
@@ -823,7 +828,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
     if (!this.canViewAnalytics()) {
       // Citizens and organizations have no analytics access: never call the
-      // analytics endpoints, show their own notifications instead.
+      // analytics endpoints — their notifications (loaded above) are what
+      // their dashboard shows.
       this.loadedForRole = null;
       this.analytics.set(null);
       this.loadState.set('idle');
@@ -1037,9 +1043,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.router.navigate(['/admin/audit-logs']);
         break;
       case 'analytics':
-        this.scrollToSection('notification-analytics');
+        // The dashboard IS the analytics destination: land on the overview
+        // stats grid that every analytics role renders (the admin-only
+        // #notification-analytics panel is not on screen for officials).
+        this.scrollToSection('analytics-overview');
         break;
       case 'notifications':
+        // The "Your Notifications" inbox section renders for every
+        // signed-in role, so the anchor always exists.
         this.scrollToSection('your-notifications');
         break;
       case 'overview':
@@ -1050,9 +1061,16 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   private scrollToSection(sectionId: string): void {
-    document
-      .getElementById(sectionId)
-      ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const section = document.getElementById(sectionId);
+
+    if (section) {
+      section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
+
+    // The analytics block can still be loading (or failed) on the first
+    // click — fall back to the top of the page instead of doing nothing.
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   logout(): void {
@@ -1126,11 +1144,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
   // ── Sidebar menu (every id is unique and wired to a real destination) ────
   readonly menuItems = computed(() => {
     if (this.isGuest()) {
+      // Guests only get the two public destinations. Every other sidebar
+      // feature (Scheme Finder, Search, Eligibility, Helpdesk, Compare…)
+      // sits behind authGuard, so linking it here would dead-end at /login.
       return [
-        { id: 'overview', label: 'Overview', icon: 'home' },
         { id: 'policies', label: 'Policies', icon: 'document' },
         { id: 'schemes', label: 'Schemes', icon: 'gift' },
-        { id: 'finder', label: 'Scheme Finder', icon: 'compass' },
       ];
     }
 

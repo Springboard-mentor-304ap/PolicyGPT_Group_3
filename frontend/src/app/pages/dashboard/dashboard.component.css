@@ -30,9 +30,10 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  /* Full-bleed surface, inner content aligned to the shared 1200px page
-     container so header text lines up with every other page. */
-  padding: var(--space-6) max(var(--page-padding-x), (100% - var(--content-max-width)) / 2);
+  /* Full-bleed surface, inner content aligned to the dashboard's wide
+     (1400px) container so the header text lines up with every dashboard
+     section below it. */
+  padding: var(--space-6) max(var(--page-padding-x), (100% - var(--content-max-width-wide)) / 2);
   background-color: var(--color-bg-surface);
   border-bottom: 1px solid var(--color-border-subtle);
 }
@@ -126,8 +127,9 @@
 
 /* Stats Grid */
 .overview-section {
-  /* Aligned to the shared page container like every other page. */
-  padding: var(--space-6) max(var(--page-padding-x), (100% - var(--content-max-width)) / 2) 0;
+  /* Dashboard-wide container: wider than the standard page container so
+     the dashboard uses more of the available width. */
+  padding: var(--space-6) max(var(--page-padding-x), (100% - var(--content-max-width-wide)) / 2) 0;
 }
 
 .stats-grid {
@@ -206,7 +208,7 @@
 
 /* Content Sections */
 .content-section {
-  padding: 0 max(var(--page-padding-x), (100% - var(--content-max-width)) / 2) var(--space-8);
+  padding: 0 max(var(--page-padding-x), (100% - var(--content-max-width-wide)) / 2) var(--space-8);
 }
 
 .section-header {
