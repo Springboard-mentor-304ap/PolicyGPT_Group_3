@@ -178,6 +178,39 @@
   margin-bottom: var(--space-3, 12px);
 }
 
+/* Validation message / hint under one rule row. */
+.rule-error,
+.rule-hint {
+  margin: calc(-1 * var(--space-2, 8px)) 0 var(--space-3, 12px);
+}
+
+/* Multi-value (in / not_in) selection: wrapped chips of checkboxes. */
+.rule-multi-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2, 8px);
+  padding: var(--space-2, 8px) var(--space-3, 12px);
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: var(--radius-md, 6px);
+  background: var(--color-bg-card, #ffffff);
+  box-sizing: border-box;
+}
+
+.rule-multi-option {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1, 4px);
+  font-size: var(--font-size-sm, 14px);
+  color: var(--color-text, #1e293b);
+  cursor: pointer;
+  user-select: none;
+}
+
+.rule-multi-option input {
+  margin: 0;
+  accent-color: var(--color-primary, #3b82f6);
+}
+
 /* Responsive */
 @media (max-width: 640px) {
   .form-row {

@@ -140,6 +140,130 @@ export const ELIGIBILITY_OPERATOR_LABELS: Record<EligibilityOperator, string> = 
   [EligibilityOperator.NOT_IN]: 'is not one of',
 };
 
+/** One selectable value of a categorical eligibility parameter. */
+export interface EligibilityRuleOption {
+  value: string;
+  label: string;
+}
+
+/**
+ * Operators offered for each parameter.
+ *
+ * Mirrors `PARAMETER_OPERATOR_COMPATIBILITY` in
+ * backend/app/schemes/service.py exactly: the backend rejects anything else
+ * with a 400 when the rule is saved, so offering an unsupported pair here
+ * would only fail after the scheme has already been created. Numeric fields
+ * get the numeric comparisons (the backend also accepts `in` as a list of
+ * numbers, but the form keeps a single number input for them); categorical
+ * fields additionally get the multi-value operators, which the backend
+ * stores and evaluates as comma-separated lists.
+ */
+export const ELIGIBILITY_OPERATORS_BY_PARAMETER: Record<
+  EligibilityParameter,
+  EligibilityOperator[]
+> = {
+  [EligibilityParameter.AGE]: [
+    EligibilityOperator.EQ,
+    EligibilityOperator.NEQ,
+    EligibilityOperator.LT,
+    EligibilityOperator.LTE,
+    EligibilityOperator.GT,
+    EligibilityOperator.GTE,
+  ],
+  [EligibilityParameter.INCOME]: [
+    EligibilityOperator.EQ,
+    EligibilityOperator.NEQ,
+    EligibilityOperator.LT,
+    EligibilityOperator.LTE,
+    EligibilityOperator.GT,
+    EligibilityOperator.GTE,
+  ],
+  [EligibilityParameter.GENDER]: [
+    EligibilityOperator.EQ,
+    EligibilityOperator.NEQ,
+    EligibilityOperator.IN,
+    EligibilityOperator.NOT_IN,
+  ],
+  [EligibilityParameter.OCCUPATION]: [
+    EligibilityOperator.EQ,
+    EligibilityOperator.NEQ,
+    EligibilityOperator.IN,
+    EligibilityOperator.NOT_IN,
+  ],
+  [EligibilityParameter.EDUCATION]: [
+    EligibilityOperator.EQ,
+    EligibilityOperator.NEQ,
+    EligibilityOperator.IN,
+    EligibilityOperator.NOT_IN,
+  ],
+  [EligibilityParameter.STATE]: [
+    EligibilityOperator.EQ,
+    EligibilityOperator.NEQ,
+    EligibilityOperator.IN,
+    EligibilityOperator.NOT_IN,
+  ],
+  [EligibilityParameter.DISTRICT]: [
+    EligibilityOperator.EQ,
+    EligibilityOperator.NEQ,
+    EligibilityOperator.IN,
+    EligibilityOperator.NOT_IN,
+  ],
+  [EligibilityParameter.SOCIAL_CATEGORY]: [
+    EligibilityOperator.EQ,
+    EligibilityOperator.NEQ,
+    EligibilityOperator.IN,
+    EligibilityOperator.NOT_IN,
+  ],
+  // The evaluator compares this against a Python bool, so only equality and
+  // inequality are defined for it.
+  [EligibilityParameter.DISABILITY_STATUS]: [
+    EligibilityOperator.EQ,
+    EligibilityOperator.NEQ,
+  ],
+};
+
+/**
+ * Canonical values for the parameters whose citizen profile value is a fixed
+ * set (`UserProfile.gender` / `social_category` / `disability_status` and the
+ * education levels both profile forms offer).
+ *
+ * They must stay identical to the values the citizen profile and finder forms
+ * submit — the evaluator compares rule and profile values as plain
+ * case-insensitive strings, so a value outside these lists could never match
+ * a stored profile.
+ */
+export const ELIGIBILITY_RULE_OPTIONS: Partial<
+  Record<EligibilityParameter, EligibilityRuleOption[]>
+> = {
+  [EligibilityParameter.GENDER]: [
+    { value: 'male', label: 'Male' },
+    { value: 'female', label: 'Female' },
+    { value: 'other', label: 'Other' },
+  ],
+  [EligibilityParameter.EDUCATION]: [
+    { value: 'below_primary', label: 'Below Primary' },
+    { value: 'primary', label: 'Primary' },
+    { value: 'secondary', label: 'Secondary' },
+    { value: 'higher_secondary', label: 'Higher Secondary' },
+    { value: 'graduate', label: 'Graduate' },
+    { value: 'post_graduate', label: 'Post Graduate' },
+    { value: 'doctorate', label: 'Doctorate' },
+    { value: 'diploma', label: 'Diploma' },
+    { value: 'professional', label: 'Professional Degree' },
+  ],
+  [EligibilityParameter.SOCIAL_CATEGORY]: [
+    { value: 'general', label: 'General' },
+    { value: 'obc', label: 'OBC' },
+    { value: 'sc', label: 'SC' },
+    { value: 'st', label: 'ST' },
+    { value: 'other', label: 'Other' },
+  ],
+  [EligibilityParameter.DISABILITY_STATUS]: [
+    { value: 'true', label: 'Yes' },
+    { value: 'false', label: 'No' },
+  ],
+};
+
 /** Display-friendly category labels */
 export const SCHEME_CATEGORY_LABELS: Record<SchemeCategory, string> = {
   [SchemeCategory.SCHOLARSHIPS]: 'Scholarships',
